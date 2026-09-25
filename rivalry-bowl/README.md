@@ -33,19 +33,27 @@ download, GitHub Pages), only Pass & Play works and the Online screen says so.
 
 ## Controls
 
+- **Read the play**: before the snap the camera pulls back and each receiver's route is
+  drawn in his color (a dashed arrow shows the run lane). **New play** rerolls the
+  formation and routes; the play clock keeps running.
 - **Snap**: tap PASS or RUN. On 4th down you also get PUNT and FG.
 - **Throw**: touch anywhere and pull back, away from the end zone, like a slingshot.
   The reticle moves 1.6x as far as your finger, and the dotted arc shows where the ball
   lands. Release to throw, and lead your receiver. The arc stays faint until the pull is
-  long enough; letting go before then cancels the throw.
+  long enough; letting go before then cancels the throw. With **aim assist** on (title
+  screen), a reticle near where a receiver will be locks onto his catch point and turns
+  green, with a ring on that receiver.
 - **Scramble**: drag forward to run with the QB. Once he crosses the line he can't throw.
-- **Run after the catch**: the runner keeps going upfield. Drag up or down to weave,
-  drag back to slow down, tap to juke, flick to dive. The stick ramps in gradually over
-  the first 60 pixels of drag.
+- **Run after the catch**: the runner keeps going upfield. Hold a finger where you want
+  him to go (above, below or ahead of him) and he runs toward it; hold well behind him to
+  retreat. Tap to juke, flick to dive.
 - **Kick**: drag down for power and sideways to aim (the ball goes the opposite way).
   Clear the white line on the power bar and watch the wind.
-- **Defense (online only)**: pick a coverage before the snap, tap a defender to take
-  control of him, then drag to steer him during the play.
+- **Defense (online only)**: pick a coverage before the snap; it carries over to later
+  plays until you change it. Tap any defender to take control of him (before or during
+  the play), and hold a finger where he should run. A tap away from everyone switches
+  to the free defender nearest the ball. The HUD shows the link type and the measured
+  round trip.
 
 ## Rules
 

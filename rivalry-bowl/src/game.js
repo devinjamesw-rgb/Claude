@@ -21,7 +21,7 @@
     const g = {
       v: 1, ver: 1,
       mode: opts.mode || 'local',
-      settings: Object.assign({ qlen: 240, diff: 1, even: false }, opts.settings),
+      settings: Object.assign({ qlen: 240, diff: 1, even: false, assist: true }, opts.settings),
       teams: [opts.home, opts.away],
       names: opts.names || ['PLAYER 1', 'PLAYER 2'],
       score: [0, 0],
@@ -163,7 +163,7 @@
     rt.play = Sim.createPlay({
       offRoster: rt.rosters[o], defRoster: rt.rosters[d],
       ballOn: g.ballOn, ballY: g.ballY, fdX: C.GOAL_L + Math.min(100, g.ballOn + g.toGo),
-      defCall: g.defCall, diff: g.settings.diff, rng: rt.rng, wx: g.wx,
+      defCall: g.defCall, diff: g.settings.diff, rng: rt.rng, wx: g.wx, assist: g.settings.assist !== false,
       humanDefIdx: g.mode === 'online' ? rt.humanDefIdx == null ? Sim.IDX.S1 : rt.humanDefIdx : -1,
     });
     rt.defCallFrom = 'ai';
@@ -204,6 +204,15 @@
         if (a.kind === 'pass' || a.kind === 'run') snapBall(G, a.kind);
         else if (a.kind === 'punt' && canPunt(g)) punt(G);
         else if (a.kind === 'fg' && canFG(g)) startKick(G, 'fg', 100 - g.ballOn + 17);
+        break;
+      case 'shuffle':
+        // A different formation and set of routes; the play clock keeps running.
+        if (g.phase === 'presnap' && rt.play && rt.play.phase === 'pre') {
+          const call = rt.defCallFrom === 'human' ? g.defCall : null;
+          makePresnapPlay(G);
+          if (call) { Sim.setDefense(rt.play, call); g.defCall = call; rt.defCallFrom = 'human'; }
+          bump(G);
+        }
         break;
       case 'defcall':
         if (g.phase === 'presnap' && rt.play && Sim.DEF_CALLS.includes(a.call)) {

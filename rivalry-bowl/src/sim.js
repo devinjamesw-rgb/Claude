@@ -79,6 +79,7 @@
       defCall: o.defCall || 'man',
       wx: o.wx || { type: 'clear' },
       humanDefIdx: o.humanDefIdx == null ? -1 : o.humanDefIdx,
+      assist: o.assist !== false,
       t: 0, phase: 'pre', deadT: 0,
       players: [], hist: [],
       ball: { x: los, y: o.ballY, z: 0.4, vx: 0, vy: 0, vz: 0, st: 'snap', holder: -1, bt: 0, T: 0, fx: 0, fy: 0, tx: 0, ty: 0, z0: 0, vz0: 0, target: -1, resolved: false, shown: true },
@@ -95,6 +96,7 @@
     for (let k = 0; k < 22; k++) play.hist.push([]);
     lineupOffense(play, rng);
     lineupDefense(play, rng);
+    planPlay(play, rng);
     play.ball.x = play.players[OC].x + 0.3;
     play.ball.y = play.players[OC].y;
     play.ball.fx = play.ball.x;
@@ -117,8 +119,8 @@
   function snap(play, kind) {
     if (play.phase !== 'pre') return;
     play.kind = kind;
-    if (kind === 'run') setupRun(play, play.rng);
-    else setupPass(play, play.rng);
+    if (kind === 'run') setupRun(play);
+    else setupPass(play);
     for (const p of play.players) { p.x0 = p.x; p.y0 = p.y; }
     play.phase = 'live';
     play.t = 0;
@@ -238,57 +240,69 @@
     return p.y < C.MID_Y ? 1 : -1;
   }
 
-  function assignRoute(play, p, name) {
+  // Route waypoints for player p, starting from where he lines up.
+  function routePoints(play, p, name) {
     const R = ROUTES[name];
     const sgn = inSignFor(p, play);
     const sc = play.rng.range(0.9, 1.12);
-    p.route = R.pts.map(([dx, din]) => ({ x: p.x + dx * sc, y: clamp(p.y + din * sgn * (p.i === RBK ? 1 : sc), 2.2, W - 2.2) }));
+    const pts = R.pts.map(([dx, din]) => ({ x: p.x + dx * sc, y: clamp(p.y + din * sgn * (p.i === RBK ? 1 : sc), 2.2, W - 2.2) }));
     if (R.cont) {
-      const a = p.route.length > 1 ? p.route[p.route.length - 2] : { x: p.x, y: p.y };
-      const b = p.route[p.route.length - 1];
+      const a = pts.length > 1 ? pts[pts.length - 2] : { x: p.x, y: p.y };
+      const b = pts[pts.length - 1];
       const d = hyp(b.x - a.x, b.y - a.y) || 1;
-      p.route.push({ x: b.x + ((b.x - a.x) / d) * 40, y: clamp(b.y + ((b.y - a.y) / d) * 40, 1.5, W - 1.5) });
+      pts.push({ x: b.x + ((b.x - a.x) / d) * 40, y: clamp(b.y + ((b.y - a.y) / d) * 40, 1.5, W - 1.5) });
     }
-    p.routeName = name;
-    p.wp = 0;
-    p.role = 'route';
+    return { name, pts, cont: R.cont };
   }
 
-  function setupPass(play, rng) {
-    const P = play.players;
-    for (const i of OL) P[i].role = 'pass_pro';
-    P[QB].role = 'qb';
-    P[QB].drop = { x: play.los - 6.6, y: play.ballY };
-    assignRoute(play, P[WR1], rng.pick(POOLS.WR));
-    assignRoute(play, P[WR2], rng.pick(POOLS.WR));
-    assignRoute(play, P[WR3], rng.pick(play.formation === 'empty' ? POOLS.SLOT : POOLS.SLOT));
-    const te = rng.pick(POOLS.TE);
-    if (te === 'block') P[TE].role = 'pass_pro';
-    else assignRoute(play, P[TE], te);
-    if (play.formation === 'empty') assignRoute(play, P[RBK], rng.pick(POOLS.SLOT));
-    else {
-      const r = rng.pick(POOLS.RB);
-      if (r === 'block') P[RBK].role = 'pass_pro';
-      else assignRoute(play, P[RBK], r);
-    }
-  }
-
-  function setupRun(play, rng) {
+  // Everything the offense will do is decided when the formation appears, so
+  // the routes and the run lane can be shown before the snap.
+  function planPlay(play, rng) {
     const P = play.players, L = play.los, by = play.ballY;
-    for (const i of OL) P[i].role = 'run_block';
-    P[TE].role = 'run_block';
-    for (const i of [WR1, WR2, WR3]) P[i].role = 'stalk';
+    const routes = {};
+    routes[WR1] = routePoints(play, P[WR1], rng.pick(POOLS.WR));
+    routes[WR2] = routePoints(play, P[WR2], rng.pick(POOLS.WR));
+    routes[WR3] = routePoints(play, P[WR3], rng.pick(POOLS.SLOT));
+    const te = rng.pick(POOLS.TE);
+    routes[TE] = te === 'block' ? { name: 'block' } : routePoints(play, P[TE], te);
+    const rb = play.formation === 'empty' ? rng.pick(POOLS.SLOT) : rng.pick(POOLS.RB);
+    routes[RBK] = rb === 'block' ? { name: 'block' } : routePoints(play, P[RBK], rb);
     const gap = rng.pick([-5.5, -2.6, -1.3, 1.3, 2.6, 5.5]);
-    play.gapY = by + gap;
-    const rb = P[RBK];
-    rb.role = 'runpath';
-    rb.path = [
+    const r = P[RBK];
+    const path = [
       // From an empty set the back motions in (jet sweep look).
-      ...(play.formation === 'empty' ? [{ x: L - 3.6, y: by + (rb.y > by ? 2 : -2) }] : []),
+      ...(play.formation === 'empty' ? [{ x: L - 3.6, y: by + (r.y > by ? 2 : -2) }] : []),
       { x: L - 4.3, y: by + gap * 0.25 },
       { x: L + 0.6, y: clamp(by + gap, 2, W - 2) },
       { x: L + 14, y: clamp(by + gap * 1.25, 2, W - 2) },
     ];
+    play.plan = { routes, run: { gapY: by + gap, path } };
+  }
+
+  function setupPass(play) {
+    const P = play.players;
+    for (const i of OL) P[i].role = 'pass_pro';
+    P[QB].role = 'qb';
+    P[QB].drop = { x: play.los - 6.6, y: play.ballY };
+    for (const i of ELIGIBLE) {
+      const r = play.plan.routes[i], p = P[i];
+      if (r.name === 'block') { p.role = 'pass_pro'; continue; }
+      p.route = r.pts.map((q) => ({ x: q.x, y: q.y }));
+      p.routeName = r.name;
+      p.wp = 0;
+      p.role = 'route';
+    }
+  }
+
+  function setupRun(play) {
+    const P = play.players;
+    for (const i of OL) P[i].role = 'run_block';
+    P[TE].role = 'run_block';
+    for (const i of [WR1, WR2, WR3]) P[i].role = 'stalk';
+    play.gapY = play.plan.run.gapY;
+    const rb = P[RBK];
+    rb.role = 'runpath';
+    rb.path = play.plan.run.path.map((q) => ({ x: q.x, y: q.y }));
     rb.wp = 0;
     P[QB].role = 'handoff';
   }
@@ -716,6 +730,29 @@
     return (0.22 + d * 0.034) * (1.18 - qb.arm * 0.3);
   }
 
+  // Aim assist: if the reticle is near where a receiver will be when a ball
+  // thrown there arrives, lock onto that spot. Used by the preview and the throw.
+  function assistAim(play, tx, ty) {
+    if (!play.assist || !canThrow(play)) return null;
+    const P = play.players, q = P[QB];
+    let best = null;
+    for (const i of ELIGIBLE) {
+      const r = P[i];
+      if (r.role !== 'route') continue;
+      let T = flightTime(q, hyp(tx - q.x, ty - q.y));
+      let g = predictRoute(play, r, T);
+      for (let k = 0; k < 2; k++) {
+        T = flightTime(q, Math.min(maxRange(q), hyp(g.x - q.x, g.y - q.y)));
+        g = predictRoute(play, r, T);
+      }
+      if (hyp(g.x - q.x, g.y - q.y) > maxRange(q) || g.y < 0.5 || g.y > W - 0.5) continue;
+      const d = hyp(g.x - tx, g.y - ty);
+      const R = 3.4 + 0.08 * hyp(g.x - q.x, g.y - q.y);
+      if (d < R && (!best || d < best.d)) best = { x: g.x, y: g.y, i, d };
+    }
+    return best;
+  }
+
   function canThrow(play) {
     const b = play.ball;
     return play.kind === 'pass' && !play.thrown && b.st === 'held' && b.holder === QB && !play.scramble && play.phase === 'live';
@@ -724,6 +761,8 @@
   function throwBall(play, tx, ty) {
     if (!canThrow(play)) return false;
     const P = play.players, q = P[QB], b = play.ball, rng = play.rng;
+    const lock = assistAim(play, tx, ty);
+    if (lock) { tx = lock.x; ty = lock.y; }
     const aim = clampAim(play, tx, ty);
     const d = aim.d;
     const rusher = nearestOpp(play, q, 2.6, (o) => o.eng < 0);
@@ -753,8 +792,9 @@
       const pr = predictRoute(play, r, T);
       const need = hyp(pr.x - lx, pr.y - ly);
       const direct = hyp(r.x - lx, r.y - ly) / effSpeed(play, r);
-      const reach = 1.4 + 2.4 * T;
-      if ((need <= reach || direct <= T + 0.05) && need < bn) { bn = need; best = r; }
+      const reach = 2.4 + 3.2 * T;
+      const locked = lock && lock.i === r.i ? -100 : 0;
+      if ((need <= reach || direct <= T + 0.15 || locked) && need + locked < bn) { bn = need + locked; best = r; }
     }
     if (best) { best.track = { x: lx, y: ly }; b.target = best.i; }
     else b.target = -1;
@@ -846,9 +886,9 @@
     for (const p of P) {
       if (p.i === QB || p.down > 0 || p.eng >= 0) continue;
       if (p.side === 0 && (OL.includes(p.i) || p.role === 'pass_pro')) continue;
-      const reach = p.side === 0 ? 1.15 : 1.0;
+      const reach = p.side === 0 ? 1.35 : 1.0;
       const d = hyp(p.x - bx, p.y - by);
-      if (d <= reach) cands.push({ p, d: d - (p.side === 0 && p.track ? 0.35 : 0), raw: d, reach });
+      if (d <= reach) cands.push({ p, d: d - (p.side === 0 && p.track ? 0.55 : 0), raw: d, reach });
     }
     if (!cands.length) return;
     cands.sort((a, c) => a.d - c.d);
@@ -858,23 +898,23 @@
     const rec = cands.find((c) => c.p.side === 0);
     const oob = (p) => p.y <= 0 || p.y >= W || p.x >= C.FIELD_LEN;
     const catchChance = (c) => {
-      let pc = c.p.hands + 0.05 - 0.1 * (c.raw / c.reach);
-      for (const k of contest) pc -= 0.15 + k.p.cover * 0.2;
-      if (play.wx.type === 'rain') pc -= 0.06;
-      if (play.wx.type === 'snow') pc -= 0.03;
-      return clamp(pc, 0.1, 0.97);
+      let pc = c.p.hands + 0.1 - 0.06 * (c.raw / c.reach);
+      for (const k of contest) pc -= 0.08 + k.p.cover * 0.14;
+      if (play.wx.type === 'rain') pc -= 0.04;
+      if (play.wx.type === 'snow') pc -= 0.02;
+      return clamp(pc, 0.15, 0.985);
     };
     if (first.side === 0) {
       if (oob(first)) return incomplete(play, 'OUT OF BOUNDS');
       if (rng.chance(catchChance(cands[0]))) return catchBall(play, first);
-      if (contest.length && rng.chance(0.14 * play.diff.ints)) return intercept(play, contest[0].p);
+      if (contest.length && rng.chance(0.1 * play.diff.ints)) return intercept(play, contest[0].p);
       return incomplete(play, contest.length ? 'BROKEN UP' : 'DROPPED');
     }
     let pi = (0.1 + first.hands * 0.3) * play.diff.ints;
     if (rec) pi *= 0.6;
     if (oob(first)) return incomplete(play, 'INCOMPLETE');
     if (rng.chance(pi)) return intercept(play, first);
-    if (rec && !oob(rec.p) && rng.chance(catchChance(rec) * 0.5)) return catchBall(play, rec.p);
+    if (rec && !oob(rec.p) && rng.chance(catchChance(rec) * 0.75)) return catchBall(play, rec.p);
     return incomplete(play, 'BROKEN UP');
   }
 
@@ -1142,6 +1182,16 @@
       ctrl.dvx = 0; ctrl.dvy = 0;
       return true;
     }
+    if (input.steer && !(ctrl.i === QB && !play.scramble)) {
+      // Hold a finger where you want to go: he keeps driving upfield unless
+      // the finger is clearly behind him.
+      play.manual = true;
+      let dx = input.steer.x - ctrl.x;
+      const dy = input.steer.y - ctrl.y;
+      if (dx > -2.5) dx = Math.max(dx, 2.2);
+      steerDir(ctrl, dx, dy, spd);
+      return true;
+    }
     if (input.joy) {
       play.manual = true;
       const jx = input.joy.x, jy = input.joy.y;
@@ -1169,16 +1219,13 @@
     return true;
   }
 
+  // The defense player points where the defender should run.
   function applyDefenderInput(play, input) {
     const i = play.humanDefIdx;
-    if (i < 11 || !input.defJoy || play.phase !== 'live') return false;
+    if (i < 11 || !input.defTarget || play.phase !== 'live') return false;
     const p = play.players[i];
     if (p.eng >= 0 || p.down > 0) return false;
-    if (play.turnover && play.carrier === i) {
-      steerDir(p, input.defJoy.x, input.defJoy.y, effSpeed(play, p));
-      return true;
-    }
-    steerDir(p, input.defJoy.x, input.defJoy.y, effSpeed(play, p) * Math.min(1, hyp(input.defJoy.x, input.defJoy.y)));
+    steerTo(p, input.defTarget.x, input.defTarget.y, effSpeed(play, p), true);
     return true;
   }
 
@@ -1242,7 +1289,9 @@
     tryEngage(play);
     for (const p of P) {
       if (p.eng >= 0) continue;
-      const acc = p.i === play.carrier ? 12 : p.side === 0 ? 11 : 10.5;
+      let acc = p.i === play.carrier ? 12 : p.side === 0 ? 11 : 10.5;
+      // Plant and cut: a runner the player steers against his momentum turns hard.
+      if (p.i === play.carrier && play.manual && p.vx * p.dvx + p.vy * p.dvy < 0) acc = 22;
       integrate(p, acc, dt);
       if (Math.abs(p.vx) > 0.3) p.face = p.vx > 0 ? 1 : -1;
       if (p.i !== play.carrier) p.y = clamp(p.y, -1.5, W + 1.5);
@@ -1278,6 +1327,6 @@
   RB.Sim = {
     IDX: { QB, RBK, OC, LG, RG, LT, RT, TE, WR1, WR2, WR3, DE1, DT1, DT2, DE2, LB1, LB2, LB3, CB1, CB2, S1, S2 },
     OL, ELIGIBLE, DIFF, DEF_CALLS, ROUTES,
-    createPlay, setDefense, snap, step, canThrow, throwBall, clampAim, flightTime, maxRange, aiDefCall, predictRoute,
+    createPlay, setDefense, snap, step, canThrow, throwBall, clampAim, flightTime, maxRange, aiDefCall, predictRoute, assistAim,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

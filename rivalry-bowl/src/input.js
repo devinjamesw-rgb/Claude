@@ -1,13 +1,16 @@
 /* Rivalry Bowl: touch / mouse gestures -> game intents.
  * Contexts: 'qb' (can throw), 'run' (steer carrier), 'def' (steer defender),
- * 'kick' (aim + power), 'none'. */
+ * 'pick' (tap a defender before the snap), 'kick' (aim + power), 'none'.
+ * Runners and defenders run toward a held finger; a tap jukes (runner) or
+ * switches to the tapped defender (defense). */
 (function (root) {
   'use strict';
   const RB = root.RB;
   const AIM_GAIN = 1.6; // the reticle moves 1.6x as far as your finger
   const DEAD = 12; // css px before a drag counts
   const MIN_THROW = 26; // shorter pulls cancel instead of throwing
-  const JOY_FULL = 60; // css px of drag for full joystick deflection
+  const JOY_FULL = 60; // css px of drag for full joystick deflection (QB scramble)
+  const HOLD_MS = 140; // a still finger held this long starts steering
   const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
   const S = {
@@ -61,7 +64,7 @@
     const c = S.lastCtx;
     // Pulling back aims; only a clearly forward drag scrambles.
     if (c === 'qb') S.mode = dx > 0 && dx > Math.abs(dy) * 1.2 ? 'joy' : 'aim';
-    else if (c === 'run' || c === 'def') S.mode = 'joy';
+    else if (c === 'run' || c === 'def') S.mode = 'follow';
   }
 
   function up(e) {
@@ -78,12 +81,12 @@
     } else if (S.mode === 'kick' && c === 'kick') {
       const k = kickVals();
       if (k.power > 0.08) S.intents.kick = k;
-    } else if (!S.mode && dt < 220) {
-      if (c === 'pick') {
+    } else if (len < DEAD && dt < 220) {
+      if (c === 'pick' || c === 'def') {
         const k = RB.Render.R.k;
         S.intents.tapAt = RB.Render.toWorld(S.x / k, S.y / k);
-      } else S.intents.juke = true;
-    } else if (S.mode === 'joy' && dt < 200 && len > 48 && (c === 'run')) {
+      } else if (c === 'run') S.intents.juke = true;
+    } else if (dt < 200 && len > 48 && c === 'run') {
       const w = RB.Render.screenDeltaToWorld(dx, dy);
       S.intents.dive = { x: w.x, y: w.y };
     }
@@ -130,6 +133,7 @@
       dive: S.intents.dive,
       kickLaunch: S.intents.kick,
       tapAt: S.intents.tapAt,
+      steer: null,
     };
     S.intents = { throwAt: null, juke: false, dive: null, kick: null, tapAt: null };
     if (out.aiming) {
@@ -139,6 +143,12 @@
       out.aimAt = S.aimS;
       const dx = S.x - S.x0, dy = S.y - S.y0;
       out.aimArmed = Math.hypot(dx, dy) >= MIN_THROW;
+    }
+    // A still finger held a moment starts steering too.
+    if (S.id !== null && !S.mode && (S.lastCtx === 'run' || S.lastCtx === 'def') && performance.now() - S.t0 > HOLD_MS) S.mode = 'follow';
+    if (S.id !== null && S.mode === 'follow') {
+      const k = RB.Render.R.k;
+      out.steer = RB.Render.toWorld(S.x / k, S.y / k);
     }
     if (S.id !== null && S.mode === 'joy') {
       const dx = S.x - S.x0, dy = S.y - S.y0, len = Math.hypot(dx, dy);

@@ -22,7 +22,7 @@
 
   const App = {
     screen: 'title', back: 'title',
-    settings: Object.assign({ qlen: 240, diff: 1, even: false, sound: true }, store.get('settings', {})),
+    settings: Object.assign({ qlen: 240, diff: 1, even: false, sound: true, assist: true }, store.get('settings', {})),
     picks: [null, null],
     names: store.get('names', ['PLAYER 1', 'PLAYER 2']),
     step: 0,
@@ -135,7 +135,7 @@
   function startLocal() {
     App.G = Game.create({
       mode: 'local', home: App.picks[0], away: App.picks[1], names: App.names.slice(),
-      settings: { qlen: App.settings.qlen, diff: App.settings.diff, even: App.settings.even },
+      settings: { qlen: App.settings.qlen, diff: App.settings.diff, even: App.settings.even, assist: App.settings.assist },
     });
     App.mode = 'local';
     App.screen = 'game';
@@ -205,7 +205,7 @@
           let input;
           if (isDemo) input = demoInput(G);
           else {
-            input = Object.assign({ aiming: inp.aiming, joy: inp.joy }, takeOnce());
+            input = Object.assign({ aiming: inp.aiming, joy: inp.joy, steer: inp.steer }, takeOnce());
             if (App.net) Object.assign(input, App.net.remoteInput());
           }
           savePrev(G);
@@ -259,6 +259,8 @@
   }
 
   function aimView(play, at) {
+    const lock = Sim.assistAim(play, at.x, at.y);
+    if (lock) at = lock;
     const a = Sim.clampAim(play, at.x, at.y);
     const q = play.players[0];
     const T = Sim.flightTime(q, a.d);
@@ -268,7 +270,35 @@
       const u = i / 30, bt = T * u;
       pts.push({ x: q.x + (a.x - q.x) * u, y: q.y + (a.y - q.y) * u, z: 2 + vz0 * bt - 0.5 * C.GRAVITY * bt * bt });
     }
-    return { x: a.x, y: a.y, pts, max: a.max };
+    return { x: a.x, y: a.y, pts, max: a.max, lock: lock ? lock.i : null };
+  }
+
+  // Play art for the offense: routes in each receiver's color before the snap,
+  // faint during the play until the ball is thrown.
+  const ROUTE_COLORS = { 8: '#ffd23f', 9: '#5ae6ff', 10: '#ff7ad9', 7: '#7dff7a', 1: '#ffa24a' };
+  function routesView(play) {
+    const pre = play.phase === 'pre';
+    if (!play.plan || (!pre && (play.phase !== 'live' || play.thrown || play.kind !== 'pass' || play.carrier !== 0))) return null;
+    const alpha = pre ? 0.95 : 0.35;
+    const out = [];
+    for (const i of Sim.ELIGIBLE) {
+      const r = play.plan.routes[i], p = play.players[i];
+      if (r.name === 'block') { out.push({ block: true, from: { x: p.x0 != null && !pre ? p.x0 : p.x, y: p.y0 != null && !pre ? p.y0 : p.y }, color: ROUTE_COLORS[i], alpha }); continue; }
+      const start = pre ? { x: p.x, y: p.y } : { x: p.x0, y: p.y0 };
+      const pts = [start].concat(r.pts.map((q) => ({ x: q.x, y: q.y })));
+      if (r.cont && pts.length > 2) {
+        // Trim the "keep running" leg to a readable stub.
+        const a = pts[pts.length - 2], b = pts[pts.length - 1];
+        const d = Math.hypot(b.x - a.x, b.y - a.y) || 1, keep = Math.min(d, 9);
+        pts[pts.length - 1] = { x: a.x + ((b.x - a.x) / d) * keep, y: a.y + ((b.y - a.y) / d) * keep };
+      }
+      out.push({ pts, color: ROUTE_COLORS[i], alpha });
+    }
+    if (pre && play.plan.run) {
+      const rb = play.players[Sim.IDX.RBK];
+      out.push({ pts: [{ x: rb.x, y: rb.y }].concat(play.plan.run.path.slice(-2).map((q, k) => (k ? { x: q.x - 6, y: q.y } : q))), color: '#ffffff', alpha: 0.5, dashed: true });
+    }
+    return out;
   }
 
   function buildView(G, inp) {
@@ -304,8 +334,14 @@
       V.ctrl = play.turnover ? -1 : play.carrier >= 0 && play.players[play.carrier].side === 0 ? play.carrier : 0;
       V.landing = play.landing;
       V.defCtrl = App.net ? play.humanDefIdx : -1;
-      if (inp && inp.aiming && inp.aimAt && Sim.canThrow(play)) V.aim = Object.assign(aimView(play, inp.aimAt), { armed: inp.aimArmed });
+      if (inp && inp.aiming && inp.aimAt && Sim.canThrow(play)) {
+        V.aim = Object.assign(aimView(play, inp.aimAt), { armed: inp.aimArmed });
+        V.lock = V.aim.lock;
+      }
       if (inp) V.joy = inp.joyScreen;
+      V.routes = routesView(play);
+      if (App.net) V.netInfo = App.net.netInfo();
+      if (V.routes && play.phase === 'pre') V.routeColors = ROUTE_COLORS;
     }
     return V;
   }
@@ -325,9 +361,9 @@
       const who = `${team(G, g.poss).name} BALL · ${g.names[g.poss]}`;
       const main = opts.map((o) => `<button class="btn ${cls[o.id]}" type="button" data-action="call" data-kind="${o.id}">${esc(o.label)}</button>`).join('');
       const seats = App.net ? [App.net.seat] : [0, 1];
-      const tos = seats.filter((s) => Game.canTimeout(g, s))
+      const tos = '<button class="btn small ghost" type="button" data-action="shuffle">New play</button>' + seats.filter((s) => Game.canTimeout(g, s))
         .map((s) => `<button class="btn small ghost" type="button" data-action="timeout" data-seat="${s}">Timeout ${esc(team(G, s).id)} (${g.to[s]})</button>`).join('');
-      return { key: `pre|${g.playNo}|${opts.map((o) => o.id)}|${g.to}|${g.clockRunning}`, html: `<div class="who">${esc(who)}</div><div class="row">${main}</div>${tos ? `<div class="row">${tos}</div>` : ''}` };
+      return { key: `pre|${g.playNo}|${opts.map((o) => o.id)}|${g.to}|${g.clockRunning}`, html: `<div class="who">${esc(who)}</div><div class="row">${main}</div><div class="row">${tos}</div>` };
     }
     if (g.phase === 'pat') {
       const two = Game.mustGoForTwo(g);
@@ -342,8 +378,8 @@
   function hintFor(ctx, g) {
     if (!g || g.playNo > 8) return '';
     if (ctx === 'qb') return 'PULL BACK TO AIM · RELEASE TO THROW · DRAG FORWARD TO RUN';
-    if (ctx === 'run') return 'DRAG TO STEER · TAP TO JUKE · FLICK TO DIVE';
-    if (ctx === 'def') return 'DRAG TO STEER YOUR DEFENDER';
+    if (ctx === 'run') return 'HOLD WHERE TO RUN · TAP TO JUKE · FLICK TO DIVE';
+    if (ctx === 'def') return 'HOLD WHERE HE SHOULD RUN · TAP A PLAYER TO SWITCH';
     return '';
   }
 
@@ -451,7 +487,7 @@
         break;
       case 'set': {
         const k = b.dataset.key, v = +b.dataset.val;
-        App.settings[k] = k === 'even' || k === 'sound' ? !!v : v;
+        App.settings[k] = k === 'even' || k === 'sound' || k === 'assist' ? !!v : v;
         if (k === 'sound') RB.Audio.setOn(!!v);
         store.set('settings', App.settings);
         UI.invalidate();
@@ -472,6 +508,7 @@
         break;
       case 'ready': if (G) Game.act(G, { type: 'ready' }); break;
       case 'call': sendAct({ type: 'call', kind: b.dataset.kind }); break;
+      case 'shuffle': sendAct({ type: 'shuffle' }); break;
       case 'timeout': sendAct({ type: 'timeout', seat: +b.dataset.seat }); break;
       case 'pat': sendAct({ type: 'pat', choice: b.dataset.choice }); break;
       case 'kickoff': sendAct({ type: 'kickoff', choice: b.dataset.choice }); break;

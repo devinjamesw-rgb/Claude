@@ -16,10 +16,13 @@
     ball: '#8a4b22', shadow: 'rgba(0,0,0,0.28)',
   };
 
+  const SPR0 = 1.6; // players are drawn this many times their pixel-art size
+  let SPR = SPR0;
   const R = {
     canvas: null, ctx: null, W: 480, H: 270, k: 1, S: 1,
     SX: 9, SY: 6, SZ: 7, portrait: false, hudH: 26, bottom: 0,
     cam: { x: 40, y: FW / 2 }, camV: { x: 0, y: 0 }, lead: 9, camInit: false, t: 0,
+    z: 1, reserve: 0, // zoom (below 1 before the snap) and space kept clear for the play-call buttons
     crowd: null, crowdKey: '', sprites: new Map(), rain: [],
     ps: [], flash: 0,
   };
@@ -42,9 +45,10 @@
     R.canvas.height = Math.round(cssH * dpr);
     R.S = R.canvas.width / R.W;
     R.portrait = cssH > cssW * 1.1;
-    R.SX = R.portrait ? 5.6 : clamp(R.W / 50, 7.5, 10.5);
-    R.SY = R.SX * 0.62;
-    R.SZ = R.SX * 0.7;
+    R.SX0 = R.portrait ? 6.2 : clamp(R.W / 44, 8.5, 12);
+    R.SY0 = R.SX0 * 0.56;
+    R.SZ0 = R.SX0 * 0.7;
+    applyZoom();
     R.hudH = R.portrait ? 62 : 26;
     R.bottom = R.portrait ? Math.round(R.H * 0.3) : 0;
     R.ctx.imageSmoothingEnabled = false;
@@ -52,8 +56,26 @@
   }
 
   // --- Projection ---------------------------------------------------------------
+  function applyZoom() {
+    R.SX = R.SX0 * R.z;
+    R.SY = R.SY0 * R.z;
+    R.SZ = R.SZ0 * R.z;
+    SPR = SPR0 * Math.max(0.7, R.z);
+  }
+  // Before the snap the camera pulls back so the whole formation and every
+  // route fit above the play-call buttons; at the snap it eases back in.
+  function updateZoom(V, dt) {
+    const pre = V.mode === 'field' && V.players && V.phase === 'presnap';
+    const reserve = pre && !R.portrait ? 64 : 0;
+    const avail = R.H - R.hudH - R.bottom - reserve - 6;
+    const zt = pre ? clamp(avail / ((FW + 4) * R.SY0), 0.5, 1) : 1;
+    const f = R.camInit ? 1 - Math.exp(-dt * 3.2) : 1;
+    R.z += (zt - R.z) * f;
+    R.reserve += (reserve - R.reserve) * f;
+    applyZoom();
+  }
   function fieldMidY() {
-    return R.hudH + (R.H - R.hudH - R.bottom) / 2;
+    return R.hudH + (R.H - R.hudH - R.bottom - R.reserve) / 2;
   }
   const snap = (v) => Math.round(v * R.S) / R.S;
   function sx(x) {
@@ -76,7 +98,8 @@
     if (V.mode === 'field') {
       const car = V.players && V.carrier >= 0 ? V.players[V.carrier] : null;
       const b = V.ball;
-      if (!V.players || V.phase === 'presnap') { fx = V.los; fy = V.ballY; lead = baseLead; }
+      if (!V.players) { fx = V.los; fy = V.ballY; lead = baseLead; }
+      else if (V.phase === 'presnap') { fx = V.los; fy = FW / 2; lead = (R.W / 2 / R.SX) * 0.45; }
       else if (b && b.st === 'air') {
         const L = V.landing || b;
         fx = b.x + (L.x - b.x) * 0.35; fy = b.y + (L.y - b.y) * 0.35; lead = 2;
@@ -90,7 +113,7 @@
     if (!R.camInit) { R.lead = lead; }
     R.lead += (lead - R.lead) * (1 - Math.exp(-dt * 2.5));
     let tx = fx + R.lead, ty = fy;
-    const halfH = (R.H - R.hudH - R.bottom) / 2 / R.SY;
+    const halfH = (R.H - R.hudH - R.bottom - R.reserve) / 2 / R.SY;
     const minY = -6 + halfH, maxY = FW + 5 - halfH;
     ty = minY > maxY ? FW / 2 : clamp(ty, minY, maxY);
     const halfW = R.W / 2 / R.SX;
@@ -111,10 +134,10 @@
 
   // --- Stadium ------------------------------------------------------------------
   function buildCrowd(uniforms) {
-    const key = R.SX + '|' + uniforms.map((u) => u.jersey).join();
+    const key = R.SX0 + '|' + uniforms.map((u) => u.jersey).join();
     if (key === R.crowdKey) return;
     R.crowdKey = key;
-    const w = Math.ceil(140 * R.SX), h = 60;
+    const w = Math.ceil(140 * R.SX0), h = 60;
     const c = document.createElement('canvas');
     c.width = w;
     c.height = h;
@@ -334,7 +357,7 @@
     ctx.fillStyle = PAL.shadow;
     for (const p of list) {
       const px = sx(p.x), py = sy(p.y);
-      if (vis(px, py)) ellipse(ctx, px, py, 4, 1.5);
+      if (vis(px, py)) ellipse(ctx, px, py, 4 * SPR, 1.5 * SPR);
     }
     for (const p of list) {
       const st = playerState(p, dt);
@@ -347,20 +370,81 @@
       const carry = V.carrier === p.i && V.ball && V.ball.st !== 'air';
       const spr = sprite(uni, p.skin, pose, frame, st.face, carry && pose !== 'down', seat);
       if (p.i === V.ctrl && V.live && !p.down) {
-        ctx.fillStyle = 'rgba(255,210,63,0.9)';
-        ring(ctx, px, py, 6, 2.5);
+        ctx.fillStyle = 'rgba(255,210,63,0.95)';
+        ring(ctx, px, py, 6 * SPR, 2.5 * SPR);
       }
       if (p.i === V.defCtrl && !p.down) {
-        ctx.fillStyle = 'rgba(90,230,255,0.9)';
-        ring(ctx, px, py, 6, 2.5);
+        ctx.fillStyle = 'rgba(90,230,255,0.95)';
+        ring(ctx, px, py, 6 * SPR, 2.5 * SPR);
       }
-      const lift = (pose === 'dive' ? 4 : 0) + (pose === 'run' && frame % 2 ? 1 : 0);
-      ctx.drawImage(spr, snap(px - spr.width / 2), snap(py - spr.height + 1 - lift));
+      if (V.routeColors && V.routeColors[p.i] && !V.live) {
+        ctx.fillStyle = V.routeColors[p.i];
+        ring(ctx, px, py, 5 * SPR, 2 * SPR);
+      }
+      if (V.lock === p.i) {
+        ctx.fillStyle = '#5fd35f';
+        ring(ctx, px, py, 7 * SPR, 3 * SPR);
+      }
+      const lift = ((pose === 'dive' ? 4 : 0) + (pose === 'run' && frame % 2 ? 1 : 0)) * SPR;
+      const w = spr.width * SPR, h = spr.height * SPR;
+      ctx.drawImage(spr, snap(px - w / 2), snap(py - h + SPR - lift), snap(w), snap(h));
       if (pose === 'down' && carry) {
         ctx.fillStyle = PAL.ball;
-        ctx.fillRect(px + (st.face >= 0 ? 5 : -7), py - 2, 2, 1);
+        ctx.fillRect(px + (st.face >= 0 ? 5 : -7) * SPR, py - 2 * SPR, 2 * SPR, SPR);
       }
     }
+  }
+
+  // Pre-snap play art: each receiver's route in his own color, with an arrow
+  // at the end; a short bar for blockers; the run lane as a dashed arrow.
+  function arrowLine(ctx, pts, color, alpha, dashed) {
+    if (pts.length < 2) return;
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.6;
+    ctx.lineJoin = 'round';
+    ctx.setLineDash(dashed ? [3, 3] : []);
+    ctx.beginPath();
+    ctx.moveTo(sx(pts[0].x), sy(pts[0].y));
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(sx(pts[i].x), sy(pts[i].y));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const a = pts[pts.length - 2], b = pts[pts.length - 1];
+    const ang = Math.atan2(sy(b.y) - sy(a.y), sx(b.x) - sx(a.x));
+    const hx = sx(b.x), hy = sy(b.y);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(hx + Math.cos(ang) * 4, hy + Math.sin(ang) * 4);
+    ctx.lineTo(hx + Math.cos(ang + 2.5) * 4, hy + Math.sin(ang + 2.5) * 4);
+    ctx.lineTo(hx + Math.cos(ang - 2.5) * 4, hy + Math.sin(ang - 2.5) * 4);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  function drawRoutes(ctx, V) {
+    const R2 = V.routes;
+    if (!R2) return;
+    for (const r of R2) {
+      if (r.block) {
+        const p = r.from;
+        ctx.globalAlpha = r.alpha;
+        ctx.fillStyle = r.color;
+        ctx.fillRect(sx(p.x) + 6, sy(p.y) - 4, 2, 8);
+        ctx.fillRect(sx(p.x) + 3, sy(p.y) - 0.5, 4, 1.6);
+        ctx.globalAlpha = 1;
+        continue;
+      }
+      arrowLine(ctx, r.pts, r.color, r.alpha, r.dashed);
+    }
+  }
+
+  function drawDefTarget(ctx, V) {
+    const t = V.defTarget;
+    if (!t) return;
+    const x = sx(t.x), y = sy(t.y);
+    ctx.fillStyle = 'rgba(90,230,255,0.9)';
+    ctx.fillRect(x - 4, y - 0.75, 8, 1.5);
+    ctx.fillRect(x - 0.75, y - 4, 1.5, 8);
   }
 
   function drawBall(ctx, V) {
@@ -368,10 +452,10 @@
     if (!b || !b.visible) return;
     const carried = V.carrier >= 0 && b.st !== 'air' && b.st !== 'dead' && b.st !== 'snap';
     if (carried) return;
-    const px = sx(b.x), py = sy(b.y), pz = Math.round(b.z * R.SZ);
+    const px = sx(b.x), py = sy(b.y), pz = b.z * R.SZ;
     ctx.fillStyle = PAL.shadow;
-    ellipse(ctx, px, py, 2, 1);
-    const big = clamp(b.z / 3.5, 0, 1.5);
+    ellipse(ctx, px, py, 2.5, 1.2);
+    const big = clamp(b.z / 3.5, 0, 1.5) + 0.8;
     ctx.fillStyle = '#3a1d0c';
     ctx.fillRect(px - 3 - big, py - pz - 2 - big / 2, 6 + big * 2, 4 + big);
     ctx.fillStyle = PAL.ball;
@@ -388,8 +472,8 @@
     ctx.fillStyle = a.max ? '#ff9a3c' : '#ffffff';
     for (const p of a.pts) ctx.fillRect(sx(p.x) - 1, sy(p.y) - Math.round(p.z * R.SZ) - 1, 2, 2);
     const tx = sx(a.x), ty = sy(a.y);
-    ctx.fillStyle = a.max ? '#ff9a3c' : PAL.good;
-    ring(ctx, tx, ty, 5, 2.4);
+    ctx.fillStyle = a.lock != null ? '#5fd35f' : a.max ? '#ff9a3c' : PAL.good;
+    ring(ctx, tx, ty, a.lock != null ? 7 : 5, a.lock != null ? 3.4 : 2.4);
     ctx.fillRect(tx - 1, ty - 1, 2, 2);
     ctx.globalAlpha = 1;
   }
@@ -505,6 +589,16 @@
     ctx.fillRect(0, y - 6 + bandH - 1, R.W, 1);
     F.draw(ctx, b.text, R.W / 2, y, scale, color, 'center', 'rgba(0,0,0,0.6)');
     if (b.sub) F.draw(ctx, b.sub, R.W / 2, y + 7 * scale + 5, 1, '#e8e8e8', 'center');
+  }
+
+  function drawNetInfo(ctx, V) {
+    if (!V.netInfo) return;
+    const w = F.width(V.netInfo, 1) + 8;
+    const y = R.portrait ? R.hudH + 2 : 5;
+    const x = 4;
+    ctx.fillStyle = 'rgba(13,15,20,0.7)';
+    ctx.fillRect(x, y - 2, w, 11);
+    F.draw(ctx, V.netInfo, x + 4, y, 1, 'rgba(255,255,255,0.8)');
   }
 
   function drawFooter(ctx, V) {
@@ -681,13 +775,16 @@
       drawBanner(ctx, V);
       return;
     }
+    updateZoom(V, dt);
     updateCamera(V, dt);
     drawStadium(ctx, V);
     if (V.uni) {
       drawField(ctx, V);
       if (V.players) {
         drawLines(ctx, V);
+        drawRoutes(ctx, V);
         drawLanding(ctx, V);
+        drawDefTarget(ctx, V);
         drawPlayers(ctx, V, dt);
         drawBall(ctx, V);
         drawAim(ctx, V);
@@ -697,6 +794,7 @@
     drawJoy(ctx, V);
     drawHUD(ctx, V);
     drawFooter(ctx, V);
+    drawNetInfo(ctx, V);
     drawBanner(ctx, V);
   }
 

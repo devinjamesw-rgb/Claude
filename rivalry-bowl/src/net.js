@@ -83,11 +83,12 @@
     };
   }
 
-  // Backup transport over the artifact's shared database. Each phone owns one
-  // document (its presence plus a heartbeat) in the `lobby` collection and
-  // subscribes to the collection. Writes go one at a time, latest state wins,
-  // at most every WRITE_MS (backing off if the platform says slow down).
-  const DB_WRITE_MS = 250, DB_STALE_MS = 15000, DB_BEAT_MS = 4000;
+  // Backup transport over the artifact's shared database. Each phone owns two
+  // documents in the `lobby` collection ("<id>.a" and "<id>.b") holding its
+  // presence, a sequence number and a heartbeat, and subscribes to the
+  // collection. Each document takes one write at a time; alternating between
+  // two roughly doubles the update rate. Readers keep the newest per phone.
+  const DB_WRITE_MS = 140, DB_STALE_MS = 15000, DB_BEAT_MS = 4000;
   async function dbTransport(dbP) {
     const cl = root.claude;
     if (!cl || typeof cl.use !== 'function') return { fail: 'no-api' };
@@ -98,55 +99,62 @@
     Diag.dbState = 'granted';
     const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     const col = db.collection('lobby');
-    const mineRef = col.doc(id);
-    let list = [], err = null, lastSnap = 0, mine = {};
-    let pending = null, inflight = false, lastWrite = 0, gap = DB_WRITE_MS, timer = null;
+    const lanes = ['a', 'b'].map((k) => ({ ref: col.doc(id + '.' + k), busy: false }));
+    let list = [], err = null, lastSnap = 0, mine = {}, sq = 0;
+    let pending = null, lastWrite = 0, gap = DB_WRITE_MS, timer = null;
     const unsub = col.onSnapshot((snap) => {
       lastSnap = Date.now();
       const now = Date.now();
-      const next = [];
+      const best = new Map();
       let pruned = 0;
       for (const d of snap.docs) {
         const body = d.exists ? d.data() || {} : {};
         const hb = typeof body.hb === 'number' ? body.hb : 0;
-        if (d.id !== id && now - hb > DB_STALE_MS) {
+        const peer = d.id.split('.')[0];
+        if (peer !== id && now - hb > DB_STALE_MS) {
           // Leftovers from closed pages: tidy a few so the store stays small.
           if (now - hb > 10 * 60000 && pruned < 3) { pruned++; col.doc(d.id).delete().catch(() => {}); }
           continue;
         }
-        next.push({ peer: d.id, presence: body.p || {}, isMe: d.id === id });
+        const cur = best.get(peer);
+        if (!cur || (body.sq || 0) > cur.sq) best.set(peer, { peer, presence: body.p || {}, sq: body.sq || 0, isMe: peer === id });
       }
-      list = next;
+      list = [...best.values()];
     }, (e) => { err = (e && e.code) || 'unknown'; Diag.listenerErr = err; });
     function pump() {
-      if (inflight || !pending) return;
+      if (!pending) return;
+      const lane = lanes.find((l) => !l.busy);
+      if (!lane) return;
       const wait = lastWrite + gap - Date.now();
       if (wait > 0) { if (!timer) timer = setTimeout(() => { timer = null; pump(); }, wait); return; }
       const body = pending;
       pending = null;
-      inflight = true;
+      lane.busy = true;
       lastWrite = Date.now();
       Diag.sent++;
-      mineRef.set(body).then(() => { Diag.ok++; gap = Math.max(DB_WRITE_MS, gap * 0.9); }, (e) => {
+      const t0 = performance.now();
+      lane.ref.set(body).then(() => {
+        Diag.ok++;
+        Diag.writeMs = Math.round(Diag.writeMs == null ? performance.now() - t0 : Diag.writeMs * 0.8 + (performance.now() - t0) * 0.2);
+        gap = Math.max(DB_WRITE_MS, gap * 0.9);
+      }, (e) => {
         Diag.fail++;
         const code = (e && e.code) || 'unknown';
         Diag.lastErr = code;
         if (code === 'resource_exhausted') gap = Math.min(3000, gap * 2);
         else if (code !== 'unavailable') err = code;
-      }).then(() => { inflight = false; pump(); });
+      }).then(() => { lane.busy = false; pump(); });
     }
-    const beat = setInterval(() => {
-      if (!pending && Date.now() - lastWrite > DB_BEAT_MS) { pending = { p: mine, hb: Date.now() }; pump(); }
-    }, 1000);
-    const bye = () => { mineRef.delete().catch(() => {}); };
+    const queue = () => { pending = { p: mine, hb: Date.now(), sq: ++sq }; pump(); };
+    const beat = setInterval(() => { if (!pending && Date.now() - lastWrite > DB_BEAT_MS) queue(); }, 1000);
+    const bye = () => { for (const l of lanes) l.ref.delete().catch(() => {}); };
     root.addEventListener('pagehide', bye);
     return {
       kind: 'db',
       me: () => id,
       setPresence(obj) {
         mine = JSON.parse(JSON.stringify(obj, (k, v) => (v === null && k !== '' ? undefined : v)));
-        pending = { p: mine, hb: Date.now() };
-        pump();
+        queue();
       },
       peers() {
         const l = list.filter((x) => !x.isMe);
@@ -261,6 +269,7 @@
   }
 
 
+  // Blend snapshot a -> b at u (u > 1 extrapolates past b, capped by the caller).
   function withVel(b, a, u, span) {
     if (!a) return Object.assign({}, b, { players: b.players.map((p) => Object.assign({ vx: 0, vy: 0 }, p)) });
     const lerp = (x, y) => x + (y - x) * u;
@@ -378,7 +387,7 @@
     reset() {
       Object.assign(Diag, { switched: '', sent: 0, ok: 0, fail: 0, lastErr: '', listenerErr: '' });
       Object.assign(this, { noDb: false, switching: false, seekSince: Date.now() });
-      Object.assign(this, { role: null, partner: null, G: null, snap: null, kickSnap: null, disp: null, fx: [], fxn: 0, fxSeen: -1, actN: 0, actSeen: {}, dcN: 0, lastDcN: -1, pending: null, err: '', errDetail: '', defIdx: Sim.IDX.S1, lastAdoptVer: 0, tgt: '', buf: [], lastTs: -1, offset: null, lastLobbyPub: 0 });
+      Object.assign(this, { role: null, partner: null, G: null, snap: null, kickSnap: null, disp: null, fx: [], fxn: 0, fxSeen: -1, actN: 0, actSeen: {}, dcN: 0, lastDcN: -1, pending: null, err: '', errDetail: '', defIdx: Sim.IDX.S1, lastAdoptVer: 0, tgt: '', buf: [], lastTs: -1, offset: null, lastLobbyPub: 0, gaps: [], lastArr: 0, rtt: null, lastEk: null, dc: '', dcP: null, dcPick: null, steer: null });
     },
 
     leave() {
@@ -476,7 +485,7 @@
         const G = Game.create({
           mode: 'online', home: A.picks[0], away: RB.TEAM_BY_ID[pick.presence.tm] ? pick.presence.tm : 'UGA',
           names: [A.names[0], String(pick.presence.nm || 'GUEST').replace(/[^A-Z0-9 .'-]/gi, '').slice(0, 10) || 'GUEST'],
-          settings: { qlen: s.qlen, diff: s.diff, even: s.even },
+          settings: { qlen: s.qlen, diff: s.diff, even: s.even, assist: s.assist !== false },
         });
         this.startGame(G);
       }
@@ -505,6 +514,9 @@
     tickGame() {
       const G = this.G;
       const pp = this.partnerPresence();
+      // Your last coverage call carries over to the next play.
+      const g = G.g;
+      if (!this.isAuthority() && g.phase === 'presnap' && g.poss !== this.seat && this.dc && this.dcP !== g.playNo) this.defCall(this.dc);
       try {
         if (pp && validG(pp.g) && pp.g.ver > G.g.ver) this.adopt(pp);
         if (pp) this.readPartner(pp);
@@ -540,6 +552,12 @@
           Game.act(G, { type: 'defcall', call: pp.dc });
         }
         if (Number.isInteger(pp.di) && pp.di >= 11 && pp.di <= 21) Game.act(G, { type: 'defplayer', idx: pp.di });
+        // Round trip: the defense echoes the newest snapshot time it has seen.
+        if (num(pp.ek) && pp.ek !== this.lastEk) {
+          this.lastEk = pp.ek;
+          const r = performance.now() - pp.ek;
+          if (r >= 0 && r < 15000) this.rtt = this.rtt == null ? r : this.rtt * 0.7 + r * 0.3;
+        }
         if (pp.act && pp.act.n !== this.actSeen[this.partner]) {
           this.actSeen[this.partner] = pp.act.n;
           const a = pp.act;
@@ -549,11 +567,15 @@
         // Snapshots from the authority.
         const okSnap = pp.p && typeof pp.p.s === 'string' && pp.p.s.length === 132 && Array.isArray(pp.p.b) && Array.isArray(pp.p.m) && num(pp.p.ts);
         this.snap = okSnap ? decodePlay(pp.p) : null;
+        if (num(pp.rtt)) this.rtt = pp.rtt;
         if (okSnap && pp.p.ts !== this.lastTs) {
-          // Buffer timestamped snapshots; drawing runs ~110 ms behind the
-          // other phone and blends between the two around that moment.
+          // Buffer timestamped snapshots; drawing runs a little behind the
+          // other phone (as little as the arrival gaps allow) and blends
+          // between the two snapshots around that moment.
           this.lastTs = pp.p.ts;
           const now = performance.now();
+          if (this.lastArr) { this.gaps.push(now - this.lastArr); if (this.gaps.length > 24) this.gaps.shift(); }
+          this.lastArr = now;
           const off = now - pp.p.ts;
           this.offset = this.offset == null || off < this.offset ? off : this.offset + (off - this.offset) * 0.002;
           this.buf.push({ ts: pp.p.ts, snap: this.snap });
@@ -594,21 +616,26 @@
         p.k = G.g.phase === 'kick' ? encodeKick(G.rt.kick) : null;
         p.fx = this.fx.slice();
         p.fxn = this.fxn;
+        if (this.rtt != null) p.rtt = Math.round(this.rtt);
       } else {
-        const inp = this.App.lastInput;
-        const joy = inp && inp.joy && this.G.g.phase === 'play' ? [r2(inp.joy.x), r2(inp.joy.y)] : null;
-        Object.assign(p, { dc: this.dc || '', dcn: this.dcN, dcp: this.dcP == null ? -1 : this.dcP, di: this.defIdx, dj: joy, act: this.pending });
+        const st = this.steer && this.G.g.phase === 'play' ? [r2(this.steer.x), r2(this.steer.y)] : null;
+        Object.assign(p, { dc: this.dc || '', dcn: this.dcN, dcp: this.dcP == null ? -1 : this.dcP, di: this.defIdx, dt: st, ek: this.lastTs >= 0 ? this.lastTs : null, act: this.pending });
       }
       this.t.setPresence(p);
     },
 
-    // Authority: the defense player's joystick for this step.
+    // Authority: where the defense player wants his defender to run.
     remoteInput() {
-      if (this.t && this.t.kind === 'db') return {}; // too slow for live steering
       const pp = this.partnerPresence();
-      if (!pp || !Array.isArray(pp.dj) || !num(pp.dj[0]) || !num(pp.dj[1])) return {};
-      const x = pp.dj[0], y = pp.dj[1], m = Math.hypot(x, y);
-      return m > 1 ? { defJoy: { x: x / m, y: y / m } } : { defJoy: { x, y } };
+      if (!pp || !Array.isArray(pp.dt) || !num(pp.dt[0]) || !num(pp.dt[1])) return {};
+      return { defTarget: { x: Math.max(-2, Math.min(122, pp.dt[0])), y: Math.max(-1, Math.min(C.FIELD_W + 1, pp.dt[1])) } };
+    },
+
+    // One line for the HUD: which link, and the measured round trip.
+    netInfo() {
+      if (!this.t || this.state !== 'playing') return '';
+      const link = this.t.kind === 'db' ? 'BACKUP LINK' : 'LIVE LINK';
+      return this.rtt != null ? `${link} · ${Math.round(this.rtt)} MS ROUND TRIP` : link;
     },
 
     // Follower requests.
@@ -628,7 +655,7 @@
     inputContext() {
       const g = this.G && this.G.g;
       if (!g) return 'none';
-      if (g.phase === 'play' && this.snap && this.snap.live) return this.t && this.t.kind === 'db' ? 'none' : 'def';
+      if (g.phase === 'play' && this.snap && this.snap.live) return 'def';
       if (g.phase === 'presnap') return 'pick';
       return 'none';
     },
@@ -645,10 +672,35 @@
       if (best >= 11) this.defIdx = best;
     },
 
+    // During the play a tap switches to the tapped defender, or to the one
+    // closest to the ball when the tap isn't near anyone.
+    switchDefender(world) {
+      const s = this.interpSnap();
+      if (!s) return;
+      let best = -1, bd = 5;
+      for (const p of s.players) {
+        if (p.side !== 1) continue;
+        const d = Math.hypot(p.x - world.x, p.y - world.y);
+        if (d < bd) { bd = d; best = p.i; }
+      }
+      if (best < 0) {
+        bd = 1e9;
+        const b = s.ball;
+        for (const p of s.players) {
+          if (p.side !== 1 || p.down || p.eng) continue; // a blocked lineman can't be steered
+          const d = Math.hypot(p.x - b.x, p.y - b.y);
+          if (d < bd) { bd = d; best = p.i; }
+        }
+      }
+      if (best >= 11) this.defIdx = best;
+    },
+
     // --- Follower rendering ---
     view(inp) {
       const G = this.G, g = G.g, rt = G.rt;
       if (inp && inp.tapAt && g.phase === 'presnap') this.pickDefender(inp.tapAt);
+      if (inp && inp.tapAt && g.phase === 'play') this.switchDefender(inp.tapAt);
+      this.steer = inp && inp.steer && g.phase === 'play' ? inp.steer : null;
       const V = {
         g, mode: 'field', teams: [Game.team(G, 0), Game.team(G, 1)], uni: rt.uniforms,
         offSeat: g.poss, defSeat: 1 - g.poss, wx: g.wx, phase: g.phase, cheer: this.App.cheer,
@@ -675,20 +727,34 @@
         V.live = s.live;
         V.turnover = s.turnover;
         V.landing = s.landing;
-        if (inp) V.joy = inp.joyScreen;
+        V.defTarget = this.steer;
       }
+      V.netInfo = this.netInfo();
       return V;
     },
 
     // The play as it looked ~110 ms ago on the other phone, blended between the
     // two snapshots around that moment. Velocities come from the same pair.
+    renderDelay() {
+      const g = this.gaps;
+      if (g.length < 4) return this.t && this.t.kind === 'db' ? 350 : 100;
+      const sorted = g.slice().sort((x, y) => x - y);
+      return Math.max(60, Math.min(650, sorted[Math.floor(sorted.length * 0.8)] + 35));
+    },
+
     interpSnap() {
       const buf = this.buf;
       if (!buf.length || this.offset == null) return this.snap;
-      const t = performance.now() - this.offset - (this.t && this.t.kind === 'db' ? 520 : 110);
+      const t = performance.now() - this.offset - this.renderDelay();
       let a = buf[0], b = buf[buf.length - 1];
-      if (t >= b.ts) a = b;
-      else {
+      if (t >= b.ts) {
+        // Newer than anything received: carry the last motion forward briefly.
+        if (buf.length < 2) return withVel(b.snap, null, 1);
+        a = buf[buf.length - 2];
+        const span = (b.ts - a.ts) / 1000;
+        if (span <= 0) return withVel(b.snap, null, 1);
+        return withVel(b.snap, a.snap, 1 + Math.min(0.2, (t - b.ts) / 1000) / span, span);
+      } else {
         for (let i = buf.length - 1; i > 0; i--) {
           if (buf[i - 1].ts <= t) { a = buf[i - 1]; b = buf[i]; break; }
         }
@@ -708,7 +774,7 @@
         const label = { man: 'Man', zone: 'Zone', blitz: 'Blitz', prevent: 'Prevent' };
         const btns = Sim.DEF_CALLS.map((c) => `<button class="btn small ${picked === c ? '' : 'ghost'}" type="button" data-action="defcall" data-call="${c}">${label[c]}</button>`).join('');
         const to = Game.canTimeout(g, this.seat) ? `<button class="btn small ghost" type="button" data-action="timeout" data-seat="${this.seat}">Timeout (${g.to[this.seat]})</button>` : '';
-        const how = this.t && this.t.kind === 'db' ? 'DEFENSE · PICK A COVERAGE' : 'DEFENSE · PICK A COVERAGE · TAP A DEFENDER TO STEER HIM';
+        const how = 'DEFENSE · PICK A COVERAGE · TAP A PLAYER TO CONTROL HIM';
         return { key: `def|${g.playNo}|${picked}|${g.to}|${g.clockRunning}`, html: `<div class="who">${how}</div><div class="row">${btns}${to}</div>` };
       }
       const waitFor = { pat: 'is choosing the try', kickchoice: 'is choosing the kickoff', kick: 'is kicking', presnap: 'is calling a play' }[g.phase];

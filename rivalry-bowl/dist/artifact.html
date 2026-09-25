@@ -192,6 +192,7 @@
   #controls .who { font-family: var(--display); font-size: 9px; letter-spacing: 0.1em; text-shadow: 2px 2px 0 #000; }
   #controls .row { justify-content: center; }
   #controls .btn { min-width: 84px; }
+  #controls .btn.ghost { background: rgba(13, 15, 20, 0.82); }
   #pause {
     position: absolute; top: 6px; right: 8px; width: 38px; height: 34px;
     font-family: var(--display); font-size: 10px;
@@ -559,6 +560,7 @@
       defCall: o.defCall || 'man',
       wx: o.wx || { type: 'clear' },
       humanDefIdx: o.humanDefIdx == null ? -1 : o.humanDefIdx,
+      assist: o.assist !== false,
       t: 0, phase: 'pre', deadT: 0,
       players: [], hist: [],
       ball: { x: los, y: o.ballY, z: 0.4, vx: 0, vy: 0, vz: 0, st: 'snap', holder: -1, bt: 0, T: 0, fx: 0, fy: 0, tx: 0, ty: 0, z0: 0, vz0: 0, target: -1, resolved: false, shown: true },
@@ -575,6 +577,7 @@
     for (let k = 0; k < 22; k++) play.hist.push([]);
     lineupOffense(play, rng);
     lineupDefense(play, rng);
+    planPlay(play, rng);
     play.ball.x = play.players[OC].x + 0.3;
     play.ball.y = play.players[OC].y;
     play.ball.fx = play.ball.x;
@@ -597,8 +600,8 @@
   function snap(play, kind) {
     if (play.phase !== 'pre') return;
     play.kind = kind;
-    if (kind === 'run') setupRun(play, play.rng);
-    else setupPass(play, play.rng);
+    if (kind === 'run') setupRun(play);
+    else setupPass(play);
     for (const p of play.players) { p.x0 = p.x; p.y0 = p.y; }
     play.phase = 'live';
     play.t = 0;
@@ -718,57 +721,69 @@
     return p.y < C.MID_Y ? 1 : -1;
   }
 
-  function assignRoute(play, p, name) {
+  // Route waypoints for player p, starting from where he lines up.
+  function routePoints(play, p, name) {
     const R = ROUTES[name];
     const sgn = inSignFor(p, play);
     const sc = play.rng.range(0.9, 1.12);
-    p.route = R.pts.map(([dx, din]) => ({ x: p.x + dx * sc, y: clamp(p.y + din * sgn * (p.i === RBK ? 1 : sc), 2.2, W - 2.2) }));
+    const pts = R.pts.map(([dx, din]) => ({ x: p.x + dx * sc, y: clamp(p.y + din * sgn * (p.i === RBK ? 1 : sc), 2.2, W - 2.2) }));
     if (R.cont) {
-      const a = p.route.length > 1 ? p.route[p.route.length - 2] : { x: p.x, y: p.y };
-      const b = p.route[p.route.length - 1];
+      const a = pts.length > 1 ? pts[pts.length - 2] : { x: p.x, y: p.y };
+      const b = pts[pts.length - 1];
       const d = hyp(b.x - a.x, b.y - a.y) || 1;
-      p.route.push({ x: b.x + ((b.x - a.x) / d) * 40, y: clamp(b.y + ((b.y - a.y) / d) * 40, 1.5, W - 1.5) });
+      pts.push({ x: b.x + ((b.x - a.x) / d) * 40, y: clamp(b.y + ((b.y - a.y) / d) * 40, 1.5, W - 1.5) });
     }
-    p.routeName = name;
-    p.wp = 0;
-    p.role = 'route';
+    return { name, pts, cont: R.cont };
   }
 
-  function setupPass(play, rng) {
-    const P = play.players;
-    for (const i of OL) P[i].role = 'pass_pro';
-    P[QB].role = 'qb';
-    P[QB].drop = { x: play.los - 6.6, y: play.ballY };
-    assignRoute(play, P[WR1], rng.pick(POOLS.WR));
-    assignRoute(play, P[WR2], rng.pick(POOLS.WR));
-    assignRoute(play, P[WR3], rng.pick(play.formation === 'empty' ? POOLS.SLOT : POOLS.SLOT));
-    const te = rng.pick(POOLS.TE);
-    if (te === 'block') P[TE].role = 'pass_pro';
-    else assignRoute(play, P[TE], te);
-    if (play.formation === 'empty') assignRoute(play, P[RBK], rng.pick(POOLS.SLOT));
-    else {
-      const r = rng.pick(POOLS.RB);
-      if (r === 'block') P[RBK].role = 'pass_pro';
-      else assignRoute(play, P[RBK], r);
-    }
-  }
-
-  function setupRun(play, rng) {
+  // Everything the offense will do is decided when the formation appears, so
+  // the routes and the run lane can be shown before the snap.
+  function planPlay(play, rng) {
     const P = play.players, L = play.los, by = play.ballY;
-    for (const i of OL) P[i].role = 'run_block';
-    P[TE].role = 'run_block';
-    for (const i of [WR1, WR2, WR3]) P[i].role = 'stalk';
+    const routes = {};
+    routes[WR1] = routePoints(play, P[WR1], rng.pick(POOLS.WR));
+    routes[WR2] = routePoints(play, P[WR2], rng.pick(POOLS.WR));
+    routes[WR3] = routePoints(play, P[WR3], rng.pick(POOLS.SLOT));
+    const te = rng.pick(POOLS.TE);
+    routes[TE] = te === 'block' ? { name: 'block' } : routePoints(play, P[TE], te);
+    const rb = play.formation === 'empty' ? rng.pick(POOLS.SLOT) : rng.pick(POOLS.RB);
+    routes[RBK] = rb === 'block' ? { name: 'block' } : routePoints(play, P[RBK], rb);
     const gap = rng.pick([-5.5, -2.6, -1.3, 1.3, 2.6, 5.5]);
-    play.gapY = by + gap;
-    const rb = P[RBK];
-    rb.role = 'runpath';
-    rb.path = [
+    const r = P[RBK];
+    const path = [
       // From an empty set the back motions in (jet sweep look).
-      ...(play.formation === 'empty' ? [{ x: L - 3.6, y: by + (rb.y > by ? 2 : -2) }] : []),
+      ...(play.formation === 'empty' ? [{ x: L - 3.6, y: by + (r.y > by ? 2 : -2) }] : []),
       { x: L - 4.3, y: by + gap * 0.25 },
       { x: L + 0.6, y: clamp(by + gap, 2, W - 2) },
       { x: L + 14, y: clamp(by + gap * 1.25, 2, W - 2) },
     ];
+    play.plan = { routes, run: { gapY: by + gap, path } };
+  }
+
+  function setupPass(play) {
+    const P = play.players;
+    for (const i of OL) P[i].role = 'pass_pro';
+    P[QB].role = 'qb';
+    P[QB].drop = { x: play.los - 6.6, y: play.ballY };
+    for (const i of ELIGIBLE) {
+      const r = play.plan.routes[i], p = P[i];
+      if (r.name === 'block') { p.role = 'pass_pro'; continue; }
+      p.route = r.pts.map((q) => ({ x: q.x, y: q.y }));
+      p.routeName = r.name;
+      p.wp = 0;
+      p.role = 'route';
+    }
+  }
+
+  function setupRun(play) {
+    const P = play.players;
+    for (const i of OL) P[i].role = 'run_block';
+    P[TE].role = 'run_block';
+    for (const i of [WR1, WR2, WR3]) P[i].role = 'stalk';
+    play.gapY = play.plan.run.gapY;
+    const rb = P[RBK];
+    rb.role = 'runpath';
+    rb.path = play.plan.run.path.map((q) => ({ x: q.x, y: q.y }));
     rb.wp = 0;
     P[QB].role = 'handoff';
   }
@@ -1196,6 +1211,29 @@
     return (0.22 + d * 0.034) * (1.18 - qb.arm * 0.3);
   }
 
+  // Aim assist: if the reticle is near where a receiver will be when a ball
+  // thrown there arrives, lock onto that spot. Used by the preview and the throw.
+  function assistAim(play, tx, ty) {
+    if (!play.assist || !canThrow(play)) return null;
+    const P = play.players, q = P[QB];
+    let best = null;
+    for (const i of ELIGIBLE) {
+      const r = P[i];
+      if (r.role !== 'route') continue;
+      let T = flightTime(q, hyp(tx - q.x, ty - q.y));
+      let g = predictRoute(play, r, T);
+      for (let k = 0; k < 2; k++) {
+        T = flightTime(q, Math.min(maxRange(q), hyp(g.x - q.x, g.y - q.y)));
+        g = predictRoute(play, r, T);
+      }
+      if (hyp(g.x - q.x, g.y - q.y) > maxRange(q) || g.y < 0.5 || g.y > W - 0.5) continue;
+      const d = hyp(g.x - tx, g.y - ty);
+      const R = 3.4 + 0.08 * hyp(g.x - q.x, g.y - q.y);
+      if (d < R && (!best || d < best.d)) best = { x: g.x, y: g.y, i, d };
+    }
+    return best;
+  }
+
   function canThrow(play) {
     const b = play.ball;
     return play.kind === 'pass' && !play.thrown && b.st === 'held' && b.holder === QB && !play.scramble && play.phase === 'live';
@@ -1204,6 +1242,8 @@
   function throwBall(play, tx, ty) {
     if (!canThrow(play)) return false;
     const P = play.players, q = P[QB], b = play.ball, rng = play.rng;
+    const lock = assistAim(play, tx, ty);
+    if (lock) { tx = lock.x; ty = lock.y; }
     const aim = clampAim(play, tx, ty);
     const d = aim.d;
     const rusher = nearestOpp(play, q, 2.6, (o) => o.eng < 0);
@@ -1233,8 +1273,9 @@
       const pr = predictRoute(play, r, T);
       const need = hyp(pr.x - lx, pr.y - ly);
       const direct = hyp(r.x - lx, r.y - ly) / effSpeed(play, r);
-      const reach = 1.4 + 2.4 * T;
-      if ((need <= reach || direct <= T + 0.05) && need < bn) { bn = need; best = r; }
+      const reach = 2.4 + 3.2 * T;
+      const locked = lock && lock.i === r.i ? -100 : 0;
+      if ((need <= reach || direct <= T + 0.15 || locked) && need + locked < bn) { bn = need + locked; best = r; }
     }
     if (best) { best.track = { x: lx, y: ly }; b.target = best.i; }
     else b.target = -1;
@@ -1326,9 +1367,9 @@
     for (const p of P) {
       if (p.i === QB || p.down > 0 || p.eng >= 0) continue;
       if (p.side === 0 && (OL.includes(p.i) || p.role === 'pass_pro')) continue;
-      const reach = p.side === 0 ? 1.15 : 1.0;
+      const reach = p.side === 0 ? 1.35 : 1.0;
       const d = hyp(p.x - bx, p.y - by);
-      if (d <= reach) cands.push({ p, d: d - (p.side === 0 && p.track ? 0.35 : 0), raw: d, reach });
+      if (d <= reach) cands.push({ p, d: d - (p.side === 0 && p.track ? 0.55 : 0), raw: d, reach });
     }
     if (!cands.length) return;
     cands.sort((a, c) => a.d - c.d);
@@ -1338,23 +1379,23 @@
     const rec = cands.find((c) => c.p.side === 0);
     const oob = (p) => p.y <= 0 || p.y >= W || p.x >= C.FIELD_LEN;
     const catchChance = (c) => {
-      let pc = c.p.hands + 0.05 - 0.1 * (c.raw / c.reach);
-      for (const k of contest) pc -= 0.15 + k.p.cover * 0.2;
-      if (play.wx.type === 'rain') pc -= 0.06;
-      if (play.wx.type === 'snow') pc -= 0.03;
-      return clamp(pc, 0.1, 0.97);
+      let pc = c.p.hands + 0.1 - 0.06 * (c.raw / c.reach);
+      for (const k of contest) pc -= 0.08 + k.p.cover * 0.14;
+      if (play.wx.type === 'rain') pc -= 0.04;
+      if (play.wx.type === 'snow') pc -= 0.02;
+      return clamp(pc, 0.15, 0.985);
     };
     if (first.side === 0) {
       if (oob(first)) return incomplete(play, 'OUT OF BOUNDS');
       if (rng.chance(catchChance(cands[0]))) return catchBall(play, first);
-      if (contest.length && rng.chance(0.14 * play.diff.ints)) return intercept(play, contest[0].p);
+      if (contest.length && rng.chance(0.1 * play.diff.ints)) return intercept(play, contest[0].p);
       return incomplete(play, contest.length ? 'BROKEN UP' : 'DROPPED');
     }
     let pi = (0.1 + first.hands * 0.3) * play.diff.ints;
     if (rec) pi *= 0.6;
     if (oob(first)) return incomplete(play, 'INCOMPLETE');
     if (rng.chance(pi)) return intercept(play, first);
-    if (rec && !oob(rec.p) && rng.chance(catchChance(rec) * 0.5)) return catchBall(play, rec.p);
+    if (rec && !oob(rec.p) && rng.chance(catchChance(rec) * 0.75)) return catchBall(play, rec.p);
     return incomplete(play, 'BROKEN UP');
   }
 
@@ -1622,6 +1663,16 @@
       ctrl.dvx = 0; ctrl.dvy = 0;
       return true;
     }
+    if (input.steer && !(ctrl.i === QB && !play.scramble)) {
+      // Hold a finger where you want to go: he keeps driving upfield unless
+      // the finger is clearly behind him.
+      play.manual = true;
+      let dx = input.steer.x - ctrl.x;
+      const dy = input.steer.y - ctrl.y;
+      if (dx > -2.5) dx = Math.max(dx, 2.2);
+      steerDir(ctrl, dx, dy, spd);
+      return true;
+    }
     if (input.joy) {
       play.manual = true;
       const jx = input.joy.x, jy = input.joy.y;
@@ -1649,16 +1700,13 @@
     return true;
   }
 
+  // The defense player points where the defender should run.
   function applyDefenderInput(play, input) {
     const i = play.humanDefIdx;
-    if (i < 11 || !input.defJoy || play.phase !== 'live') return false;
+    if (i < 11 || !input.defTarget || play.phase !== 'live') return false;
     const p = play.players[i];
     if (p.eng >= 0 || p.down > 0) return false;
-    if (play.turnover && play.carrier === i) {
-      steerDir(p, input.defJoy.x, input.defJoy.y, effSpeed(play, p));
-      return true;
-    }
-    steerDir(p, input.defJoy.x, input.defJoy.y, effSpeed(play, p) * Math.min(1, hyp(input.defJoy.x, input.defJoy.y)));
+    steerTo(p, input.defTarget.x, input.defTarget.y, effSpeed(play, p), true);
     return true;
   }
 
@@ -1722,7 +1770,9 @@
     tryEngage(play);
     for (const p of P) {
       if (p.eng >= 0) continue;
-      const acc = p.i === play.carrier ? 12 : p.side === 0 ? 11 : 10.5;
+      let acc = p.i === play.carrier ? 12 : p.side === 0 ? 11 : 10.5;
+      // Plant and cut: a runner the player steers against his momentum turns hard.
+      if (p.i === play.carrier && play.manual && p.vx * p.dvx + p.vy * p.dvy < 0) acc = 22;
       integrate(p, acc, dt);
       if (Math.abs(p.vx) > 0.3) p.face = p.vx > 0 ? 1 : -1;
       if (p.i !== play.carrier) p.y = clamp(p.y, -1.5, W + 1.5);
@@ -1758,7 +1808,7 @@
   RB.Sim = {
     IDX: { QB, RBK, OC, LG, RG, LT, RT, TE, WR1, WR2, WR3, DE1, DT1, DT2, DE2, LB1, LB2, LB3, CB1, CB2, S1, S2 },
     OL, ELIGIBLE, DIFF, DEF_CALLS, ROUTES,
-    createPlay, setDefense, snap, step, canThrow, throwBall, clampAim, flightTime, maxRange, aiDefCall, predictRoute,
+    createPlay, setDefense, snap, step, canThrow, throwBall, clampAim, flightTime, maxRange, aiDefCall, predictRoute, assistAim,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -1902,7 +1952,7 @@
     const g = {
       v: 1, ver: 1,
       mode: opts.mode || 'local',
-      settings: Object.assign({ qlen: 240, diff: 1, even: false }, opts.settings),
+      settings: Object.assign({ qlen: 240, diff: 1, even: false, assist: true }, opts.settings),
       teams: [opts.home, opts.away],
       names: opts.names || ['PLAYER 1', 'PLAYER 2'],
       score: [0, 0],
@@ -2044,7 +2094,7 @@
     rt.play = Sim.createPlay({
       offRoster: rt.rosters[o], defRoster: rt.rosters[d],
       ballOn: g.ballOn, ballY: g.ballY, fdX: C.GOAL_L + Math.min(100, g.ballOn + g.toGo),
-      defCall: g.defCall, diff: g.settings.diff, rng: rt.rng, wx: g.wx,
+      defCall: g.defCall, diff: g.settings.diff, rng: rt.rng, wx: g.wx, assist: g.settings.assist !== false,
       humanDefIdx: g.mode === 'online' ? rt.humanDefIdx == null ? Sim.IDX.S1 : rt.humanDefIdx : -1,
     });
     rt.defCallFrom = 'ai';
@@ -2085,6 +2135,15 @@
         if (a.kind === 'pass' || a.kind === 'run') snapBall(G, a.kind);
         else if (a.kind === 'punt' && canPunt(g)) punt(G);
         else if (a.kind === 'fg' && canFG(g)) startKick(G, 'fg', 100 - g.ballOn + 17);
+        break;
+      case 'shuffle':
+        // A different formation and set of routes; the play clock keeps running.
+        if (g.phase === 'presnap' && rt.play && rt.play.phase === 'pre') {
+          const call = rt.defCallFrom === 'human' ? g.defCall : null;
+          makePresnapPlay(G);
+          if (call) { Sim.setDefense(rt.play, call); g.defCall = call; rt.defCallFrom = 'human'; }
+          bump(G);
+        }
         break;
       case 'defcall':
         if (g.phase === 'presnap' && rt.play && Sim.DEF_CALLS.includes(a.call)) {
@@ -2718,10 +2777,13 @@
     ball: '#8a4b22', shadow: 'rgba(0,0,0,0.28)',
   };
 
+  const SPR0 = 1.6; // players are drawn this many times their pixel-art size
+  let SPR = SPR0;
   const R = {
     canvas: null, ctx: null, W: 480, H: 270, k: 1, S: 1,
     SX: 9, SY: 6, SZ: 7, portrait: false, hudH: 26, bottom: 0,
     cam: { x: 40, y: FW / 2 }, camV: { x: 0, y: 0 }, lead: 9, camInit: false, t: 0,
+    z: 1, reserve: 0, // zoom (below 1 before the snap) and space kept clear for the play-call buttons
     crowd: null, crowdKey: '', sprites: new Map(), rain: [],
     ps: [], flash: 0,
   };
@@ -2744,9 +2806,10 @@
     R.canvas.height = Math.round(cssH * dpr);
     R.S = R.canvas.width / R.W;
     R.portrait = cssH > cssW * 1.1;
-    R.SX = R.portrait ? 5.6 : clamp(R.W / 50, 7.5, 10.5);
-    R.SY = R.SX * 0.62;
-    R.SZ = R.SX * 0.7;
+    R.SX0 = R.portrait ? 6.2 : clamp(R.W / 44, 8.5, 12);
+    R.SY0 = R.SX0 * 0.56;
+    R.SZ0 = R.SX0 * 0.7;
+    applyZoom();
     R.hudH = R.portrait ? 62 : 26;
     R.bottom = R.portrait ? Math.round(R.H * 0.3) : 0;
     R.ctx.imageSmoothingEnabled = false;
@@ -2754,8 +2817,26 @@
   }
 
   // --- Projection ---------------------------------------------------------------
+  function applyZoom() {
+    R.SX = R.SX0 * R.z;
+    R.SY = R.SY0 * R.z;
+    R.SZ = R.SZ0 * R.z;
+    SPR = SPR0 * Math.max(0.7, R.z);
+  }
+  // Before the snap the camera pulls back so the whole formation and every
+  // route fit above the play-call buttons; at the snap it eases back in.
+  function updateZoom(V, dt) {
+    const pre = V.mode === 'field' && V.players && V.phase === 'presnap';
+    const reserve = pre && !R.portrait ? 64 : 0;
+    const avail = R.H - R.hudH - R.bottom - reserve - 6;
+    const zt = pre ? clamp(avail / ((FW + 4) * R.SY0), 0.5, 1) : 1;
+    const f = R.camInit ? 1 - Math.exp(-dt * 3.2) : 1;
+    R.z += (zt - R.z) * f;
+    R.reserve += (reserve - R.reserve) * f;
+    applyZoom();
+  }
   function fieldMidY() {
-    return R.hudH + (R.H - R.hudH - R.bottom) / 2;
+    return R.hudH + (R.H - R.hudH - R.bottom - R.reserve) / 2;
   }
   const snap = (v) => Math.round(v * R.S) / R.S;
   function sx(x) {
@@ -2778,7 +2859,8 @@
     if (V.mode === 'field') {
       const car = V.players && V.carrier >= 0 ? V.players[V.carrier] : null;
       const b = V.ball;
-      if (!V.players || V.phase === 'presnap') { fx = V.los; fy = V.ballY; lead = baseLead; }
+      if (!V.players) { fx = V.los; fy = V.ballY; lead = baseLead; }
+      else if (V.phase === 'presnap') { fx = V.los; fy = FW / 2; lead = (R.W / 2 / R.SX) * 0.45; }
       else if (b && b.st === 'air') {
         const L = V.landing || b;
         fx = b.x + (L.x - b.x) * 0.35; fy = b.y + (L.y - b.y) * 0.35; lead = 2;
@@ -2792,7 +2874,7 @@
     if (!R.camInit) { R.lead = lead; }
     R.lead += (lead - R.lead) * (1 - Math.exp(-dt * 2.5));
     let tx = fx + R.lead, ty = fy;
-    const halfH = (R.H - R.hudH - R.bottom) / 2 / R.SY;
+    const halfH = (R.H - R.hudH - R.bottom - R.reserve) / 2 / R.SY;
     const minY = -6 + halfH, maxY = FW + 5 - halfH;
     ty = minY > maxY ? FW / 2 : clamp(ty, minY, maxY);
     const halfW = R.W / 2 / R.SX;
@@ -2813,10 +2895,10 @@
 
   // --- Stadium ------------------------------------------------------------------
   function buildCrowd(uniforms) {
-    const key = R.SX + '|' + uniforms.map((u) => u.jersey).join();
+    const key = R.SX0 + '|' + uniforms.map((u) => u.jersey).join();
     if (key === R.crowdKey) return;
     R.crowdKey = key;
-    const w = Math.ceil(140 * R.SX), h = 60;
+    const w = Math.ceil(140 * R.SX0), h = 60;
     const c = document.createElement('canvas');
     c.width = w;
     c.height = h;
@@ -3036,7 +3118,7 @@
     ctx.fillStyle = PAL.shadow;
     for (const p of list) {
       const px = sx(p.x), py = sy(p.y);
-      if (vis(px, py)) ellipse(ctx, px, py, 4, 1.5);
+      if (vis(px, py)) ellipse(ctx, px, py, 4 * SPR, 1.5 * SPR);
     }
     for (const p of list) {
       const st = playerState(p, dt);
@@ -3049,20 +3131,81 @@
       const carry = V.carrier === p.i && V.ball && V.ball.st !== 'air';
       const spr = sprite(uni, p.skin, pose, frame, st.face, carry && pose !== 'down', seat);
       if (p.i === V.ctrl && V.live && !p.down) {
-        ctx.fillStyle = 'rgba(255,210,63,0.9)';
-        ring(ctx, px, py, 6, 2.5);
+        ctx.fillStyle = 'rgba(255,210,63,0.95)';
+        ring(ctx, px, py, 6 * SPR, 2.5 * SPR);
       }
       if (p.i === V.defCtrl && !p.down) {
-        ctx.fillStyle = 'rgba(90,230,255,0.9)';
-        ring(ctx, px, py, 6, 2.5);
+        ctx.fillStyle = 'rgba(90,230,255,0.95)';
+        ring(ctx, px, py, 6 * SPR, 2.5 * SPR);
       }
-      const lift = (pose === 'dive' ? 4 : 0) + (pose === 'run' && frame % 2 ? 1 : 0);
-      ctx.drawImage(spr, snap(px - spr.width / 2), snap(py - spr.height + 1 - lift));
+      if (V.routeColors && V.routeColors[p.i] && !V.live) {
+        ctx.fillStyle = V.routeColors[p.i];
+        ring(ctx, px, py, 5 * SPR, 2 * SPR);
+      }
+      if (V.lock === p.i) {
+        ctx.fillStyle = '#5fd35f';
+        ring(ctx, px, py, 7 * SPR, 3 * SPR);
+      }
+      const lift = ((pose === 'dive' ? 4 : 0) + (pose === 'run' && frame % 2 ? 1 : 0)) * SPR;
+      const w = spr.width * SPR, h = spr.height * SPR;
+      ctx.drawImage(spr, snap(px - w / 2), snap(py - h + SPR - lift), snap(w), snap(h));
       if (pose === 'down' && carry) {
         ctx.fillStyle = PAL.ball;
-        ctx.fillRect(px + (st.face >= 0 ? 5 : -7), py - 2, 2, 1);
+        ctx.fillRect(px + (st.face >= 0 ? 5 : -7) * SPR, py - 2 * SPR, 2 * SPR, SPR);
       }
     }
+  }
+
+  // Pre-snap play art: each receiver's route in his own color, with an arrow
+  // at the end; a short bar for blockers; the run lane as a dashed arrow.
+  function arrowLine(ctx, pts, color, alpha, dashed) {
+    if (pts.length < 2) return;
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.6;
+    ctx.lineJoin = 'round';
+    ctx.setLineDash(dashed ? [3, 3] : []);
+    ctx.beginPath();
+    ctx.moveTo(sx(pts[0].x), sy(pts[0].y));
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(sx(pts[i].x), sy(pts[i].y));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const a = pts[pts.length - 2], b = pts[pts.length - 1];
+    const ang = Math.atan2(sy(b.y) - sy(a.y), sx(b.x) - sx(a.x));
+    const hx = sx(b.x), hy = sy(b.y);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(hx + Math.cos(ang) * 4, hy + Math.sin(ang) * 4);
+    ctx.lineTo(hx + Math.cos(ang + 2.5) * 4, hy + Math.sin(ang + 2.5) * 4);
+    ctx.lineTo(hx + Math.cos(ang - 2.5) * 4, hy + Math.sin(ang - 2.5) * 4);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  function drawRoutes(ctx, V) {
+    const R2 = V.routes;
+    if (!R2) return;
+    for (const r of R2) {
+      if (r.block) {
+        const p = r.from;
+        ctx.globalAlpha = r.alpha;
+        ctx.fillStyle = r.color;
+        ctx.fillRect(sx(p.x) + 6, sy(p.y) - 4, 2, 8);
+        ctx.fillRect(sx(p.x) + 3, sy(p.y) - 0.5, 4, 1.6);
+        ctx.globalAlpha = 1;
+        continue;
+      }
+      arrowLine(ctx, r.pts, r.color, r.alpha, r.dashed);
+    }
+  }
+
+  function drawDefTarget(ctx, V) {
+    const t = V.defTarget;
+    if (!t) return;
+    const x = sx(t.x), y = sy(t.y);
+    ctx.fillStyle = 'rgba(90,230,255,0.9)';
+    ctx.fillRect(x - 4, y - 0.75, 8, 1.5);
+    ctx.fillRect(x - 0.75, y - 4, 1.5, 8);
   }
 
   function drawBall(ctx, V) {
@@ -3070,10 +3213,10 @@
     if (!b || !b.visible) return;
     const carried = V.carrier >= 0 && b.st !== 'air' && b.st !== 'dead' && b.st !== 'snap';
     if (carried) return;
-    const px = sx(b.x), py = sy(b.y), pz = Math.round(b.z * R.SZ);
+    const px = sx(b.x), py = sy(b.y), pz = b.z * R.SZ;
     ctx.fillStyle = PAL.shadow;
-    ellipse(ctx, px, py, 2, 1);
-    const big = clamp(b.z / 3.5, 0, 1.5);
+    ellipse(ctx, px, py, 2.5, 1.2);
+    const big = clamp(b.z / 3.5, 0, 1.5) + 0.8;
     ctx.fillStyle = '#3a1d0c';
     ctx.fillRect(px - 3 - big, py - pz - 2 - big / 2, 6 + big * 2, 4 + big);
     ctx.fillStyle = PAL.ball;
@@ -3090,8 +3233,8 @@
     ctx.fillStyle = a.max ? '#ff9a3c' : '#ffffff';
     for (const p of a.pts) ctx.fillRect(sx(p.x) - 1, sy(p.y) - Math.round(p.z * R.SZ) - 1, 2, 2);
     const tx = sx(a.x), ty = sy(a.y);
-    ctx.fillStyle = a.max ? '#ff9a3c' : PAL.good;
-    ring(ctx, tx, ty, 5, 2.4);
+    ctx.fillStyle = a.lock != null ? '#5fd35f' : a.max ? '#ff9a3c' : PAL.good;
+    ring(ctx, tx, ty, a.lock != null ? 7 : 5, a.lock != null ? 3.4 : 2.4);
     ctx.fillRect(tx - 1, ty - 1, 2, 2);
     ctx.globalAlpha = 1;
   }
@@ -3207,6 +3350,16 @@
     ctx.fillRect(0, y - 6 + bandH - 1, R.W, 1);
     F.draw(ctx, b.text, R.W / 2, y, scale, color, 'center', 'rgba(0,0,0,0.6)');
     if (b.sub) F.draw(ctx, b.sub, R.W / 2, y + 7 * scale + 5, 1, '#e8e8e8', 'center');
+  }
+
+  function drawNetInfo(ctx, V) {
+    if (!V.netInfo) return;
+    const w = F.width(V.netInfo, 1) + 8;
+    const y = R.portrait ? R.hudH + 2 : 5;
+    const x = 4;
+    ctx.fillStyle = 'rgba(13,15,20,0.7)';
+    ctx.fillRect(x, y - 2, w, 11);
+    F.draw(ctx, V.netInfo, x + 4, y, 1, 'rgba(255,255,255,0.8)');
   }
 
   function drawFooter(ctx, V) {
@@ -3383,13 +3536,16 @@
       drawBanner(ctx, V);
       return;
     }
+    updateZoom(V, dt);
     updateCamera(V, dt);
     drawStadium(ctx, V);
     if (V.uni) {
       drawField(ctx, V);
       if (V.players) {
         drawLines(ctx, V);
+        drawRoutes(ctx, V);
         drawLanding(ctx, V);
+        drawDefTarget(ctx, V);
         drawPlayers(ctx, V, dt);
         drawBall(ctx, V);
         drawAim(ctx, V);
@@ -3399,6 +3555,7 @@
     drawJoy(ctx, V);
     drawHUD(ctx, V);
     drawFooter(ctx, V);
+    drawNetInfo(ctx, V);
     drawBanner(ctx, V);
   }
 
@@ -3415,14 +3572,17 @@
 /* src/input.js */
 /* Rivalry Bowl: touch / mouse gestures -> game intents.
  * Contexts: 'qb' (can throw), 'run' (steer carrier), 'def' (steer defender),
- * 'kick' (aim + power), 'none'. */
+ * 'pick' (tap a defender before the snap), 'kick' (aim + power), 'none'.
+ * Runners and defenders run toward a held finger; a tap jukes (runner) or
+ * switches to the tapped defender (defense). */
 (function (root) {
   'use strict';
   const RB = root.RB;
   const AIM_GAIN = 1.6; // the reticle moves 1.6x as far as your finger
   const DEAD = 12; // css px before a drag counts
   const MIN_THROW = 26; // shorter pulls cancel instead of throwing
-  const JOY_FULL = 60; // css px of drag for full joystick deflection
+  const JOY_FULL = 60; // css px of drag for full joystick deflection (QB scramble)
+  const HOLD_MS = 140; // a still finger held this long starts steering
   const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
   const S = {
@@ -3476,7 +3636,7 @@
     const c = S.lastCtx;
     // Pulling back aims; only a clearly forward drag scrambles.
     if (c === 'qb') S.mode = dx > 0 && dx > Math.abs(dy) * 1.2 ? 'joy' : 'aim';
-    else if (c === 'run' || c === 'def') S.mode = 'joy';
+    else if (c === 'run' || c === 'def') S.mode = 'follow';
   }
 
   function up(e) {
@@ -3493,12 +3653,12 @@
     } else if (S.mode === 'kick' && c === 'kick') {
       const k = kickVals();
       if (k.power > 0.08) S.intents.kick = k;
-    } else if (!S.mode && dt < 220) {
-      if (c === 'pick') {
+    } else if (len < DEAD && dt < 220) {
+      if (c === 'pick' || c === 'def') {
         const k = RB.Render.R.k;
         S.intents.tapAt = RB.Render.toWorld(S.x / k, S.y / k);
-      } else S.intents.juke = true;
-    } else if (S.mode === 'joy' && dt < 200 && len > 48 && (c === 'run')) {
+      } else if (c === 'run') S.intents.juke = true;
+    } else if (dt < 200 && len > 48 && c === 'run') {
       const w = RB.Render.screenDeltaToWorld(dx, dy);
       S.intents.dive = { x: w.x, y: w.y };
     }
@@ -3545,6 +3705,7 @@
       dive: S.intents.dive,
       kickLaunch: S.intents.kick,
       tapAt: S.intents.tapAt,
+      steer: null,
     };
     S.intents = { throwAt: null, juke: false, dive: null, kick: null, tapAt: null };
     if (out.aiming) {
@@ -3554,6 +3715,12 @@
       out.aimAt = S.aimS;
       const dx = S.x - S.x0, dy = S.y - S.y0;
       out.aimArmed = Math.hypot(dx, dy) >= MIN_THROW;
+    }
+    // A still finger held a moment starts steering too.
+    if (S.id !== null && !S.mode && (S.lastCtx === 'run' || S.lastCtx === 'def') && performance.now() - S.t0 > HOLD_MS) S.mode = 'follow';
+    if (S.id !== null && S.mode === 'follow') {
+      const k = RB.Render.R.k;
+      out.steer = RB.Render.toWorld(S.x / k, S.y / k);
     }
     if (S.id !== null && S.mode === 'joy') {
       const dx = S.x - S.x0, dy = S.y - S.y0, len = Math.hypot(dx, dy);
@@ -3759,11 +3926,12 @@
     };
   }
 
-  // Backup transport over the artifact's shared database. Each phone owns one
-  // document (its presence plus a heartbeat) in the `lobby` collection and
-  // subscribes to the collection. Writes go one at a time, latest state wins,
-  // at most every WRITE_MS (backing off if the platform says slow down).
-  const DB_WRITE_MS = 250, DB_STALE_MS = 15000, DB_BEAT_MS = 4000;
+  // Backup transport over the artifact's shared database. Each phone owns two
+  // documents in the `lobby` collection ("<id>.a" and "<id>.b") holding its
+  // presence, a sequence number and a heartbeat, and subscribes to the
+  // collection. Each document takes one write at a time; alternating between
+  // two roughly doubles the update rate. Readers keep the newest per phone.
+  const DB_WRITE_MS = 140, DB_STALE_MS = 15000, DB_BEAT_MS = 4000;
   async function dbTransport(dbP) {
     const cl = root.claude;
     if (!cl || typeof cl.use !== 'function') return { fail: 'no-api' };
@@ -3774,55 +3942,62 @@
     Diag.dbState = 'granted';
     const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     const col = db.collection('lobby');
-    const mineRef = col.doc(id);
-    let list = [], err = null, lastSnap = 0, mine = {};
-    let pending = null, inflight = false, lastWrite = 0, gap = DB_WRITE_MS, timer = null;
+    const lanes = ['a', 'b'].map((k) => ({ ref: col.doc(id + '.' + k), busy: false }));
+    let list = [], err = null, lastSnap = 0, mine = {}, sq = 0;
+    let pending = null, lastWrite = 0, gap = DB_WRITE_MS, timer = null;
     const unsub = col.onSnapshot((snap) => {
       lastSnap = Date.now();
       const now = Date.now();
-      const next = [];
+      const best = new Map();
       let pruned = 0;
       for (const d of snap.docs) {
         const body = d.exists ? d.data() || {} : {};
         const hb = typeof body.hb === 'number' ? body.hb : 0;
-        if (d.id !== id && now - hb > DB_STALE_MS) {
+        const peer = d.id.split('.')[0];
+        if (peer !== id && now - hb > DB_STALE_MS) {
           // Leftovers from closed pages: tidy a few so the store stays small.
           if (now - hb > 10 * 60000 && pruned < 3) { pruned++; col.doc(d.id).delete().catch(() => {}); }
           continue;
         }
-        next.push({ peer: d.id, presence: body.p || {}, isMe: d.id === id });
+        const cur = best.get(peer);
+        if (!cur || (body.sq || 0) > cur.sq) best.set(peer, { peer, presence: body.p || {}, sq: body.sq || 0, isMe: peer === id });
       }
-      list = next;
+      list = [...best.values()];
     }, (e) => { err = (e && e.code) || 'unknown'; Diag.listenerErr = err; });
     function pump() {
-      if (inflight || !pending) return;
+      if (!pending) return;
+      const lane = lanes.find((l) => !l.busy);
+      if (!lane) return;
       const wait = lastWrite + gap - Date.now();
       if (wait > 0) { if (!timer) timer = setTimeout(() => { timer = null; pump(); }, wait); return; }
       const body = pending;
       pending = null;
-      inflight = true;
+      lane.busy = true;
       lastWrite = Date.now();
       Diag.sent++;
-      mineRef.set(body).then(() => { Diag.ok++; gap = Math.max(DB_WRITE_MS, gap * 0.9); }, (e) => {
+      const t0 = performance.now();
+      lane.ref.set(body).then(() => {
+        Diag.ok++;
+        Diag.writeMs = Math.round(Diag.writeMs == null ? performance.now() - t0 : Diag.writeMs * 0.8 + (performance.now() - t0) * 0.2);
+        gap = Math.max(DB_WRITE_MS, gap * 0.9);
+      }, (e) => {
         Diag.fail++;
         const code = (e && e.code) || 'unknown';
         Diag.lastErr = code;
         if (code === 'resource_exhausted') gap = Math.min(3000, gap * 2);
         else if (code !== 'unavailable') err = code;
-      }).then(() => { inflight = false; pump(); });
+      }).then(() => { lane.busy = false; pump(); });
     }
-    const beat = setInterval(() => {
-      if (!pending && Date.now() - lastWrite > DB_BEAT_MS) { pending = { p: mine, hb: Date.now() }; pump(); }
-    }, 1000);
-    const bye = () => { mineRef.delete().catch(() => {}); };
+    const queue = () => { pending = { p: mine, hb: Date.now(), sq: ++sq }; pump(); };
+    const beat = setInterval(() => { if (!pending && Date.now() - lastWrite > DB_BEAT_MS) queue(); }, 1000);
+    const bye = () => { for (const l of lanes) l.ref.delete().catch(() => {}); };
     root.addEventListener('pagehide', bye);
     return {
       kind: 'db',
       me: () => id,
       setPresence(obj) {
         mine = JSON.parse(JSON.stringify(obj, (k, v) => (v === null && k !== '' ? undefined : v)));
-        pending = { p: mine, hb: Date.now() };
-        pump();
+        queue();
       },
       peers() {
         const l = list.filter((x) => !x.isMe);
@@ -3937,6 +4112,7 @@
   }
 
 
+  // Blend snapshot a -> b at u (u > 1 extrapolates past b, capped by the caller).
   function withVel(b, a, u, span) {
     if (!a) return Object.assign({}, b, { players: b.players.map((p) => Object.assign({ vx: 0, vy: 0 }, p)) });
     const lerp = (x, y) => x + (y - x) * u;
@@ -4054,7 +4230,7 @@
     reset() {
       Object.assign(Diag, { switched: '', sent: 0, ok: 0, fail: 0, lastErr: '', listenerErr: '' });
       Object.assign(this, { noDb: false, switching: false, seekSince: Date.now() });
-      Object.assign(this, { role: null, partner: null, G: null, snap: null, kickSnap: null, disp: null, fx: [], fxn: 0, fxSeen: -1, actN: 0, actSeen: {}, dcN: 0, lastDcN: -1, pending: null, err: '', errDetail: '', defIdx: Sim.IDX.S1, lastAdoptVer: 0, tgt: '', buf: [], lastTs: -1, offset: null, lastLobbyPub: 0 });
+      Object.assign(this, { role: null, partner: null, G: null, snap: null, kickSnap: null, disp: null, fx: [], fxn: 0, fxSeen: -1, actN: 0, actSeen: {}, dcN: 0, lastDcN: -1, pending: null, err: '', errDetail: '', defIdx: Sim.IDX.S1, lastAdoptVer: 0, tgt: '', buf: [], lastTs: -1, offset: null, lastLobbyPub: 0, gaps: [], lastArr: 0, rtt: null, lastEk: null, dc: '', dcP: null, dcPick: null, steer: null });
     },
 
     leave() {
@@ -4152,7 +4328,7 @@
         const G = Game.create({
           mode: 'online', home: A.picks[0], away: RB.TEAM_BY_ID[pick.presence.tm] ? pick.presence.tm : 'UGA',
           names: [A.names[0], String(pick.presence.nm || 'GUEST').replace(/[^A-Z0-9 .'-]/gi, '').slice(0, 10) || 'GUEST'],
-          settings: { qlen: s.qlen, diff: s.diff, even: s.even },
+          settings: { qlen: s.qlen, diff: s.diff, even: s.even, assist: s.assist !== false },
         });
         this.startGame(G);
       }
@@ -4181,6 +4357,9 @@
     tickGame() {
       const G = this.G;
       const pp = this.partnerPresence();
+      // Your last coverage call carries over to the next play.
+      const g = G.g;
+      if (!this.isAuthority() && g.phase === 'presnap' && g.poss !== this.seat && this.dc && this.dcP !== g.playNo) this.defCall(this.dc);
       try {
         if (pp && validG(pp.g) && pp.g.ver > G.g.ver) this.adopt(pp);
         if (pp) this.readPartner(pp);
@@ -4216,6 +4395,12 @@
           Game.act(G, { type: 'defcall', call: pp.dc });
         }
         if (Number.isInteger(pp.di) && pp.di >= 11 && pp.di <= 21) Game.act(G, { type: 'defplayer', idx: pp.di });
+        // Round trip: the defense echoes the newest snapshot time it has seen.
+        if (num(pp.ek) && pp.ek !== this.lastEk) {
+          this.lastEk = pp.ek;
+          const r = performance.now() - pp.ek;
+          if (r >= 0 && r < 15000) this.rtt = this.rtt == null ? r : this.rtt * 0.7 + r * 0.3;
+        }
         if (pp.act && pp.act.n !== this.actSeen[this.partner]) {
           this.actSeen[this.partner] = pp.act.n;
           const a = pp.act;
@@ -4225,11 +4410,15 @@
         // Snapshots from the authority.
         const okSnap = pp.p && typeof pp.p.s === 'string' && pp.p.s.length === 132 && Array.isArray(pp.p.b) && Array.isArray(pp.p.m) && num(pp.p.ts);
         this.snap = okSnap ? decodePlay(pp.p) : null;
+        if (num(pp.rtt)) this.rtt = pp.rtt;
         if (okSnap && pp.p.ts !== this.lastTs) {
-          // Buffer timestamped snapshots; drawing runs ~110 ms behind the
-          // other phone and blends between the two around that moment.
+          // Buffer timestamped snapshots; drawing runs a little behind the
+          // other phone (as little as the arrival gaps allow) and blends
+          // between the two snapshots around that moment.
           this.lastTs = pp.p.ts;
           const now = performance.now();
+          if (this.lastArr) { this.gaps.push(now - this.lastArr); if (this.gaps.length > 24) this.gaps.shift(); }
+          this.lastArr = now;
           const off = now - pp.p.ts;
           this.offset = this.offset == null || off < this.offset ? off : this.offset + (off - this.offset) * 0.002;
           this.buf.push({ ts: pp.p.ts, snap: this.snap });
@@ -4270,21 +4459,26 @@
         p.k = G.g.phase === 'kick' ? encodeKick(G.rt.kick) : null;
         p.fx = this.fx.slice();
         p.fxn = this.fxn;
+        if (this.rtt != null) p.rtt = Math.round(this.rtt);
       } else {
-        const inp = this.App.lastInput;
-        const joy = inp && inp.joy && this.G.g.phase === 'play' ? [r2(inp.joy.x), r2(inp.joy.y)] : null;
-        Object.assign(p, { dc: this.dc || '', dcn: this.dcN, dcp: this.dcP == null ? -1 : this.dcP, di: this.defIdx, dj: joy, act: this.pending });
+        const st = this.steer && this.G.g.phase === 'play' ? [r2(this.steer.x), r2(this.steer.y)] : null;
+        Object.assign(p, { dc: this.dc || '', dcn: this.dcN, dcp: this.dcP == null ? -1 : this.dcP, di: this.defIdx, dt: st, ek: this.lastTs >= 0 ? this.lastTs : null, act: this.pending });
       }
       this.t.setPresence(p);
     },
 
-    // Authority: the defense player's joystick for this step.
+    // Authority: where the defense player wants his defender to run.
     remoteInput() {
-      if (this.t && this.t.kind === 'db') return {}; // too slow for live steering
       const pp = this.partnerPresence();
-      if (!pp || !Array.isArray(pp.dj) || !num(pp.dj[0]) || !num(pp.dj[1])) return {};
-      const x = pp.dj[0], y = pp.dj[1], m = Math.hypot(x, y);
-      return m > 1 ? { defJoy: { x: x / m, y: y / m } } : { defJoy: { x, y } };
+      if (!pp || !Array.isArray(pp.dt) || !num(pp.dt[0]) || !num(pp.dt[1])) return {};
+      return { defTarget: { x: Math.max(-2, Math.min(122, pp.dt[0])), y: Math.max(-1, Math.min(C.FIELD_W + 1, pp.dt[1])) } };
+    },
+
+    // One line for the HUD: which link, and the measured round trip.
+    netInfo() {
+      if (!this.t || this.state !== 'playing') return '';
+      const link = this.t.kind === 'db' ? 'BACKUP LINK' : 'LIVE LINK';
+      return this.rtt != null ? `${link} · ${Math.round(this.rtt)} MS ROUND TRIP` : link;
     },
 
     // Follower requests.
@@ -4304,7 +4498,7 @@
     inputContext() {
       const g = this.G && this.G.g;
       if (!g) return 'none';
-      if (g.phase === 'play' && this.snap && this.snap.live) return this.t && this.t.kind === 'db' ? 'none' : 'def';
+      if (g.phase === 'play' && this.snap && this.snap.live) return 'def';
       if (g.phase === 'presnap') return 'pick';
       return 'none';
     },
@@ -4321,10 +4515,35 @@
       if (best >= 11) this.defIdx = best;
     },
 
+    // During the play a tap switches to the tapped defender, or to the one
+    // closest to the ball when the tap isn't near anyone.
+    switchDefender(world) {
+      const s = this.interpSnap();
+      if (!s) return;
+      let best = -1, bd = 5;
+      for (const p of s.players) {
+        if (p.side !== 1) continue;
+        const d = Math.hypot(p.x - world.x, p.y - world.y);
+        if (d < bd) { bd = d; best = p.i; }
+      }
+      if (best < 0) {
+        bd = 1e9;
+        const b = s.ball;
+        for (const p of s.players) {
+          if (p.side !== 1 || p.down || p.eng) continue; // a blocked lineman can't be steered
+          const d = Math.hypot(p.x - b.x, p.y - b.y);
+          if (d < bd) { bd = d; best = p.i; }
+        }
+      }
+      if (best >= 11) this.defIdx = best;
+    },
+
     // --- Follower rendering ---
     view(inp) {
       const G = this.G, g = G.g, rt = G.rt;
       if (inp && inp.tapAt && g.phase === 'presnap') this.pickDefender(inp.tapAt);
+      if (inp && inp.tapAt && g.phase === 'play') this.switchDefender(inp.tapAt);
+      this.steer = inp && inp.steer && g.phase === 'play' ? inp.steer : null;
       const V = {
         g, mode: 'field', teams: [Game.team(G, 0), Game.team(G, 1)], uni: rt.uniforms,
         offSeat: g.poss, defSeat: 1 - g.poss, wx: g.wx, phase: g.phase, cheer: this.App.cheer,
@@ -4351,20 +4570,34 @@
         V.live = s.live;
         V.turnover = s.turnover;
         V.landing = s.landing;
-        if (inp) V.joy = inp.joyScreen;
+        V.defTarget = this.steer;
       }
+      V.netInfo = this.netInfo();
       return V;
     },
 
     // The play as it looked ~110 ms ago on the other phone, blended between the
     // two snapshots around that moment. Velocities come from the same pair.
+    renderDelay() {
+      const g = this.gaps;
+      if (g.length < 4) return this.t && this.t.kind === 'db' ? 350 : 100;
+      const sorted = g.slice().sort((x, y) => x - y);
+      return Math.max(60, Math.min(650, sorted[Math.floor(sorted.length * 0.8)] + 35));
+    },
+
     interpSnap() {
       const buf = this.buf;
       if (!buf.length || this.offset == null) return this.snap;
-      const t = performance.now() - this.offset - (this.t && this.t.kind === 'db' ? 520 : 110);
+      const t = performance.now() - this.offset - this.renderDelay();
       let a = buf[0], b = buf[buf.length - 1];
-      if (t >= b.ts) a = b;
-      else {
+      if (t >= b.ts) {
+        // Newer than anything received: carry the last motion forward briefly.
+        if (buf.length < 2) return withVel(b.snap, null, 1);
+        a = buf[buf.length - 2];
+        const span = (b.ts - a.ts) / 1000;
+        if (span <= 0) return withVel(b.snap, null, 1);
+        return withVel(b.snap, a.snap, 1 + Math.min(0.2, (t - b.ts) / 1000) / span, span);
+      } else {
         for (let i = buf.length - 1; i > 0; i--) {
           if (buf[i - 1].ts <= t) { a = buf[i - 1]; b = buf[i]; break; }
         }
@@ -4384,7 +4617,7 @@
         const label = { man: 'Man', zone: 'Zone', blitz: 'Blitz', prevent: 'Prevent' };
         const btns = Sim.DEF_CALLS.map((c) => `<button class="btn small ${picked === c ? '' : 'ghost'}" type="button" data-action="defcall" data-call="${c}">${label[c]}</button>`).join('');
         const to = Game.canTimeout(g, this.seat) ? `<button class="btn small ghost" type="button" data-action="timeout" data-seat="${this.seat}">Timeout (${g.to[this.seat]})</button>` : '';
-        const how = this.t && this.t.kind === 'db' ? 'DEFENSE · PICK A COVERAGE' : 'DEFENSE · PICK A COVERAGE · TAP A DEFENDER TO STEER HIM';
+        const how = 'DEFENSE · PICK A COVERAGE · TAP A PLAYER TO CONTROL HIM';
         return { key: `def|${g.playNo}|${picked}|${g.to}|${g.clockRunning}`, html: `<div class="who">${how}</div><div class="row">${btns}${to}</div>` };
       }
       const waitFor = { pat: 'is choosing the try', kickchoice: 'is choosing the kickoff', kick: 'is kicking', presnap: 'is calling a play' }[g.phase];
@@ -4512,6 +4745,7 @@
         ${seg('qlen', 'QUARTER LENGTH', s.qlen, [[120, '2 MIN'], [180, '3'], [240, '4'], [300, '5'], [420, '7']])}
         ${seg('diff', 'AI DEFENSE', s.diff, [[0, 'EASY'], [1, 'NORMAL'], [2, 'HARD']])}
         ${seg('even', 'TEAM RATINGS', s.even ? 1 : 0, [[0, 'REAL'], [1, 'EVEN']])}
+        ${seg('assist', 'AIM ASSIST', s.assist === false ? 0 : 1, [[1, 'ON'], [0, 'OFF']])}
         ${seg('sound', 'SOUND', s.sound ? 1 : 0, [[1, 'ON'], [0, 'OFF']])}
       </div>
       <div class="row"><button class="btn ghost" type="button" data-action="howto">How to play</button></div>
@@ -4687,7 +4921,7 @@
 
   const App = {
     screen: 'title', back: 'title',
-    settings: Object.assign({ qlen: 240, diff: 1, even: false, sound: true }, store.get('settings', {})),
+    settings: Object.assign({ qlen: 240, diff: 1, even: false, sound: true, assist: true }, store.get('settings', {})),
     picks: [null, null],
     names: store.get('names', ['PLAYER 1', 'PLAYER 2']),
     step: 0,
@@ -4800,7 +5034,7 @@
   function startLocal() {
     App.G = Game.create({
       mode: 'local', home: App.picks[0], away: App.picks[1], names: App.names.slice(),
-      settings: { qlen: App.settings.qlen, diff: App.settings.diff, even: App.settings.even },
+      settings: { qlen: App.settings.qlen, diff: App.settings.diff, even: App.settings.even, assist: App.settings.assist },
     });
     App.mode = 'local';
     App.screen = 'game';
@@ -4870,7 +5104,7 @@
           let input;
           if (isDemo) input = demoInput(G);
           else {
-            input = Object.assign({ aiming: inp.aiming, joy: inp.joy }, takeOnce());
+            input = Object.assign({ aiming: inp.aiming, joy: inp.joy, steer: inp.steer }, takeOnce());
             if (App.net) Object.assign(input, App.net.remoteInput());
           }
           savePrev(G);
@@ -4924,6 +5158,8 @@
   }
 
   function aimView(play, at) {
+    const lock = Sim.assistAim(play, at.x, at.y);
+    if (lock) at = lock;
     const a = Sim.clampAim(play, at.x, at.y);
     const q = play.players[0];
     const T = Sim.flightTime(q, a.d);
@@ -4933,7 +5169,35 @@
       const u = i / 30, bt = T * u;
       pts.push({ x: q.x + (a.x - q.x) * u, y: q.y + (a.y - q.y) * u, z: 2 + vz0 * bt - 0.5 * C.GRAVITY * bt * bt });
     }
-    return { x: a.x, y: a.y, pts, max: a.max };
+    return { x: a.x, y: a.y, pts, max: a.max, lock: lock ? lock.i : null };
+  }
+
+  // Play art for the offense: routes in each receiver's color before the snap,
+  // faint during the play until the ball is thrown.
+  const ROUTE_COLORS = { 8: '#ffd23f', 9: '#5ae6ff', 10: '#ff7ad9', 7: '#7dff7a', 1: '#ffa24a' };
+  function routesView(play) {
+    const pre = play.phase === 'pre';
+    if (!play.plan || (!pre && (play.phase !== 'live' || play.thrown || play.kind !== 'pass' || play.carrier !== 0))) return null;
+    const alpha = pre ? 0.95 : 0.35;
+    const out = [];
+    for (const i of Sim.ELIGIBLE) {
+      const r = play.plan.routes[i], p = play.players[i];
+      if (r.name === 'block') { out.push({ block: true, from: { x: p.x0 != null && !pre ? p.x0 : p.x, y: p.y0 != null && !pre ? p.y0 : p.y }, color: ROUTE_COLORS[i], alpha }); continue; }
+      const start = pre ? { x: p.x, y: p.y } : { x: p.x0, y: p.y0 };
+      const pts = [start].concat(r.pts.map((q) => ({ x: q.x, y: q.y })));
+      if (r.cont && pts.length > 2) {
+        // Trim the "keep running" leg to a readable stub.
+        const a = pts[pts.length - 2], b = pts[pts.length - 1];
+        const d = Math.hypot(b.x - a.x, b.y - a.y) || 1, keep = Math.min(d, 9);
+        pts[pts.length - 1] = { x: a.x + ((b.x - a.x) / d) * keep, y: a.y + ((b.y - a.y) / d) * keep };
+      }
+      out.push({ pts, color: ROUTE_COLORS[i], alpha });
+    }
+    if (pre && play.plan.run) {
+      const rb = play.players[Sim.IDX.RBK];
+      out.push({ pts: [{ x: rb.x, y: rb.y }].concat(play.plan.run.path.slice(-2).map((q, k) => (k ? { x: q.x - 6, y: q.y } : q))), color: '#ffffff', alpha: 0.5, dashed: true });
+    }
+    return out;
   }
 
   function buildView(G, inp) {
@@ -4969,8 +5233,14 @@
       V.ctrl = play.turnover ? -1 : play.carrier >= 0 && play.players[play.carrier].side === 0 ? play.carrier : 0;
       V.landing = play.landing;
       V.defCtrl = App.net ? play.humanDefIdx : -1;
-      if (inp && inp.aiming && inp.aimAt && Sim.canThrow(play)) V.aim = Object.assign(aimView(play, inp.aimAt), { armed: inp.aimArmed });
+      if (inp && inp.aiming && inp.aimAt && Sim.canThrow(play)) {
+        V.aim = Object.assign(aimView(play, inp.aimAt), { armed: inp.aimArmed });
+        V.lock = V.aim.lock;
+      }
       if (inp) V.joy = inp.joyScreen;
+      V.routes = routesView(play);
+      if (App.net) V.netInfo = App.net.netInfo();
+      if (V.routes && play.phase === 'pre') V.routeColors = ROUTE_COLORS;
     }
     return V;
   }
@@ -4990,9 +5260,9 @@
       const who = `${team(G, g.poss).name} BALL · ${g.names[g.poss]}`;
       const main = opts.map((o) => `<button class="btn ${cls[o.id]}" type="button" data-action="call" data-kind="${o.id}">${esc(o.label)}</button>`).join('');
       const seats = App.net ? [App.net.seat] : [0, 1];
-      const tos = seats.filter((s) => Game.canTimeout(g, s))
+      const tos = '<button class="btn small ghost" type="button" data-action="shuffle">New play</button>' + seats.filter((s) => Game.canTimeout(g, s))
         .map((s) => `<button class="btn small ghost" type="button" data-action="timeout" data-seat="${s}">Timeout ${esc(team(G, s).id)} (${g.to[s]})</button>`).join('');
-      return { key: `pre|${g.playNo}|${opts.map((o) => o.id)}|${g.to}|${g.clockRunning}`, html: `<div class="who">${esc(who)}</div><div class="row">${main}</div>${tos ? `<div class="row">${tos}</div>` : ''}` };
+      return { key: `pre|${g.playNo}|${opts.map((o) => o.id)}|${g.to}|${g.clockRunning}`, html: `<div class="who">${esc(who)}</div><div class="row">${main}</div><div class="row">${tos}</div>` };
     }
     if (g.phase === 'pat') {
       const two = Game.mustGoForTwo(g);
@@ -5007,8 +5277,8 @@
   function hintFor(ctx, g) {
     if (!g || g.playNo > 8) return '';
     if (ctx === 'qb') return 'PULL BACK TO AIM · RELEASE TO THROW · DRAG FORWARD TO RUN';
-    if (ctx === 'run') return 'DRAG TO STEER · TAP TO JUKE · FLICK TO DIVE';
-    if (ctx === 'def') return 'DRAG TO STEER YOUR DEFENDER';
+    if (ctx === 'run') return 'HOLD WHERE TO RUN · TAP TO JUKE · FLICK TO DIVE';
+    if (ctx === 'def') return 'HOLD WHERE HE SHOULD RUN · TAP A PLAYER TO SWITCH';
     return '';
   }
 
@@ -5116,7 +5386,7 @@
         break;
       case 'set': {
         const k = b.dataset.key, v = +b.dataset.val;
-        App.settings[k] = k === 'even' || k === 'sound' ? !!v : v;
+        App.settings[k] = k === 'even' || k === 'sound' || k === 'assist' ? !!v : v;
         if (k === 'sound') RB.Audio.setOn(!!v);
         store.set('settings', App.settings);
         UI.invalidate();
@@ -5137,6 +5407,7 @@
         break;
       case 'ready': if (G) Game.act(G, { type: 'ready' }); break;
       case 'call': sendAct({ type: 'call', kind: b.dataset.kind }); break;
+      case 'shuffle': sendAct({ type: 'shuffle' }); break;
       case 'timeout': sendAct({ type: 'timeout', seat: +b.dataset.seat }); break;
       case 'pat': sendAct({ type: 'pat', choice: b.dataset.choice }); break;
       case 'kickoff': sendAct({ type: 'kickoff', choice: b.dataset.choice }); break;

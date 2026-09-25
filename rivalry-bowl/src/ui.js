@@ -39,6 +39,7 @@
         ${seg('qlen', 'QUARTER LENGTH', s.qlen, [[120, '2 MIN'], [180, '3'], [240, '4'], [300, '5'], [420, '7']])}
         ${seg('diff', 'AI DEFENSE', s.diff, [[0, 'EASY'], [1, 'NORMAL'], [2, 'HARD']])}
         ${seg('even', 'TEAM RATINGS', s.even ? 1 : 0, [[0, 'REAL'], [1, 'EVEN']])}
+        ${seg('assist', 'AIM ASSIST', s.assist === false ? 0 : 1, [[1, 'ON'], [0, 'OFF']])}
         ${seg('sound', 'SOUND', s.sound ? 1 : 0, [[1, 'ON'], [0, 'OFF']])}
       </div>
       <div class="row"><button class="btn ghost" type="button" data-action="howto">How to play</button></div>
