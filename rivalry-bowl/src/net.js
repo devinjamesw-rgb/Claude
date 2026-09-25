@@ -218,7 +218,7 @@
     if (!play) return null;
     let s = '';
     for (const p of play.players) {
-      const f = (p.face >= 0 ? 1 : 0) | (p.down > 0.25 ? 2 : 0) | ((p.lunge || 0) > 0 ? 4 : 0) | (p.eng >= 0 ? 8 : 0);
+      const f = (p.face >= 0 ? 1 : 0) | (p.down > 0.35 ? 2 : 0) | ((p.lunge || 0) > 0 || (p.dive || 0) > 0 ? 4 : 0) | (p.eng >= 0 ? 8 : 0);
       s += B36((p.x + 5) * 10, 3) + B36((p.y + 3) * 10, 2) + f.toString(36);
     }
     const b = play.ball;
@@ -387,7 +387,7 @@
     reset() {
       Object.assign(Diag, { switched: '', sent: 0, ok: 0, fail: 0, lastErr: '', listenerErr: '' });
       Object.assign(this, { noDb: false, switching: false, seekSince: Date.now() });
-      Object.assign(this, { role: null, partner: null, G: null, snap: null, kickSnap: null, disp: null, fx: [], fxn: 0, fxSeen: -1, actN: 0, actSeen: {}, dcN: 0, lastDcN: -1, pending: null, err: '', errDetail: '', defIdx: Sim.IDX.S1, lastAdoptVer: 0, tgt: '', buf: [], lastTs: -1, offset: null, lastLobbyPub: 0, gaps: [], lastArr: 0, rtt: null, lastEk: null, dc: '', dcP: null, dcPick: null, steer: null });
+      Object.assign(this, { role: null, partner: null, G: null, snap: null, kickSnap: null, disp: null, fx: [], fxn: 0, fxSeen: -1, actN: 0, actSeen: {}, dcN: 0, lastDcN: -1, pending: null, err: '', errDetail: '', defIdx: Sim.IDX.S1, lastAdoptVer: 0, tgt: '', buf: [], lastTs: -1, offset: null, lastLobbyPub: 0, gaps: [], lastArr: 0, rtt: null, lastEk: null, dc: '', dcP: null, dcPick: null });
     },
 
     leave() {
@@ -618,17 +618,19 @@
         p.fxn = this.fxn;
         if (this.rtt != null) p.rtt = Math.round(this.rtt);
       } else {
-        const st = this.steer && this.G.g.phase === 'play' ? [r2(this.steer.x), r2(this.steer.y)] : null;
-        Object.assign(p, { dc: this.dc || '', dcn: this.dcN, dcp: this.dcP == null ? -1 : this.dcP, di: this.defIdx, dt: st, ek: this.lastTs >= 0 ? this.lastTs : null, act: this.pending });
+        const inp = this.App.lastInput;
+        const joy = inp && inp.joy && this.G.g.phase === 'play' ? [r2(inp.joy.x), r2(inp.joy.y)] : null;
+        Object.assign(p, { dc: this.dc || '', dcn: this.dcN, dcp: this.dcP == null ? -1 : this.dcP, di: this.defIdx, dj: joy, ek: this.lastTs >= 0 ? this.lastTs : null, act: this.pending });
       }
       this.t.setPresence(p);
     },
 
-    // Authority: where the defense player wants his defender to run.
+    // Authority: the defense player's joystick for this step.
     remoteInput() {
       const pp = this.partnerPresence();
-      if (!pp || !Array.isArray(pp.dt) || !num(pp.dt[0]) || !num(pp.dt[1])) return {};
-      return { defTarget: { x: Math.max(-2, Math.min(122, pp.dt[0])), y: Math.max(-1, Math.min(C.FIELD_W + 1, pp.dt[1])) } };
+      if (!pp || !Array.isArray(pp.dj) || !num(pp.dj[0]) || !num(pp.dj[1])) return {};
+      const x = pp.dj[0], y = pp.dj[1], m = Math.hypot(x, y);
+      return m > 1 ? { defJoy: { x: x / m, y: y / m } } : { defJoy: { x, y } };
     },
 
     // One line for the HUD: which link, and the measured round trip.
@@ -700,7 +702,6 @@
       const G = this.G, g = G.g, rt = G.rt;
       if (inp && inp.tapAt && g.phase === 'presnap') this.pickDefender(inp.tapAt);
       if (inp && inp.tapAt && g.phase === 'play') this.switchDefender(inp.tapAt);
-      this.steer = inp && inp.steer && g.phase === 'play' ? inp.steer : null;
       const V = {
         g, mode: 'field', teams: [Game.team(G, 0), Game.team(G, 1)], uni: rt.uniforms,
         offSeat: g.poss, defSeat: 1 - g.poss, wx: g.wx, phase: g.phase, cheer: this.App.cheer,
@@ -727,7 +728,7 @@
         V.live = s.live;
         V.turnover = s.turnover;
         V.landing = s.landing;
-        V.defTarget = this.steer;
+        if (inp) V.joy = inp.joyScreen;
       }
       V.netInfo = this.netInfo();
       return V;

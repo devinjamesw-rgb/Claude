@@ -1,16 +1,18 @@
 /* Rivalry Bowl: touch / mouse gestures -> game intents.
  * Contexts: 'qb' (can throw), 'run' (steer carrier), 'def' (steer defender),
  * 'pick' (tap a defender before the snap), 'kick' (aim + power), 'none'.
- * Runners and defenders run toward a held finger; a tap jukes (runner) or
- * switches to the tapped defender (defense). */
+ * Runners, scrambling QBs and defenders use a floating joystick that appears
+ * where the finger lands; a tap jukes (runner) or switches to the tapped
+ * defender (defense). */
 (function (root) {
   'use strict';
   const RB = root.RB;
   const AIM_GAIN = 1.6; // the reticle moves 1.6x as far as your finger
   const DEAD = 12; // css px before a drag counts
   const MIN_THROW = 26; // shorter pulls cancel instead of throwing
-  const JOY_FULL = 60; // css px of drag for full joystick deflection (QB scramble)
-  const HOLD_MS = 140; // a still finger held this long starts steering
+  // Joystick: responds from JOY_DEAD px, full speed at JOY_FULL px; the base
+  // trails the finger beyond JOY_MAX px so reversing direction stays quick.
+  const JOY_DEAD = 8, JOY_FULL = 40, JOY_MAX = 50;
   const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
   const S = {
@@ -58,13 +60,21 @@
     const p = pos(e);
     S.x = p.x;
     S.y = p.y;
+    if (S.mode === 'joy') {
+      // Drag the base along once the finger runs past the rim.
+      const jx = S.x - S.ax, jy = S.y - S.ay, jl = Math.hypot(jx, jy);
+      if (jl > JOY_MAX) { S.ax = S.x - (jx / jl) * JOY_MAX; S.ay = S.y - (jy / jl) * JOY_MAX; }
+      return;
+    }
     if (S.mode) return;
     const dx = S.x - S.x0, dy = S.y - S.y0;
-    if (Math.hypot(dx, dy) < DEAD) return;
+    // Aim-vs-scramble needs a slightly longer drag to read reliably.
+    if (Math.hypot(dx, dy) < (S.lastCtx === 'qb' ? DEAD : JOY_DEAD)) return;
     const c = S.lastCtx;
     // Pulling back aims; only a clearly forward drag scrambles.
     if (c === 'qb') S.mode = dx > 0 && dx > Math.abs(dy) * 1.2 ? 'joy' : 'aim';
-    else if (c === 'run' || c === 'def') S.mode = 'follow';
+    else if (c === 'run' || c === 'def') S.mode = 'joy';
+    if (S.mode === 'joy') { S.ax = S.x0; S.ay = S.y0; }
   }
 
   function up(e) {
@@ -81,7 +91,7 @@
     } else if (S.mode === 'kick' && c === 'kick') {
       const k = kickVals();
       if (k.power > 0.08) S.intents.kick = k;
-    } else if (len < DEAD && dt < 220) {
+    } else if (len < JOY_DEAD && dt < 220) {
       if (c === 'pick' || c === 'def') {
         const k = RB.Render.R.k;
         S.intents.tapAt = RB.Render.toWorld(S.x / k, S.y / k);
@@ -133,7 +143,6 @@
       dive: S.intents.dive,
       kickLaunch: S.intents.kick,
       tapAt: S.intents.tapAt,
-      steer: null,
     };
     S.intents = { throwAt: null, juke: false, dive: null, kick: null, tapAt: null };
     if (out.aiming) {
@@ -144,23 +153,17 @@
       const dx = S.x - S.x0, dy = S.y - S.y0;
       out.aimArmed = Math.hypot(dx, dy) >= MIN_THROW;
     }
-    // A still finger held a moment starts steering too.
-    if (S.id !== null && !S.mode && (S.lastCtx === 'run' || S.lastCtx === 'def') && performance.now() - S.t0 > HOLD_MS) S.mode = 'follow';
-    if (S.id !== null && S.mode === 'follow') {
-      const k = RB.Render.R.k;
-      out.steer = RB.Render.toWorld(S.x / k, S.y / k);
-    }
     if (S.id !== null && S.mode === 'joy') {
-      const dx = S.x - S.x0, dy = S.y - S.y0, len = Math.hypot(dx, dy);
-      const mag = clamp((len - 10) / (JOY_FULL - 10), 0, 1);
-      if (mag > 0.04) {
+      const dx = S.x - S.ax, dy = S.y - S.ay, len = Math.hypot(dx, dy);
+      const mag = clamp((len - JOY_DEAD) / (JOY_FULL - JOY_DEAD), 0, 1);
+      if (mag > 0) {
         const w = RB.Render.screenDeltaToWorld(dx, dy);
         const wl = Math.hypot(w.x, w.y) || 1;
         out.joy = { x: (w.x / wl) * mag, y: (w.y / wl) * mag };
       }
       const k = RB.Render.R.k;
-      const lim = Math.min(len, JOY_FULL);
-      out.joyScreen = { x0: S.x0 / k, y0: S.y0 / k, x1: (S.x0 + (len ? (dx / len) * lim : 0)) / k, y1: (S.y0 + (len ? (dy / len) * lim : 0)) / k };
+      const lim = Math.min(len, JOY_MAX);
+      out.joyScreen = { x0: S.ax / k, y0: S.ay / k, x1: (S.ax + (len ? (dx / len) * lim : 0)) / k, y1: (S.ay + (len ? (dy / len) * lim : 0)) / k, r: JOY_MAX / k, on: mag > 0 };
     }
     if (S.id !== null && S.mode === 'kick') out.kick = kickVals();
     return out;

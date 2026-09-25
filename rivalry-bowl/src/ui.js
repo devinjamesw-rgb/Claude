@@ -141,9 +141,9 @@
         <dt>SNAP</dt><dd>Pick PASS or RUN. The ball is snapped right away. On 4th down you can also punt or kick a field goal.</dd>
         <dt>THROW</dt><dd>Touch anywhere and pull <b>back</b>, away from the end zone, like a slingshot. The dotted arc shows where the ball will land. Release to throw. Lead your receiver: the ball goes where you aim, not where he is now.</dd>
         <dt>SCRAMBLE</dt><dd>Drag <b>forward</b> to run with the QB. Once he crosses the line he can't throw.</dd>
-        <dt>RUN</dt><dd>After a catch or handoff the runner keeps going upfield. Drag to steer, tap to juke, flick to dive.</dd>
+        <dt>RUN</dt><dd>After a catch or handoff the runner keeps going upfield. Put your thumb down anywhere and drag: a joystick appears under it. Tap to juke, flick to dive.</dd>
         <dt>KICK</dt><dd>Drag down for power and sideways to aim (the ball goes the opposite way). Clear the white line on the power bar and watch the wind.</dd>
-        <dt>HEAD TO HEAD</dt><dd>Pass &amp; Play: each of you plays your own offense against the computer's defense; hand the phone over on every change of possession. Online: the defense player calls the coverage and can steer the highlighted safety.</dd>
+        <dt>HEAD TO HEAD</dt><dd>Pass &amp; Play: each of you plays your own offense against the computer's defense; hand the phone over on every change of possession. Online: the defense player calls the coverage, taps any defender to take him over and steers him with the joystick.</dd>
         <dt>CLOCK</dt><dd>The clock runs between plays after tackles in bounds. Snap quickly to save time. Incompletions, out of bounds, scores and timeouts stop it. Overtime uses college rules.</dd>
       </dl>
       <div class="row end"><button class="btn" type="button" data-action="back">Got it</button></div></div>`;

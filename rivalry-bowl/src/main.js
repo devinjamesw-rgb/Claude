@@ -205,7 +205,7 @@
           let input;
           if (isDemo) input = demoInput(G);
           else {
-            input = Object.assign({ aiming: inp.aiming, joy: inp.joy, steer: inp.steer }, takeOnce());
+            input = Object.assign({ aiming: inp.aiming, joy: inp.joy }, takeOnce());
             if (App.net) Object.assign(input, App.net.remoteInput());
           }
           savePrev(G);
@@ -254,7 +254,7 @@
   function viewPlayer(p, a) {
     return {
       i: p.i, x: mix(p.px, p.x, a), y: mix(p.py, p.y, a), vx: p.vx, vy: p.vy, side: p.side, face: p.face,
-      down: p.down > 0.35, lunge: (p.lunge || 0) > 0, eng: p.eng >= 0, skin: p.skin,
+      down: p.down > 0.35, lunge: (p.lunge || 0) > 0 || (p.dive || 0) > 0, eng: p.eng >= 0, skin: p.skin,
     };
   }
 
@@ -378,8 +378,8 @@
   function hintFor(ctx, g) {
     if (!g || g.playNo > 8) return '';
     if (ctx === 'qb') return 'PULL BACK TO AIM · RELEASE TO THROW · DRAG FORWARD TO RUN';
-    if (ctx === 'run') return 'HOLD WHERE TO RUN · TAP TO JUKE · FLICK TO DIVE';
-    if (ctx === 'def') return 'HOLD WHERE HE SHOULD RUN · TAP A PLAYER TO SWITCH';
+    if (ctx === 'run') return 'DRAG TO STEER · TAP TO JUKE · FLICK TO DIVE';
+    if (ctx === 'def') return 'DRAG TO STEER · TAP A PLAYER TO SWITCH';
     return '';
   }
 

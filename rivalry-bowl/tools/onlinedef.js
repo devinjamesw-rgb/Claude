@@ -1,4 +1,4 @@
-// Online defense over the mock runtime: tap-to-switch, hold-to-steer target,
+// Online defense over the mock runtime: tap-to-switch, joystick steering,
 // sticky coverage call and the round-trip readout. ISOLATED=1 DB=1 forces the backup link.
 'use strict';
 const { chromium } = require('playwright');
@@ -34,12 +34,13 @@ const OUT = process.env.OUT || '/tmp/shots';
   await def.mouse.click(sPos.x, sPos.y);
   await def.waitForTimeout(150);
   const picked = await def.evaluate(() => RB.App.net.defIdx);
-  // Hold a finger: the defender should head for it on the offense's phone.
-  const target = await def.evaluate(() => { const k = RB.Render.R.k; return { x: 600, y: 300, w: RB.Render.toWorld(600 / k, 300 / k) }; });
-  const before = await off.evaluate((w) => { const G = RB.App.G, p = G.rt.play.players[G.rt.play.humanDefIdx]; return { dist: Math.hypot(p.x - w.x, p.y - w.y).toFixed(1), eng: p.eng }; }, target.w);
-  await def.mouse.move(target.x, target.y); await def.mouse.down();
+  // Drag the joystick: the defender should run that way on the offense's phone.
+  const dir = await def.evaluate(() => { const w = RB.Render.screenDeltaToWorld(60, 0), l = Math.hypot(w.x, w.y); return { x: w.x / l, y: w.y / l }; });
+  const pos0 = await off.evaluate(() => { const G = RB.App.G, p = G.rt.play.players[G.rt.play.humanDefIdx]; return { x: p.x, y: p.y }; });
+  await def.mouse.move(560, 300); await def.mouse.down();
+  for (let i = 1; i <= 6; i++) { await def.mouse.move(560 + i * 10, 300); await def.waitForTimeout(16); }
   await def.waitForTimeout(1200);
-  const seen = await off.evaluate((w) => { const G = RB.App.G, p = G.rt.play.players[G.rt.play.humanDefIdx]; return { idx: G.rt.play.humanDefIdx, dist: Math.hypot(p.x - w.x, p.y - w.y).toFixed(1) }; }, target.w);
+  const seen = await off.evaluate(([d, p0]) => { const G = RB.App.G, p = G.rt.play.players[G.rt.play.humanDefIdx]; return { idx: G.rt.play.humanDefIdx, along: ((p.x - p0.x) * d.x + (p.y - p0.y) * d.y).toFixed(1), across: Math.abs((p.x - p0.x) * -d.y + (p.y - p0.y) * d.x).toFixed(1) }; }, [dir, pos0]);
   await def.screenshot({ path: `${OUT}/80-def-steer.png` });
   await def.mouse.up();
   // Wait for the next pre-snap and check the call carried over.
@@ -47,7 +48,7 @@ const OUT = process.env.OUT || '/tmp/shots';
   await off.waitForTimeout(1500);
   const call2 = await off.evaluate(() => ({ phase: RB.App.G.g.phase, call: RB.App.G.g.defCall, stillOffense: RB.App.G.g.poss === RB.App.net.seat }));
   const info = await def.evaluate(() => RB.App.net.netInfo());
-  console.log(JSON.stringify({ link: await A.evaluate(() => RB.App.net.t.kind), call1, picked, before, seen, call2, info }));
+  console.log(JSON.stringify({ link: await A.evaluate(() => RB.App.net.t.kind), call1, picked, seen, call2, info }));
   console.log('errors:', errors.length ? errors.join('\n') : 'none');
   await browser.close();
 })();

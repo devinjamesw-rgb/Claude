@@ -928,7 +928,7 @@
     play.stats.receiver = p.i;
     p.track = null;
     p.role = 'carrier';
-    p.slow = 0.25;
+    p.slow = 0.12;
     for (const q of play.players) if (q.side === 0 && q.i !== p.i) { q.role = 'escort'; q.track = null; }
     // Defenders read the catch faster the closer they are to it.
     for (const q of play.players) {
@@ -1118,6 +1118,25 @@
     p.x += p.vx * dt; p.y += p.vy * dt;
   }
 
+  const TURN_RATE = 9.5; // rad/s, about 540 degrees a second
+  const TURN_BLEED = 0.22; // speed lost per radian turned
+  function integrateSteered(p, accel, dt) {
+    const sp = hyp(p.vx, p.vy), want = hyp(p.dvx, p.dvy);
+    if (sp < 1.2 || want < 0.2) { integrate(p, accel * 1.3, dt); return; }
+    const a0 = Math.atan2(p.vy, p.vx), a1 = Math.atan2(p.dvy, p.dvx);
+    let da = a1 - a0;
+    if (da > Math.PI) da -= 2 * Math.PI;
+    if (da < -Math.PI) da += 2 * Math.PI;
+    const turn = clamp(da, -TURN_RATE * dt, TURN_RATE * dt);
+    let ns = sp + clamp(want - sp, -accel * 1.5 * dt, accel * dt);
+    ns *= 1 - Math.abs(turn) * TURN_BLEED;
+    const a = a0 + turn;
+    p.vx = Math.cos(a) * ns;
+    p.vy = Math.sin(a) * ns;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+  }
+
   function separate(play) {
     const P = play.players;
     for (let i = 0; i < 22; i++) {
@@ -1182,33 +1201,13 @@
       ctrl.dvx = 0; ctrl.dvy = 0;
       return true;
     }
-    if (input.steer && !(ctrl.i === QB && !play.scramble)) {
-      // Hold a finger where you want to go: he keeps driving upfield unless
-      // the finger is clearly behind him.
-      play.manual = true;
-      let dx = input.steer.x - ctrl.x;
-      const dy = input.steer.y - ctrl.y;
-      if (dx > -2.5) dx = Math.max(dx, 2.2);
-      steerDir(ctrl, dx, dy, spd);
-      return true;
-    }
     if (input.joy) {
+      // Floating joystick: run the way the stick points. Past the dead zone he
+      // is already at better than half speed, so small nudges don't bog down.
       play.manual = true;
-      const jx = input.joy.x, jy = input.joy.y;
-      if (ctrl.i === QB && !play.scramble) {
-        // QB in the pocket: plain joystick, no drift when released.
-        steerDir(ctrl, jx, jy, spd * Math.min(1, hyp(jx, jy)));
-        ctrl.drop = { x: ctrl.x, y: ctrl.y };
-        return true;
-      }
-      // Ball carrier keeps running upfield; the stick weaves him up and down.
-      // Pulling back slows him, and pulling well back runs him backwards.
-      let vx = jx >= 0 ? 1 : Math.max(-1, 1 + 2.2 * jx);
-      let vy = jy * 1.1;
-      const m = hyp(vx, vy);
-      if (m > 1) { vx /= m; vy /= m; }
-      ctrl.dvx = vx * spd;
-      ctrl.dvy = vy * spd;
+      const jx = input.joy.x, jy = input.joy.y, mag = Math.min(1, hyp(jx, jy));
+      steerDir(ctrl, jx, jy, spd * Math.max(0.55, mag));
+      if (ctrl.i === QB && !play.scramble) ctrl.drop = { x: ctrl.x, y: ctrl.y };
       return true;
     }
     if (ctrl.i === QB && !play.scramble) return false; // QB holds his spot in the pocket
@@ -1219,13 +1218,16 @@
     return true;
   }
 
-  // The defense player points where the defender should run.
+  // The defense player's joystick steers his defender.
   function applyDefenderInput(play, input) {
     const i = play.humanDefIdx;
-    if (i < 11 || !input.defTarget || play.phase !== 'live') return false;
+    const j = input.defJoy;
+    if (i < 11 || !j || play.phase !== 'live') return false;
     const p = play.players[i];
     if (p.eng >= 0 || p.down > 0) return false;
-    steerTo(p, input.defTarget.x, input.defTarget.y, effSpeed(play, p), true);
+    const mag = Math.min(1, hyp(j.x, j.y));
+    if (mag <= 0) return false;
+    steerDir(p, j.x, j.y, effSpeed(play, p) * Math.max(0.55, mag));
     return true;
   }
 
@@ -1289,10 +1291,14 @@
     tryEngage(play);
     for (const p of P) {
       if (p.eng >= 0) continue;
-      let acc = p.i === play.carrier ? 12 : p.side === 0 ? 11 : 10.5;
-      // Plant and cut: a runner the player steers against his momentum turns hard.
-      if (p.i === play.carrier && play.manual && p.vx * p.dvx + p.vy * p.dvy < 0) acc = 22;
-      integrate(p, acc, dt);
+      if ((userMoved && car && p === car && !play.turnover) || (defMoved && p.i === play.humanDefIdx)) {
+        // Players on a joystick turn their running direction quickly and pay
+        // for hard cuts with a little speed, like an arcade runner.
+        integrateSteered(p, p === car ? 18 : 14, dt);
+      } else {
+        const acc = p.i === play.carrier ? 18 : p.side === 0 ? 11 : 10.5;
+        integrate(p, acc, dt);
+      }
       if (Math.abs(p.vx) > 0.3) p.face = p.vx > 0 ? 1 : -1;
       if (p.i !== play.carrier) p.y = clamp(p.y, -1.5, W + 1.5);
     }

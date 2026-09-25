@@ -24,7 +24,7 @@
     cam: { x: 40, y: FW / 2 }, camV: { x: 0, y: 0 }, lead: 9, camInit: false, t: 0,
     z: 1, reserve: 0, // zoom (below 1 before the snap) and space kept clear for the play-call buttons
     crowd: null, crowdKey: '', sprites: new Map(), rain: [],
-    ps: [], flash: 0,
+    ps: [], dust: [], flash: 0,
   };
 
   function init(canvas) {
@@ -37,7 +37,7 @@
   // to device pixels, not logical ones, so motion stays smooth.
   function resize(cssW, cssH) {
     const k = Math.min(cssW, cssH) / 232;
-    const dpr = Math.min(typeof devicePixelRatio === 'number' ? devicePixelRatio : 1, 2.5);
+    const dpr = Math.min(typeof devicePixelRatio === 'number' ? devicePixelRatio : 1, 2);
     R.k = k;
     R.W = Math.max(200, Math.round(cssW / k));
     R.H = Math.max(200, Math.round(cssH / k));
@@ -94,6 +94,7 @@
 
   function updateCamera(V, dt) {
     let fx = R.cam.x, fy = R.cam.y, lead = 0;
+    R.chase = false;
     const baseLead = R.portrait ? 6 : 9;
     if (V.mode === 'field') {
       const car = V.players && V.carrier >= 0 ? V.players[V.carrier] : null;
@@ -106,7 +107,7 @@
       } else if (car && V.live) {
         const qbHolding = car.i === 0 && !V.turnover && car.x < V.los + 0.5;
         if (qbHolding) { fx = Math.max(car.x, V.los - 4); fy = (car.y + V.ballY) / 2; lead = baseLead + 1; }
-        else { fx = car.x; fy = car.y; lead = car.side === 0 && !V.turnover ? 5 : -5; }
+        else { fx = car.x; fy = car.y; lead = car.side === 0 && !V.turnover ? 5 : -5; R.chase = true; }
       } else if (car) { fx = car.x; fy = car.y; }
       else if (b) { fx = b.x; fy = b.y; }
     }
@@ -128,8 +129,9 @@
       R.camV[key] += a * dt;
       R.cam[key] += R.camV[key] * dt;
     };
-    spring('x', tx, 3.4);
-    spring('y', ty, 2.6);
+    // Follow a ball carrier tightly so he never drifts toward the edge.
+    spring('x', tx, R.chase ? 6 : 3.4);
+    spring('y', ty, R.chase ? 4 : 2.6);
   }
 
   // --- Stadium ------------------------------------------------------------------
@@ -334,41 +336,97 @@
     return c;
   }
 
+  const ease = (u) => 1 - (1 - u) * (1 - u);
+
+  // Per-player display state: smoothed speed, facing with hysteresis, stride
+  // phase from distance run, and the fall / get-up timers.
   function playerState(p, dt) {
     let st = R.ps[p.i];
     if (!st || Math.hypot(p.x - st.x, p.y - st.y) > 5) {
-      st = R.ps[p.i] = { x: p.x, y: p.y, spd: 0, face: p.face >= 0 ? 1 : -1, phase: p.i * 0.37, moving: false };
+      st = R.ps[p.i] = { x: p.x, y: p.y, spd: 0, face: p.face >= 0 ? 1 : -1, phase: p.i * 0.37, moving: false, down: !!p.down, downT: p.down ? 9 : 0, upT: 9, fallDir: 1 };
     }
     const sp = Math.hypot(p.vx || 0, p.vy || 0);
     st.spd += (sp - st.spd) * Math.min(1, dt * 10);
     if (st.spd > 1.3) st.moving = true;
     else if (st.spd < 0.6) st.moving = false;
-    if (p.eng || p.down) st.face = p.face >= 0 ? 1 : -1;
+    if (p.eng || p.down) { if (!st.down) st.face = p.face >= 0 ? 1 : -1; }
     else if ((p.vx || 0) > 1.2) st.face = 1;
     else if ((p.vx || 0) < -1.2) st.face = -1;
+    if (p.down && !st.down) {
+      st.down = true;
+      st.downT = 0;
+      st.fallDir = Math.abs(p.vx || 0) > 0.6 ? Math.sign(p.vx) : st.face;
+      dustAt(p.x + st.fallDir * 0.9, p.y, 7);
+    } else if (!p.down && st.down) {
+      st.down = false;
+      st.upT = 0;
+    }
+    st.downT += dt;
+    st.upT += dt;
     st.phase += st.spd * dt * 1.35;
     st.x = p.x; st.y = p.y;
     return st;
   }
 
+  // Lean angle (radians, before the fall direction): tip over with a small
+  // settle, stay down, and spring back up after a stumble.
+  function fallAngle(st, p) {
+    const full = Math.PI * 0.49;
+    if (st.down) {
+      const u = st.downT / 0.26;
+      if (u < 1) return full * ease(u);
+      const b = (st.downT - 0.26) / 0.14;
+      return b < 1 ? full - Math.sin(b * Math.PI) * 0.1 : full;
+    }
+    if (p.lunge) return Math.PI * 0.38;
+    if (st.upT < 0.2) return full * (1 - ease(st.upT / 0.2));
+    return 0;
+  }
+
+  function dustAt(x, y, n) {
+    for (let i = 0; i < n; i++) {
+      R.dust.push({ x, y, z: 0.1, vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 1.6, vz: 1 + Math.random() * 1.5, life: 0.4 + Math.random() * 0.2, t: 0, s: 1 + Math.random() * 1.2 });
+    }
+    if (R.dust.length > 120) R.dust.splice(0, R.dust.length - 120);
+  }
+
+  function drawDust(ctx, dt) {
+    for (const d of R.dust) {
+      d.t += dt;
+      d.x += d.vx * dt; d.y += d.vy * dt;
+      d.vz -= 6 * dt; d.z = Math.max(0, d.z + d.vz * dt);
+      d.vx *= 0.94; d.vy *= 0.94;
+      const a = 1 - d.t / d.life;
+      if (a <= 0) continue;
+      ctx.fillStyle = `rgba(222,212,170,${(a * 0.8).toFixed(2)})`;
+      ctx.fillRect(sx(d.x) - d.s / 2, sy(d.y) - d.z * R.SZ - d.s / 2, d.s, d.s);
+    }
+    R.dust = R.dust.filter((d) => d.t < d.life);
+  }
+
   function drawPlayers(ctx, V, dt) {
     const list = V.players.slice().sort((a, b) => a.y - b.y);
-    const vis = (px, py) => px > -20 && px < R.W + 20 && py > -20 && py < R.H + 30;
+    const vis = (px, py) => px > -30 && px < R.W + 30 && py > -20 && py < R.H + 30;
+    const states = list.map((p) => playerState(p, dt));
     ctx.fillStyle = PAL.shadow;
-    for (const p of list) {
+    list.forEach((p, k) => {
       const px = sx(p.x), py = sy(p.y);
-      if (vis(px, py)) ellipse(ctx, px, py, 4 * SPR, 1.5 * SPR);
-    }
-    for (const p of list) {
-      const st = playerState(p, dt);
+      if (!vis(px, py)) return;
+      // A falling player's shadow stretches out along his body.
+      const st = states[k], a = fallAngle(st, p), len = Math.sin(a) * 11 * SPR;
+      ellipse(ctx, px + st.fallDir * len * 0.5, py, 4 * SPR + len * 0.5, 1.5 * SPR);
+    });
+    list.forEach((p, k) => {
+      const st = states[k];
       const px = sx(p.x), py = sy(p.y);
-      if (!vis(px, py)) continue;
+      if (!vis(px, py)) return;
       const seat = p.side === 0 ? V.offSeat : V.defSeat;
       const uni = V.uni[seat];
-      const pose = p.down ? 'down' : p.lunge ? 'dive' : p.eng ? 'block' : st.moving ? 'run' : 'stand';
+      const angle = fallAngle(st, p);
+      const pose = angle > 0 ? 'stand' : p.eng ? 'block' : st.moving ? 'run' : 'stand';
       const frame = pose === 'run' ? Math.floor(st.phase) % 4 : 0;
       const carry = V.carrier === p.i && V.ball && V.ball.st !== 'air';
-      const spr = sprite(uni, p.skin, pose, frame, st.face, carry && pose !== 'down', seat);
+      const spr = sprite(uni, p.skin, pose, frame, st.face, carry, seat);
       if (p.i === V.ctrl && V.live && !p.down) {
         ctx.fillStyle = 'rgba(255,210,63,0.95)';
         ring(ctx, px, py, 6 * SPR, 2.5 * SPR);
@@ -385,14 +443,21 @@
         ctx.fillStyle = '#5fd35f';
         ring(ctx, px, py, 7 * SPR, 3 * SPR);
       }
-      const lift = ((pose === 'dive' ? 4 : 0) + (pose === 'run' && frame % 2 ? 1 : 0)) * SPR;
       const w = spr.width * SPR, h = spr.height * SPR;
-      ctx.drawImage(spr, snap(px - w / 2), snap(py - h + SPR - lift), snap(w), snap(h));
-      if (pose === 'down' && carry) {
-        ctx.fillStyle = PAL.ball;
-        ctx.fillRect(px + (st.face >= 0 ? 5 : -7) * SPR, py - 2 * SPR, 2 * SPR, SPR);
+      if (angle > 0) {
+        // Tip over from the feet, the way he was moving; a diving tackler is airborne.
+        const lift = p.lunge && !st.down ? 3 * SPR : 0;
+        ctx.save();
+        ctx.translate(px, py - lift);
+        ctx.rotate(angle * st.fallDir);
+        ctx.drawImage(spr, -w / 2, -h + SPR, w, h);
+        ctx.restore();
+        return;
       }
-    }
+      const lift = (pose === 'run' && frame % 2 ? 1 : 0) * SPR;
+      ctx.drawImage(spr, snap(px - w / 2), snap(py - h + SPR - lift), snap(w), snap(h));
+    });
+    drawDust(ctx, dt);
   }
 
   // Pre-snap play art: each receiver's route in his own color, with an arrow
@@ -438,15 +503,6 @@
     }
   }
 
-  function drawDefTarget(ctx, V) {
-    const t = V.defTarget;
-    if (!t) return;
-    const x = sx(t.x), y = sy(t.y);
-    ctx.fillStyle = 'rgba(90,230,255,0.9)';
-    ctx.fillRect(x - 4, y - 0.75, 8, 1.5);
-    ctx.fillRect(x - 0.75, y - 4, 1.5, 8);
-  }
-
   function drawBall(ctx, V) {
     const b = V.ball;
     if (!b || !b.visible) return;
@@ -485,13 +541,20 @@
     ring(ctx, sx(V.landing.x), sy(V.landing.y), pulse + 2, pulse * 0.6 + 1);
   }
 
+  // Floating joystick: base where the thumb landed, knob under the thumb.
   function drawJoy(ctx, V) {
     const j = V.joy;
     if (!j) return;
-    ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    ellipse(ctx, j.x0, j.y0, 16, 16);
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ellipse(ctx, j.x1, j.y1, 6, 6);
+    const r = j.r || 20;
+    ctx.fillStyle = 'rgba(13,15,20,0.28)';
+    ellipse(ctx, j.x0, j.y0, r, r);
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(j.x0, j.y0, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = j.on ? 'rgba(255,210,63,0.85)' : 'rgba(255,255,255,0.6)';
+    ellipse(ctx, j.x1, j.y1, 8, 8);
   }
 
   // --- Weather --------------------------------------------------------------------
@@ -784,7 +847,6 @@
         drawLines(ctx, V);
         drawRoutes(ctx, V);
         drawLanding(ctx, V);
-        drawDefTarget(ctx, V);
         drawPlayers(ctx, V, dt);
         drawBall(ctx, V);
         drawAim(ctx, V);

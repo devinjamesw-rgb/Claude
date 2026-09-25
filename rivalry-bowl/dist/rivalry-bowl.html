@@ -1416,7 +1416,7 @@
     play.stats.receiver = p.i;
     p.track = null;
     p.role = 'carrier';
-    p.slow = 0.25;
+    p.slow = 0.12;
     for (const q of play.players) if (q.side === 0 && q.i !== p.i) { q.role = 'escort'; q.track = null; }
     // Defenders read the catch faster the closer they are to it.
     for (const q of play.players) {
@@ -1606,6 +1606,25 @@
     p.x += p.vx * dt; p.y += p.vy * dt;
   }
 
+  const TURN_RATE = 9.5; // rad/s, about 540 degrees a second
+  const TURN_BLEED = 0.22; // speed lost per radian turned
+  function integrateSteered(p, accel, dt) {
+    const sp = hyp(p.vx, p.vy), want = hyp(p.dvx, p.dvy);
+    if (sp < 1.2 || want < 0.2) { integrate(p, accel * 1.3, dt); return; }
+    const a0 = Math.atan2(p.vy, p.vx), a1 = Math.atan2(p.dvy, p.dvx);
+    let da = a1 - a0;
+    if (da > Math.PI) da -= 2 * Math.PI;
+    if (da < -Math.PI) da += 2 * Math.PI;
+    const turn = clamp(da, -TURN_RATE * dt, TURN_RATE * dt);
+    let ns = sp + clamp(want - sp, -accel * 1.5 * dt, accel * dt);
+    ns *= 1 - Math.abs(turn) * TURN_BLEED;
+    const a = a0 + turn;
+    p.vx = Math.cos(a) * ns;
+    p.vy = Math.sin(a) * ns;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+  }
+
   function separate(play) {
     const P = play.players;
     for (let i = 0; i < 22; i++) {
@@ -1670,33 +1689,13 @@
       ctrl.dvx = 0; ctrl.dvy = 0;
       return true;
     }
-    if (input.steer && !(ctrl.i === QB && !play.scramble)) {
-      // Hold a finger where you want to go: he keeps driving upfield unless
-      // the finger is clearly behind him.
-      play.manual = true;
-      let dx = input.steer.x - ctrl.x;
-      const dy = input.steer.y - ctrl.y;
-      if (dx > -2.5) dx = Math.max(dx, 2.2);
-      steerDir(ctrl, dx, dy, spd);
-      return true;
-    }
     if (input.joy) {
+      // Floating joystick: run the way the stick points. Past the dead zone he
+      // is already at better than half speed, so small nudges don't bog down.
       play.manual = true;
-      const jx = input.joy.x, jy = input.joy.y;
-      if (ctrl.i === QB && !play.scramble) {
-        // QB in the pocket: plain joystick, no drift when released.
-        steerDir(ctrl, jx, jy, spd * Math.min(1, hyp(jx, jy)));
-        ctrl.drop = { x: ctrl.x, y: ctrl.y };
-        return true;
-      }
-      // Ball carrier keeps running upfield; the stick weaves him up and down.
-      // Pulling back slows him, and pulling well back runs him backwards.
-      let vx = jx >= 0 ? 1 : Math.max(-1, 1 + 2.2 * jx);
-      let vy = jy * 1.1;
-      const m = hyp(vx, vy);
-      if (m > 1) { vx /= m; vy /= m; }
-      ctrl.dvx = vx * spd;
-      ctrl.dvy = vy * spd;
+      const jx = input.joy.x, jy = input.joy.y, mag = Math.min(1, hyp(jx, jy));
+      steerDir(ctrl, jx, jy, spd * Math.max(0.55, mag));
+      if (ctrl.i === QB && !play.scramble) ctrl.drop = { x: ctrl.x, y: ctrl.y };
       return true;
     }
     if (ctrl.i === QB && !play.scramble) return false; // QB holds his spot in the pocket
@@ -1707,13 +1706,16 @@
     return true;
   }
 
-  // The defense player points where the defender should run.
+  // The defense player's joystick steers his defender.
   function applyDefenderInput(play, input) {
     const i = play.humanDefIdx;
-    if (i < 11 || !input.defTarget || play.phase !== 'live') return false;
+    const j = input.defJoy;
+    if (i < 11 || !j || play.phase !== 'live') return false;
     const p = play.players[i];
     if (p.eng >= 0 || p.down > 0) return false;
-    steerTo(p, input.defTarget.x, input.defTarget.y, effSpeed(play, p), true);
+    const mag = Math.min(1, hyp(j.x, j.y));
+    if (mag <= 0) return false;
+    steerDir(p, j.x, j.y, effSpeed(play, p) * Math.max(0.55, mag));
     return true;
   }
 
@@ -1777,10 +1779,14 @@
     tryEngage(play);
     for (const p of P) {
       if (p.eng >= 0) continue;
-      let acc = p.i === play.carrier ? 12 : p.side === 0 ? 11 : 10.5;
-      // Plant and cut: a runner the player steers against his momentum turns hard.
-      if (p.i === play.carrier && play.manual && p.vx * p.dvx + p.vy * p.dvy < 0) acc = 22;
-      integrate(p, acc, dt);
+      if ((userMoved && car && p === car && !play.turnover) || (defMoved && p.i === play.humanDefIdx)) {
+        // Players on a joystick turn their running direction quickly and pay
+        // for hard cuts with a little speed, like an arcade runner.
+        integrateSteered(p, p === car ? 18 : 14, dt);
+      } else {
+        const acc = p.i === play.carrier ? 18 : p.side === 0 ? 11 : 10.5;
+        integrate(p, acc, dt);
+      }
       if (Math.abs(p.vx) > 0.3) p.face = p.vx > 0 ? 1 : -1;
       if (p.i !== play.carrier) p.y = clamp(p.y, -1.5, W + 1.5);
     }
@@ -2792,7 +2798,7 @@
     cam: { x: 40, y: FW / 2 }, camV: { x: 0, y: 0 }, lead: 9, camInit: false, t: 0,
     z: 1, reserve: 0, // zoom (below 1 before the snap) and space kept clear for the play-call buttons
     crowd: null, crowdKey: '', sprites: new Map(), rain: [],
-    ps: [], flash: 0,
+    ps: [], dust: [], flash: 0,
   };
 
   function init(canvas) {
@@ -2805,7 +2811,7 @@
   // to device pixels, not logical ones, so motion stays smooth.
   function resize(cssW, cssH) {
     const k = Math.min(cssW, cssH) / 232;
-    const dpr = Math.min(typeof devicePixelRatio === 'number' ? devicePixelRatio : 1, 2.5);
+    const dpr = Math.min(typeof devicePixelRatio === 'number' ? devicePixelRatio : 1, 2);
     R.k = k;
     R.W = Math.max(200, Math.round(cssW / k));
     R.H = Math.max(200, Math.round(cssH / k));
@@ -2862,6 +2868,7 @@
 
   function updateCamera(V, dt) {
     let fx = R.cam.x, fy = R.cam.y, lead = 0;
+    R.chase = false;
     const baseLead = R.portrait ? 6 : 9;
     if (V.mode === 'field') {
       const car = V.players && V.carrier >= 0 ? V.players[V.carrier] : null;
@@ -2874,7 +2881,7 @@
       } else if (car && V.live) {
         const qbHolding = car.i === 0 && !V.turnover && car.x < V.los + 0.5;
         if (qbHolding) { fx = Math.max(car.x, V.los - 4); fy = (car.y + V.ballY) / 2; lead = baseLead + 1; }
-        else { fx = car.x; fy = car.y; lead = car.side === 0 && !V.turnover ? 5 : -5; }
+        else { fx = car.x; fy = car.y; lead = car.side === 0 && !V.turnover ? 5 : -5; R.chase = true; }
       } else if (car) { fx = car.x; fy = car.y; }
       else if (b) { fx = b.x; fy = b.y; }
     }
@@ -2896,8 +2903,9 @@
       R.camV[key] += a * dt;
       R.cam[key] += R.camV[key] * dt;
     };
-    spring('x', tx, 3.4);
-    spring('y', ty, 2.6);
+    // Follow a ball carrier tightly so he never drifts toward the edge.
+    spring('x', tx, R.chase ? 6 : 3.4);
+    spring('y', ty, R.chase ? 4 : 2.6);
   }
 
   // --- Stadium ------------------------------------------------------------------
@@ -3102,41 +3110,97 @@
     return c;
   }
 
+  const ease = (u) => 1 - (1 - u) * (1 - u);
+
+  // Per-player display state: smoothed speed, facing with hysteresis, stride
+  // phase from distance run, and the fall / get-up timers.
   function playerState(p, dt) {
     let st = R.ps[p.i];
     if (!st || Math.hypot(p.x - st.x, p.y - st.y) > 5) {
-      st = R.ps[p.i] = { x: p.x, y: p.y, spd: 0, face: p.face >= 0 ? 1 : -1, phase: p.i * 0.37, moving: false };
+      st = R.ps[p.i] = { x: p.x, y: p.y, spd: 0, face: p.face >= 0 ? 1 : -1, phase: p.i * 0.37, moving: false, down: !!p.down, downT: p.down ? 9 : 0, upT: 9, fallDir: 1 };
     }
     const sp = Math.hypot(p.vx || 0, p.vy || 0);
     st.spd += (sp - st.spd) * Math.min(1, dt * 10);
     if (st.spd > 1.3) st.moving = true;
     else if (st.spd < 0.6) st.moving = false;
-    if (p.eng || p.down) st.face = p.face >= 0 ? 1 : -1;
+    if (p.eng || p.down) { if (!st.down) st.face = p.face >= 0 ? 1 : -1; }
     else if ((p.vx || 0) > 1.2) st.face = 1;
     else if ((p.vx || 0) < -1.2) st.face = -1;
+    if (p.down && !st.down) {
+      st.down = true;
+      st.downT = 0;
+      st.fallDir = Math.abs(p.vx || 0) > 0.6 ? Math.sign(p.vx) : st.face;
+      dustAt(p.x + st.fallDir * 0.9, p.y, 7);
+    } else if (!p.down && st.down) {
+      st.down = false;
+      st.upT = 0;
+    }
+    st.downT += dt;
+    st.upT += dt;
     st.phase += st.spd * dt * 1.35;
     st.x = p.x; st.y = p.y;
     return st;
   }
 
+  // Lean angle (radians, before the fall direction): tip over with a small
+  // settle, stay down, and spring back up after a stumble.
+  function fallAngle(st, p) {
+    const full = Math.PI * 0.49;
+    if (st.down) {
+      const u = st.downT / 0.26;
+      if (u < 1) return full * ease(u);
+      const b = (st.downT - 0.26) / 0.14;
+      return b < 1 ? full - Math.sin(b * Math.PI) * 0.1 : full;
+    }
+    if (p.lunge) return Math.PI * 0.38;
+    if (st.upT < 0.2) return full * (1 - ease(st.upT / 0.2));
+    return 0;
+  }
+
+  function dustAt(x, y, n) {
+    for (let i = 0; i < n; i++) {
+      R.dust.push({ x, y, z: 0.1, vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 1.6, vz: 1 + Math.random() * 1.5, life: 0.4 + Math.random() * 0.2, t: 0, s: 1 + Math.random() * 1.2 });
+    }
+    if (R.dust.length > 120) R.dust.splice(0, R.dust.length - 120);
+  }
+
+  function drawDust(ctx, dt) {
+    for (const d of R.dust) {
+      d.t += dt;
+      d.x += d.vx * dt; d.y += d.vy * dt;
+      d.vz -= 6 * dt; d.z = Math.max(0, d.z + d.vz * dt);
+      d.vx *= 0.94; d.vy *= 0.94;
+      const a = 1 - d.t / d.life;
+      if (a <= 0) continue;
+      ctx.fillStyle = `rgba(222,212,170,${(a * 0.8).toFixed(2)})`;
+      ctx.fillRect(sx(d.x) - d.s / 2, sy(d.y) - d.z * R.SZ - d.s / 2, d.s, d.s);
+    }
+    R.dust = R.dust.filter((d) => d.t < d.life);
+  }
+
   function drawPlayers(ctx, V, dt) {
     const list = V.players.slice().sort((a, b) => a.y - b.y);
-    const vis = (px, py) => px > -20 && px < R.W + 20 && py > -20 && py < R.H + 30;
+    const vis = (px, py) => px > -30 && px < R.W + 30 && py > -20 && py < R.H + 30;
+    const states = list.map((p) => playerState(p, dt));
     ctx.fillStyle = PAL.shadow;
-    for (const p of list) {
+    list.forEach((p, k) => {
       const px = sx(p.x), py = sy(p.y);
-      if (vis(px, py)) ellipse(ctx, px, py, 4 * SPR, 1.5 * SPR);
-    }
-    for (const p of list) {
-      const st = playerState(p, dt);
+      if (!vis(px, py)) return;
+      // A falling player's shadow stretches out along his body.
+      const st = states[k], a = fallAngle(st, p), len = Math.sin(a) * 11 * SPR;
+      ellipse(ctx, px + st.fallDir * len * 0.5, py, 4 * SPR + len * 0.5, 1.5 * SPR);
+    });
+    list.forEach((p, k) => {
+      const st = states[k];
       const px = sx(p.x), py = sy(p.y);
-      if (!vis(px, py)) continue;
+      if (!vis(px, py)) return;
       const seat = p.side === 0 ? V.offSeat : V.defSeat;
       const uni = V.uni[seat];
-      const pose = p.down ? 'down' : p.lunge ? 'dive' : p.eng ? 'block' : st.moving ? 'run' : 'stand';
+      const angle = fallAngle(st, p);
+      const pose = angle > 0 ? 'stand' : p.eng ? 'block' : st.moving ? 'run' : 'stand';
       const frame = pose === 'run' ? Math.floor(st.phase) % 4 : 0;
       const carry = V.carrier === p.i && V.ball && V.ball.st !== 'air';
-      const spr = sprite(uni, p.skin, pose, frame, st.face, carry && pose !== 'down', seat);
+      const spr = sprite(uni, p.skin, pose, frame, st.face, carry, seat);
       if (p.i === V.ctrl && V.live && !p.down) {
         ctx.fillStyle = 'rgba(255,210,63,0.95)';
         ring(ctx, px, py, 6 * SPR, 2.5 * SPR);
@@ -3153,14 +3217,21 @@
         ctx.fillStyle = '#5fd35f';
         ring(ctx, px, py, 7 * SPR, 3 * SPR);
       }
-      const lift = ((pose === 'dive' ? 4 : 0) + (pose === 'run' && frame % 2 ? 1 : 0)) * SPR;
       const w = spr.width * SPR, h = spr.height * SPR;
-      ctx.drawImage(spr, snap(px - w / 2), snap(py - h + SPR - lift), snap(w), snap(h));
-      if (pose === 'down' && carry) {
-        ctx.fillStyle = PAL.ball;
-        ctx.fillRect(px + (st.face >= 0 ? 5 : -7) * SPR, py - 2 * SPR, 2 * SPR, SPR);
+      if (angle > 0) {
+        // Tip over from the feet, the way he was moving; a diving tackler is airborne.
+        const lift = p.lunge && !st.down ? 3 * SPR : 0;
+        ctx.save();
+        ctx.translate(px, py - lift);
+        ctx.rotate(angle * st.fallDir);
+        ctx.drawImage(spr, -w / 2, -h + SPR, w, h);
+        ctx.restore();
+        return;
       }
-    }
+      const lift = (pose === 'run' && frame % 2 ? 1 : 0) * SPR;
+      ctx.drawImage(spr, snap(px - w / 2), snap(py - h + SPR - lift), snap(w), snap(h));
+    });
+    drawDust(ctx, dt);
   }
 
   // Pre-snap play art: each receiver's route in his own color, with an arrow
@@ -3206,15 +3277,6 @@
     }
   }
 
-  function drawDefTarget(ctx, V) {
-    const t = V.defTarget;
-    if (!t) return;
-    const x = sx(t.x), y = sy(t.y);
-    ctx.fillStyle = 'rgba(90,230,255,0.9)';
-    ctx.fillRect(x - 4, y - 0.75, 8, 1.5);
-    ctx.fillRect(x - 0.75, y - 4, 1.5, 8);
-  }
-
   function drawBall(ctx, V) {
     const b = V.ball;
     if (!b || !b.visible) return;
@@ -3253,13 +3315,20 @@
     ring(ctx, sx(V.landing.x), sy(V.landing.y), pulse + 2, pulse * 0.6 + 1);
   }
 
+  // Floating joystick: base where the thumb landed, knob under the thumb.
   function drawJoy(ctx, V) {
     const j = V.joy;
     if (!j) return;
-    ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    ellipse(ctx, j.x0, j.y0, 16, 16);
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ellipse(ctx, j.x1, j.y1, 6, 6);
+    const r = j.r || 20;
+    ctx.fillStyle = 'rgba(13,15,20,0.28)';
+    ellipse(ctx, j.x0, j.y0, r, r);
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(j.x0, j.y0, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = j.on ? 'rgba(255,210,63,0.85)' : 'rgba(255,255,255,0.6)';
+    ellipse(ctx, j.x1, j.y1, 8, 8);
   }
 
   // --- Weather --------------------------------------------------------------------
@@ -3552,7 +3621,6 @@
         drawLines(ctx, V);
         drawRoutes(ctx, V);
         drawLanding(ctx, V);
-        drawDefTarget(ctx, V);
         drawPlayers(ctx, V, dt);
         drawBall(ctx, V);
         drawAim(ctx, V);
@@ -3580,16 +3648,18 @@
 /* Rivalry Bowl: touch / mouse gestures -> game intents.
  * Contexts: 'qb' (can throw), 'run' (steer carrier), 'def' (steer defender),
  * 'pick' (tap a defender before the snap), 'kick' (aim + power), 'none'.
- * Runners and defenders run toward a held finger; a tap jukes (runner) or
- * switches to the tapped defender (defense). */
+ * Runners, scrambling QBs and defenders use a floating joystick that appears
+ * where the finger lands; a tap jukes (runner) or switches to the tapped
+ * defender (defense). */
 (function (root) {
   'use strict';
   const RB = root.RB;
   const AIM_GAIN = 1.6; // the reticle moves 1.6x as far as your finger
   const DEAD = 12; // css px before a drag counts
   const MIN_THROW = 26; // shorter pulls cancel instead of throwing
-  const JOY_FULL = 60; // css px of drag for full joystick deflection (QB scramble)
-  const HOLD_MS = 140; // a still finger held this long starts steering
+  // Joystick: responds from JOY_DEAD px, full speed at JOY_FULL px; the base
+  // trails the finger beyond JOY_MAX px so reversing direction stays quick.
+  const JOY_DEAD = 8, JOY_FULL = 40, JOY_MAX = 50;
   const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
   const S = {
@@ -3637,13 +3707,21 @@
     const p = pos(e);
     S.x = p.x;
     S.y = p.y;
+    if (S.mode === 'joy') {
+      // Drag the base along once the finger runs past the rim.
+      const jx = S.x - S.ax, jy = S.y - S.ay, jl = Math.hypot(jx, jy);
+      if (jl > JOY_MAX) { S.ax = S.x - (jx / jl) * JOY_MAX; S.ay = S.y - (jy / jl) * JOY_MAX; }
+      return;
+    }
     if (S.mode) return;
     const dx = S.x - S.x0, dy = S.y - S.y0;
-    if (Math.hypot(dx, dy) < DEAD) return;
+    // Aim-vs-scramble needs a slightly longer drag to read reliably.
+    if (Math.hypot(dx, dy) < (S.lastCtx === 'qb' ? DEAD : JOY_DEAD)) return;
     const c = S.lastCtx;
     // Pulling back aims; only a clearly forward drag scrambles.
     if (c === 'qb') S.mode = dx > 0 && dx > Math.abs(dy) * 1.2 ? 'joy' : 'aim';
-    else if (c === 'run' || c === 'def') S.mode = 'follow';
+    else if (c === 'run' || c === 'def') S.mode = 'joy';
+    if (S.mode === 'joy') { S.ax = S.x0; S.ay = S.y0; }
   }
 
   function up(e) {
@@ -3660,7 +3738,7 @@
     } else if (S.mode === 'kick' && c === 'kick') {
       const k = kickVals();
       if (k.power > 0.08) S.intents.kick = k;
-    } else if (len < DEAD && dt < 220) {
+    } else if (len < JOY_DEAD && dt < 220) {
       if (c === 'pick' || c === 'def') {
         const k = RB.Render.R.k;
         S.intents.tapAt = RB.Render.toWorld(S.x / k, S.y / k);
@@ -3712,7 +3790,6 @@
       dive: S.intents.dive,
       kickLaunch: S.intents.kick,
       tapAt: S.intents.tapAt,
-      steer: null,
     };
     S.intents = { throwAt: null, juke: false, dive: null, kick: null, tapAt: null };
     if (out.aiming) {
@@ -3723,23 +3800,17 @@
       const dx = S.x - S.x0, dy = S.y - S.y0;
       out.aimArmed = Math.hypot(dx, dy) >= MIN_THROW;
     }
-    // A still finger held a moment starts steering too.
-    if (S.id !== null && !S.mode && (S.lastCtx === 'run' || S.lastCtx === 'def') && performance.now() - S.t0 > HOLD_MS) S.mode = 'follow';
-    if (S.id !== null && S.mode === 'follow') {
-      const k = RB.Render.R.k;
-      out.steer = RB.Render.toWorld(S.x / k, S.y / k);
-    }
     if (S.id !== null && S.mode === 'joy') {
-      const dx = S.x - S.x0, dy = S.y - S.y0, len = Math.hypot(dx, dy);
-      const mag = clamp((len - 10) / (JOY_FULL - 10), 0, 1);
-      if (mag > 0.04) {
+      const dx = S.x - S.ax, dy = S.y - S.ay, len = Math.hypot(dx, dy);
+      const mag = clamp((len - JOY_DEAD) / (JOY_FULL - JOY_DEAD), 0, 1);
+      if (mag > 0) {
         const w = RB.Render.screenDeltaToWorld(dx, dy);
         const wl = Math.hypot(w.x, w.y) || 1;
         out.joy = { x: (w.x / wl) * mag, y: (w.y / wl) * mag };
       }
       const k = RB.Render.R.k;
-      const lim = Math.min(len, JOY_FULL);
-      out.joyScreen = { x0: S.x0 / k, y0: S.y0 / k, x1: (S.x0 + (len ? (dx / len) * lim : 0)) / k, y1: (S.y0 + (len ? (dy / len) * lim : 0)) / k };
+      const lim = Math.min(len, JOY_MAX);
+      out.joyScreen = { x0: S.ax / k, y0: S.ay / k, x1: (S.ax + (len ? (dx / len) * lim : 0)) / k, y1: (S.ay + (len ? (dy / len) * lim : 0)) / k, r: JOY_MAX / k, on: mag > 0 };
     }
     if (S.id !== null && S.mode === 'kick') out.kick = kickVals();
     return out;
@@ -4068,7 +4139,7 @@
     if (!play) return null;
     let s = '';
     for (const p of play.players) {
-      const f = (p.face >= 0 ? 1 : 0) | (p.down > 0.25 ? 2 : 0) | ((p.lunge || 0) > 0 ? 4 : 0) | (p.eng >= 0 ? 8 : 0);
+      const f = (p.face >= 0 ? 1 : 0) | (p.down > 0.35 ? 2 : 0) | ((p.lunge || 0) > 0 || (p.dive || 0) > 0 ? 4 : 0) | (p.eng >= 0 ? 8 : 0);
       s += B36((p.x + 5) * 10, 3) + B36((p.y + 3) * 10, 2) + f.toString(36);
     }
     const b = play.ball;
@@ -4237,7 +4308,7 @@
     reset() {
       Object.assign(Diag, { switched: '', sent: 0, ok: 0, fail: 0, lastErr: '', listenerErr: '' });
       Object.assign(this, { noDb: false, switching: false, seekSince: Date.now() });
-      Object.assign(this, { role: null, partner: null, G: null, snap: null, kickSnap: null, disp: null, fx: [], fxn: 0, fxSeen: -1, actN: 0, actSeen: {}, dcN: 0, lastDcN: -1, pending: null, err: '', errDetail: '', defIdx: Sim.IDX.S1, lastAdoptVer: 0, tgt: '', buf: [], lastTs: -1, offset: null, lastLobbyPub: 0, gaps: [], lastArr: 0, rtt: null, lastEk: null, dc: '', dcP: null, dcPick: null, steer: null });
+      Object.assign(this, { role: null, partner: null, G: null, snap: null, kickSnap: null, disp: null, fx: [], fxn: 0, fxSeen: -1, actN: 0, actSeen: {}, dcN: 0, lastDcN: -1, pending: null, err: '', errDetail: '', defIdx: Sim.IDX.S1, lastAdoptVer: 0, tgt: '', buf: [], lastTs: -1, offset: null, lastLobbyPub: 0, gaps: [], lastArr: 0, rtt: null, lastEk: null, dc: '', dcP: null, dcPick: null });
     },
 
     leave() {
@@ -4468,17 +4539,19 @@
         p.fxn = this.fxn;
         if (this.rtt != null) p.rtt = Math.round(this.rtt);
       } else {
-        const st = this.steer && this.G.g.phase === 'play' ? [r2(this.steer.x), r2(this.steer.y)] : null;
-        Object.assign(p, { dc: this.dc || '', dcn: this.dcN, dcp: this.dcP == null ? -1 : this.dcP, di: this.defIdx, dt: st, ek: this.lastTs >= 0 ? this.lastTs : null, act: this.pending });
+        const inp = this.App.lastInput;
+        const joy = inp && inp.joy && this.G.g.phase === 'play' ? [r2(inp.joy.x), r2(inp.joy.y)] : null;
+        Object.assign(p, { dc: this.dc || '', dcn: this.dcN, dcp: this.dcP == null ? -1 : this.dcP, di: this.defIdx, dj: joy, ek: this.lastTs >= 0 ? this.lastTs : null, act: this.pending });
       }
       this.t.setPresence(p);
     },
 
-    // Authority: where the defense player wants his defender to run.
+    // Authority: the defense player's joystick for this step.
     remoteInput() {
       const pp = this.partnerPresence();
-      if (!pp || !Array.isArray(pp.dt) || !num(pp.dt[0]) || !num(pp.dt[1])) return {};
-      return { defTarget: { x: Math.max(-2, Math.min(122, pp.dt[0])), y: Math.max(-1, Math.min(C.FIELD_W + 1, pp.dt[1])) } };
+      if (!pp || !Array.isArray(pp.dj) || !num(pp.dj[0]) || !num(pp.dj[1])) return {};
+      const x = pp.dj[0], y = pp.dj[1], m = Math.hypot(x, y);
+      return m > 1 ? { defJoy: { x: x / m, y: y / m } } : { defJoy: { x, y } };
     },
 
     // One line for the HUD: which link, and the measured round trip.
@@ -4550,7 +4623,6 @@
       const G = this.G, g = G.g, rt = G.rt;
       if (inp && inp.tapAt && g.phase === 'presnap') this.pickDefender(inp.tapAt);
       if (inp && inp.tapAt && g.phase === 'play') this.switchDefender(inp.tapAt);
-      this.steer = inp && inp.steer && g.phase === 'play' ? inp.steer : null;
       const V = {
         g, mode: 'field', teams: [Game.team(G, 0), Game.team(G, 1)], uni: rt.uniforms,
         offSeat: g.poss, defSeat: 1 - g.poss, wx: g.wx, phase: g.phase, cheer: this.App.cheer,
@@ -4577,7 +4649,7 @@
         V.live = s.live;
         V.turnover = s.turnover;
         V.landing = s.landing;
-        V.defTarget = this.steer;
+        if (inp) V.joy = inp.joyScreen;
       }
       V.netInfo = this.netInfo();
       return V;
@@ -4854,9 +4926,9 @@
         <dt>SNAP</dt><dd>Pick PASS or RUN. The ball is snapped right away. On 4th down you can also punt or kick a field goal.</dd>
         <dt>THROW</dt><dd>Touch anywhere and pull <b>back</b>, away from the end zone, like a slingshot. The dotted arc shows where the ball will land. Release to throw. Lead your receiver: the ball goes where you aim, not where he is now.</dd>
         <dt>SCRAMBLE</dt><dd>Drag <b>forward</b> to run with the QB. Once he crosses the line he can't throw.</dd>
-        <dt>RUN</dt><dd>After a catch or handoff the runner keeps going upfield. Drag to steer, tap to juke, flick to dive.</dd>
+        <dt>RUN</dt><dd>After a catch or handoff the runner keeps going upfield. Put your thumb down anywhere and drag: a joystick appears under it. Tap to juke, flick to dive.</dd>
         <dt>KICK</dt><dd>Drag down for power and sideways to aim (the ball goes the opposite way). Clear the white line on the power bar and watch the wind.</dd>
-        <dt>HEAD TO HEAD</dt><dd>Pass &amp; Play: each of you plays your own offense against the computer's defense; hand the phone over on every change of possession. Online: the defense player calls the coverage and can steer the highlighted safety.</dd>
+        <dt>HEAD TO HEAD</dt><dd>Pass &amp; Play: each of you plays your own offense against the computer's defense; hand the phone over on every change of possession. Online: the defense player calls the coverage, taps any defender to take him over and steers him with the joystick.</dd>
         <dt>CLOCK</dt><dd>The clock runs between plays after tackles in bounds. Snap quickly to save time. Incompletions, out of bounds, scores and timeouts stop it. Overtime uses college rules.</dd>
       </dl>
       <div class="row end"><button class="btn" type="button" data-action="back">Got it</button></div></div>`;
@@ -5111,7 +5183,7 @@
           let input;
           if (isDemo) input = demoInput(G);
           else {
-            input = Object.assign({ aiming: inp.aiming, joy: inp.joy, steer: inp.steer }, takeOnce());
+            input = Object.assign({ aiming: inp.aiming, joy: inp.joy }, takeOnce());
             if (App.net) Object.assign(input, App.net.remoteInput());
           }
           savePrev(G);
@@ -5160,7 +5232,7 @@
   function viewPlayer(p, a) {
     return {
       i: p.i, x: mix(p.px, p.x, a), y: mix(p.py, p.y, a), vx: p.vx, vy: p.vy, side: p.side, face: p.face,
-      down: p.down > 0.35, lunge: (p.lunge || 0) > 0, eng: p.eng >= 0, skin: p.skin,
+      down: p.down > 0.35, lunge: (p.lunge || 0) > 0 || (p.dive || 0) > 0, eng: p.eng >= 0, skin: p.skin,
     };
   }
 
@@ -5284,8 +5356,8 @@
   function hintFor(ctx, g) {
     if (!g || g.playNo > 8) return '';
     if (ctx === 'qb') return 'PULL BACK TO AIM · RELEASE TO THROW · DRAG FORWARD TO RUN';
-    if (ctx === 'run') return 'HOLD WHERE TO RUN · TAP TO JUKE · FLICK TO DIVE';
-    if (ctx === 'def') return 'HOLD WHERE HE SHOULD RUN · TAP A PLAYER TO SWITCH';
+    if (ctx === 'run') return 'DRAG TO STEER · TAP TO JUKE · FLICK TO DIVE';
+    if (ctx === 'def') return 'DRAG TO STEER · TAP A PLAYER TO SWITCH';
     return '';
   }
 

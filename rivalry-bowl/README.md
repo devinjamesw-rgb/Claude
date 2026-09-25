@@ -24,9 +24,9 @@ viewer the room can see, so a stall can be diagnosed from a screenshot.
 **Backup sync.** Two phones signed in to the same account in the Claude app were each
 shown alone in the live room, although both connected and every update was confirmed.
 The page can also sync through the artifact's shared database: if the live room shows
-nobody else for 8 seconds, both phones switch to it and match there. It runs about half a
-second behind, so over the backup the defense picks coverage but doesn't steer a
-defender. A page that declares the database is private to the owner's organization, so
+nobody else for 8 seconds, both phones switch to it and match there. Its round trip is
+about a third of a second, so a defender steered over the backup reacts noticeably late.
+A page that declares the database is private to the owner's organization, so
 this version is published separately (`dist/artifact-online.html`, capabilities
 `room` + `db`) from the public one (`dist/artifact.html`, `room` only). When the file is opened anywhere else (a
 download, GitHub Pages), only Pass & Play works and the Online screen says so.
@@ -43,17 +43,19 @@ download, GitHub Pages), only Pass & Play works and the Online screen says so.
   long enough; letting go before then cancels the throw. With **aim assist** on (title
   screen), a reticle near where a receiver will be locks onto his catch point and turns
   green, with a ring on that receiver.
-- **Scramble**: drag forward to run with the QB. Once he crosses the line he can't throw.
-- **Run after the catch**: the runner keeps going upfield. Hold a finger where you want
-  him to go (above, below or ahead of him) and he runs toward it; hold well behind him to
-  retreat. Tap to juke, flick to dive.
+- **Scramble**: drag forward to run with the QB (the joystick takes over). Once he
+  crosses the line he can't throw.
+- **Run**: after the catch (or once the QB scrambles) put a thumb down anywhere and drag.
+  A joystick appears under your thumb and the runner goes the way it points; if your
+  thumb drifts past the rim, the base follows it. Let go and he keeps running upfield on
+  his own. Hard cuts cost a little speed. Tap to juke, flick to dive.
 - **Kick**: drag down for power and sideways to aim (the ball goes the opposite way).
   Clear the white line on the power bar and watch the wind.
 - **Defense (online only)**: pick a coverage before the snap; it carries over to later
   plays until you change it. Tap any defender to take control of him (before or during
-  the play), and hold a finger where he should run. A tap away from everyone switches
-  to the free defender nearest the ball. The HUD shows the link type and the measured
-  round trip.
+  the play), then steer him with the same drag joystick. A tap away from everyone
+  switches to the free defender nearest the ball. The HUD shows the link type and the
+  measured round trip.
 
 ## Rules
 
@@ -107,4 +109,6 @@ node tools/onlinetest.js         # two tabs matched automatically over #localnet
 MOCK=1 node tools/onlinetest.js  # same, through a mock of the claude.ai room + permissions API
 MOCK=1 ISOLATED=1 DB=1 node tools/onlinetest.js  # room shows each phone alone; db backup pairs them
 node tools/onlinejitter.js       # smoothness on the defending (streamed) side
+MOCK=1 node tools/onlinedef.js   # defense: tap to switch, joystick steering, sticky call
+node tools/response.js           # how fast a joystick cut changes the runner's direction
 ```
