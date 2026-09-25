@@ -207,12 +207,14 @@
             input = Object.assign({ aiming: inp.aiming, joy: inp.joy }, takeOnce());
             if (App.net) Object.assign(input, App.net.remoteInput());
           }
+          savePrev(G);
           Game.update(G, DT, input);
           App.acc -= DT;
           steps++;
         }
         if (steps === 4) App.acc = 0;
       }
+      App.alpha = Math.max(0, Math.min(1, App.acc / DT));
       flushSfx(G, isDemo);
       V = !isDemo && App.net && !App.net.isAuthority() ? App.net.view(inp) : buildView(G, inp);
     }
@@ -234,10 +236,24 @@
   }
 
   // --- View model ---------------------------------------------------------------------------
-  function viewPlayer(p) {
+  // The sim runs at a fixed 60 Hz. Drawing blends the last two sim states so
+  // motion stays smooth whatever the screen's refresh rate.
+  function savePrev(G) {
+    const play = G.rt.play;
+    if (play) {
+      for (const p of play.players) { p.px = p.x; p.py = p.y; }
+      const b = play.ball;
+      b.px = b.x; b.py = b.y; b.pz = b.z;
+    }
+    const k = G.rt.kick;
+    if (k) { k.ball.px = k.ball.x; k.ball.pd = k.ball.d; k.ball.ph = k.ball.h; }
+  }
+  const mix = (prev, cur, a) => (prev == null ? cur : prev + (cur - prev) * a);
+
+  function viewPlayer(p, a) {
     return {
-      i: p.i, x: p.x, y: p.y, vx: p.vx, vy: p.vy, side: p.side, face: p.face,
-      down: p.down > 0.25, lunge: (p.lunge || 0) > 0, eng: p.eng >= 0, skin: p.skin,
+      i: p.i, x: mix(p.px, p.x, a), y: mix(p.py, p.y, a), vx: p.vx, vy: p.vy, side: p.side, face: p.face,
+      down: p.down > 0.35, lunge: (p.lunge || 0) > 0, eng: p.eng >= 0, skin: p.skin,
     };
   }
 
@@ -262,8 +278,9 @@
       carrier: -1, ctrl: -1, defCtrl: -1,
     };
     if (g.phase === 'kick' && rt.kick) {
+      const k = rt.kick, a = App.alpha || 0;
       V.mode = 'kick';
-      V.kick = rt.kick;
+      V.kick = Object.assign({}, k, { ball: { x: mix(k.ball.px, k.ball.x, a), d: mix(k.ball.pd, k.ball.d, a), h: mix(k.ball.ph, k.ball.h, a) } });
       V.kickUni = rt.uniforms[g.poss];
       V.kickAim = inp && inp.kick ? inp.kick : null;
       V.kickHint = 'DRAG DOWN FOR POWER · SIDEWAYS TO AIM';
@@ -276,16 +293,17 @@
       V.los = play.los;
       V.ballY = play.ballY;
       V.fdX = g.twoPt ? null : play.fdX;
-      V.players = play.players.map(viewPlayer);
+      const a = App.alpha || 0;
+      V.players = play.players.map((p) => viewPlayer(p, a));
       const b = play.ball;
-      V.ball = { x: b.x, y: b.y, z: b.z, st: b.st, visible: true };
+      V.ball = { x: mix(b.px, b.x, a), y: mix(b.py, b.y, a), z: mix(b.pz, b.z, a), st: b.st, visible: true };
       V.carrier = play.carrier;
       V.live = play.phase === 'live';
       V.turnover = play.turnover;
       V.ctrl = play.turnover ? -1 : play.carrier >= 0 && play.players[play.carrier].side === 0 ? play.carrier : 0;
       V.landing = play.landing;
       V.defCtrl = App.net ? play.humanDefIdx : -1;
-      if (inp && inp.aiming && inp.aimAt && Sim.canThrow(play)) V.aim = aimView(play, inp.aimAt);
+      if (inp && inp.aiming && inp.aimAt && Sim.canThrow(play)) V.aim = Object.assign(aimView(play, inp.aimAt), { armed: inp.aimArmed });
       if (inp) V.joy = inp.joyScreen;
     }
     return V;

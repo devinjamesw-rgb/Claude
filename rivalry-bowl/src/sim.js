@@ -728,7 +728,8 @@
     const d = aim.d;
     const rusher = nearestOpp(play, q, 2.6, (o) => o.eng < 0);
     const moving = hyp(q.vx, q.vy) > 2.2;
-    let sigma = (0.2 + d * (0.011 + (1 - q.acc) * 0.05)) * (1 + (rusher ? 1.1 : 0) + (moving ? 0.5 : 0));
+    // Throws land close to the reticle; pressure and throwing on the move add scatter.
+    let sigma = (0.08 + d * (0.003 + (1 - q.acc) * 0.018)) * (1 + (rusher ? 1.2 : 0) + (moving ? 0.6 : 0));
     if (play.wx.type === 'rain') sigma *= 1.15;
     const lx = aim.x + rng.gauss() * sigma;
     const ly = aim.y + rng.gauss() * sigma * 0.8;
@@ -1087,7 +1088,7 @@
         if ((a.i === play.carrier || b.i === play.carrier) && a.side !== b.side) continue;
         const dx = b.x - a.x, dy = b.y - a.y, d = hyp(dx, dy);
         if (d > 0.78 || d < 1e-4) continue;
-        const push = (0.78 - d) / 2;
+        const push = (0.78 - d) * 0.3;
         const ux = dx / d, uy = dy / d;
         const wa = a.eng >= 0 || a.track ? 0.2 : 1, wb = b.eng >= 0 || b.track ? 0.2 : 1;
         a.x -= ux * push * wa; a.y -= uy * push * wa;
@@ -1143,8 +1144,21 @@
     }
     if (input.joy) {
       play.manual = true;
-      steerDir(ctrl, input.joy.x, input.joy.y, spd * Math.min(1, hyp(input.joy.x, input.joy.y)));
-      if (ctrl.i === QB) ctrl.drop = { x: ctrl.x, y: ctrl.y };
+      const jx = input.joy.x, jy = input.joy.y;
+      if (ctrl.i === QB && !play.scramble) {
+        // QB in the pocket: plain joystick, no drift when released.
+        steerDir(ctrl, jx, jy, spd * Math.min(1, hyp(jx, jy)));
+        ctrl.drop = { x: ctrl.x, y: ctrl.y };
+        return true;
+      }
+      // Ball carrier keeps running upfield; the stick weaves him up and down.
+      // Pulling back slows him, and pulling well back runs him backwards.
+      let vx = jx >= 0 ? 1 : Math.max(-1, 1 + 2.2 * jx);
+      let vy = jy * 1.1;
+      const m = hyp(vx, vy);
+      if (m > 1) { vx /= m; vy /= m; }
+      ctrl.dvx = vx * spd;
+      ctrl.dvy = vy * spd;
       return true;
     }
     if (ctrl.i === QB && !play.scramble) return false; // QB holds his spot in the pocket
@@ -1228,7 +1242,7 @@
     tryEngage(play);
     for (const p of P) {
       if (p.eng >= 0) continue;
-      const acc = p.i === play.carrier ? 14 : p.side === 0 ? 11 : 10.5;
+      const acc = p.i === play.carrier ? 12 : p.side === 0 ? 11 : 10.5;
       integrate(p, acc, dt);
       if (Math.abs(p.vx) > 0.3) p.face = p.vx > 0 ? 1 : -1;
       if (p.i !== play.carrier) p.y = clamp(p.y, -1.5, W + 1.5);

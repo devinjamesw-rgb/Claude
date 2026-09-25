@@ -19,11 +19,9 @@ const RUN_MS = +(process.env.RUN_MS || 150000);
     await p.click(`[data-team=${t}]`);
     await p.click('[data-action=lock]');
   }
-  await A.waitForSelector('[data-action=host]');
-  await A.click('[data-action=host]');
-  await B.waitForSelector('[data-action=join]', { timeout: 10000 });
-  await B.screenshot({ path: `${OUT}/40-lobby.png` });
-  await B.click('[data-action=join]');
+  // No buttons: both phones are matched automatically.
+  await A.waitForTimeout(150);
+  await A.screenshot({ path: `${OUT}/40-lobby.png` });
   await A.waitForFunction(() => RB.App.screen === 'game', null, { timeout: 10000 });
   await B.waitForFunction(() => RB.App.screen === 'game', null, { timeout: 10000 });
   console.log('paired');

@@ -14,19 +14,24 @@ New Star Games. The teams use school names and colors only, with no logos.
 | **Pass & Play** | One phone | You each play your own offense against the computer's defense. The game shows a "pass the phone" screen on every change of possession. |
 | **Online** | Two phones | The offense's phone runs the play with zero input lag. The defense's phone watches live, picks the coverage (man, zone, blitz, prevent) and steers one defender. |
 
-Online play runs through the claude.ai artifact `room` channel. Both players must
-open the published artifact on claude.ai while signed in, and the owner must share it
-with the other player. When the file is opened anywhere else (a download, GitHub Pages),
-only Pass & Play works and the Online screen says so.
+Online play runs through the claude.ai artifact `room` channel. Both phones open the
+published artifact on claude.ai while signed in (two phones on the same account work),
+tap **Online** and pick a school. They are matched automatically with nothing else to press.
+The lobby shows the connection state and how many people are on the page, which tells
+you whether the phones can see each other. When the file is opened anywhere else (a
+download, GitHub Pages), only Pass & Play works and the Online screen says so.
 
 ## Controls
 
 - **Snap**: tap PASS or RUN. On 4th down you also get PUNT and FG.
 - **Throw**: touch anywhere and pull back, away from the end zone, like a slingshot.
-  The dotted arc shows where the ball lands. Release to throw, and lead your receiver.
+  The reticle moves 1.6x as far as your finger, and the dotted arc shows where the ball
+  lands. Release to throw, and lead your receiver. The arc stays faint until the pull is
+  long enough; letting go before then cancels the throw.
 - **Scramble**: drag forward to run with the QB. Once he crosses the line he can't throw.
-- **Run after the catch**: the runner keeps going upfield. Drag to steer, tap to juke,
-  flick to dive.
+- **Run after the catch**: the runner keeps going upfield. Drag up or down to weave,
+  drag back to slow down, tap to juke, flick to dive. The stick ramps in gradually over
+  the first 60 pixels of drag.
 - **Kick**: drag down for power and sideways to aim (the ball goes the opposite way).
   Clear the white line on the power bar and watch the wind.
 - **Defense (online only)**: pick a coverage before the snap, tap a defender to take
@@ -78,6 +83,8 @@ node tools/coverage.js           # receiver separation by coverage call
 # Browser tests (Playwright, Chromium):
 node tools/playtest.js           # menus -> pass play, screenshots
 node tools/uigame.js             # a whole game played through the UI with gestures
+node tools/jitter.js             # on-screen motion smoothness of a running receiver
 python3 -m http.server 8765 &    # then:
-node tools/onlinetest.js         # two tabs, host + guest, over #localnet
+node tools/onlinetest.js         # two tabs matched automatically over #localnet
+node tools/onlinejitter.js       # smoothness on the defending (streamed) side
 ```

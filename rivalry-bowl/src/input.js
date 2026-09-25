@@ -4,8 +4,10 @@
 (function (root) {
   'use strict';
   const RB = root.RB;
-  const AIM_GAIN = 2.8; // pass distance per unit of drag, in world terms
-  const DEAD = 9; // css px before a drag counts
+  const AIM_GAIN = 1.6; // the reticle moves 1.6x as far as your finger
+  const DEAD = 12; // css px before a drag counts
+  const MIN_THROW = 26; // shorter pulls cancel instead of throwing
+  const JOY_FULL = 60; // css px of drag for full joystick deflection
   const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
   const S = {
@@ -57,7 +59,8 @@
     const dx = S.x - S.x0, dy = S.y - S.y0;
     if (Math.hypot(dx, dy) < DEAD) return;
     const c = S.lastCtx;
-    if (c === 'qb') S.mode = dx > 0 && dx > Math.abs(dy) * 0.6 ? 'joy' : 'aim';
+    // Pulling back aims; only a clearly forward drag scrambles.
+    if (c === 'qb') S.mode = dx > 0 && dx > Math.abs(dy) * 1.2 ? 'joy' : 'aim';
     else if (c === 'run' || c === 'def') S.mode = 'joy';
   }
 
@@ -69,17 +72,18 @@
     const dt = performance.now() - S.t0;
     const dx = S.x - S.x0, dy = S.y - S.y0, len = Math.hypot(dx, dy);
     const c = S.ctxFn();
-    if (S.mode === 'aim' && c === 'qb' && len >= 14) {
-      S.intents.throwAt = aimTarget();
+    if (S.mode === 'aim' && c === 'qb') {
+      // Throw exactly where the reticle was drawn.
+      if (len >= MIN_THROW) S.intents.throwAt = S.aimS || aimTarget();
     } else if (S.mode === 'kick' && c === 'kick') {
       const k = kickVals();
       if (k.power > 0.08) S.intents.kick = k;
-    } else if (!S.mode && dt < 260) {
+    } else if (!S.mode && dt < 220) {
       if (c === 'pick') {
         const k = RB.Render.R.k;
         S.intents.tapAt = RB.Render.toWorld(S.x / k, S.y / k);
       } else S.intents.juke = true;
-    } else if (S.mode === 'joy' && dt < 230 && len > 26 && (c === 'run')) {
+    } else if (S.mode === 'joy' && dt < 200 && len > 48 && (c === 'run')) {
       const w = RB.Render.screenDeltaToWorld(dx, dy);
       S.intents.dive = { x: w.x, y: w.y };
     }
@@ -92,6 +96,7 @@
   function reset() {
     S.id = null;
     S.mode = null;
+    S.aimS = null;
   }
 
   // World-space throw target for the current drag (pull back to aim).
@@ -127,17 +132,24 @@
       tapAt: S.intents.tapAt,
     };
     S.intents = { throwAt: null, juke: false, dive: null, kick: null, tapAt: null };
-    if (out.aiming) out.aimAt = aimTarget();
+    if (out.aiming) {
+      // Light smoothing takes the jitter out of the reticle.
+      const raw = aimTarget();
+      if (raw) S.aimS = S.aimS ? { x: S.aimS.x + (raw.x - S.aimS.x) * 0.45, y: S.aimS.y + (raw.y - S.aimS.y) * 0.45 } : raw;
+      out.aimAt = S.aimS;
+      const dx = S.x - S.x0, dy = S.y - S.y0;
+      out.aimArmed = Math.hypot(dx, dy) >= MIN_THROW;
+    }
     if (S.id !== null && S.mode === 'joy') {
       const dx = S.x - S.x0, dy = S.y - S.y0, len = Math.hypot(dx, dy);
-      if (len > 4) {
+      const mag = clamp((len - 10) / (JOY_FULL - 10), 0, 1);
+      if (mag > 0.04) {
         const w = RB.Render.screenDeltaToWorld(dx, dy);
         const wl = Math.hypot(w.x, w.y) || 1;
-        const mag = clamp(len / 26, 0.35, 1);
         out.joy = { x: (w.x / wl) * mag, y: (w.y / wl) * mag };
       }
       const k = RB.Render.R.k;
-      const lim = Math.min(len, 22 * k);
+      const lim = Math.min(len, JOY_FULL);
       out.joyScreen = { x0: S.x0 / k, y0: S.y0 / k, x1: (S.x0 + (len ? (dx / len) * lim : 0)) / k, y1: (S.y0 + (len ? (dy / len) * lim : 0)) / k };
     }
     if (S.id !== null && S.mode === 'kick') out.kick = kickVals();

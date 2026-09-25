@@ -17,11 +17,11 @@
   };
 
   const R = {
-    canvas: null, ctx: null, W: 480, H: 270, k: 1,
+    canvas: null, ctx: null, W: 480, H: 270, k: 1, S: 1,
     SX: 9, SY: 6, SZ: 7, portrait: false, hudH: 26, bottom: 0,
-    cam: { x: 40, y: FW / 2 }, camInit: false, t: 0,
+    cam: { x: 40, y: FW / 2 }, camV: { x: 0, y: 0 }, lead: 9, camInit: false, t: 0,
     crowd: null, crowdKey: '', sprites: new Map(), rain: [],
-    flash: 0,
+    ps: [], flash: 0,
   };
 
   function init(canvas) {
@@ -29,13 +29,18 @@
     R.ctx = canvas.getContext('2d');
   }
 
+  // The canvas backs onto real device pixels; drawing happens in "logical"
+  // pixels (about 232 per screen height) scaled by R.S. Positions are snapped
+  // to device pixels, not logical ones, so motion stays smooth.
   function resize(cssW, cssH) {
     const k = Math.min(cssW, cssH) / 232;
+    const dpr = Math.min(typeof devicePixelRatio === 'number' ? devicePixelRatio : 1, 2.5);
     R.k = k;
     R.W = Math.max(200, Math.round(cssW / k));
     R.H = Math.max(200, Math.round(cssH / k));
-    R.canvas.width = R.W;
-    R.canvas.height = R.H;
+    R.canvas.width = Math.round(cssW * dpr);
+    R.canvas.height = Math.round(cssH * dpr);
+    R.S = R.canvas.width / R.W;
     R.portrait = cssH > cssW * 1.1;
     R.SX = R.portrait ? 5.6 : clamp(R.W / 50, 7.5, 10.5);
     R.SY = R.SX * 0.62;
@@ -50,11 +55,12 @@
   function fieldMidY() {
     return R.hudH + (R.H - R.hudH - R.bottom) / 2;
   }
+  const snap = (v) => Math.round(v * R.S) / R.S;
   function sx(x) {
-    return Math.round((x - R.cam.x) * R.SX + R.W / 2);
+    return snap((x - R.cam.x) * R.SX + R.W / 2);
   }
   function sy(y) {
-    return Math.round((y - R.cam.y) * R.SY + fieldMidY());
+    return snap((y - R.cam.y) * R.SY + fieldMidY());
   }
   // Screen -> world, used by input.
   function toWorld(px, py) {
@@ -65,27 +71,42 @@
   }
 
   function updateCamera(V, dt) {
-    let tx = R.cam.x, ty = R.cam.y;
-    const lead = R.portrait ? 7 : 9;
+    let fx = R.cam.x, fy = R.cam.y, lead = 0;
+    const baseLead = R.portrait ? 6 : 9;
     if (V.mode === 'field') {
       const car = V.players && V.carrier >= 0 ? V.players[V.carrier] : null;
-      if (!V.players || V.phase === 'presnap') { tx = V.los + lead; ty = V.ballY; }
-      else if (V.ball && (V.ball.st === 'air' || V.ball.st === 'dead')) { tx = V.ball.x + (V.live ? 3 : 0); ty = V.ball.y; }
-      else if (car) {
-        const dir = car.side === 0 && !V.turnover ? 1 : -1;
-        tx = car.x + (!V.live ? 0 : car.i === 0 && dir > 0 && car.x < V.los ? lead + 2 : 6 * dir);
-        ty = car.y;
-      } else { tx = V.los + lead; ty = V.ballY; }
+      const b = V.ball;
+      if (!V.players || V.phase === 'presnap') { fx = V.los; fy = V.ballY; lead = baseLead; }
+      else if (b && b.st === 'air') {
+        const L = V.landing || b;
+        fx = b.x + (L.x - b.x) * 0.35; fy = b.y + (L.y - b.y) * 0.35; lead = 2;
+      } else if (car && V.live) {
+        const qbHolding = car.i === 0 && !V.turnover && car.x < V.los + 0.5;
+        if (qbHolding) { fx = Math.max(car.x, V.los - 4); fy = (car.y + V.ballY) / 2; lead = baseLead + 1; }
+        else { fx = car.x; fy = car.y; lead = car.side === 0 && !V.turnover ? 5 : -5; }
+      } else if (car) { fx = car.x; fy = car.y; }
+      else if (b) { fx = b.x; fy = b.y; }
     }
+    if (!R.camInit) { R.lead = lead; }
+    R.lead += (lead - R.lead) * (1 - Math.exp(-dt * 2.5));
+    let tx = fx + R.lead, ty = fy;
     const halfH = (R.H - R.hudH - R.bottom) / 2 / R.SY;
     const minY = -6 + halfH, maxY = FW + 5 - halfH;
     ty = minY > maxY ? FW / 2 : clamp(ty, minY, maxY);
     const halfW = R.W / 2 / R.SX;
     tx = clamp(tx, halfW - 4, 124 - halfW);
-    if (!R.camInit) { R.cam.x = tx; R.cam.y = ty; R.camInit = true; }
-    const f = 1 - Math.exp(-dt * 4.5);
-    R.cam.x += (tx - R.cam.x) * f;
-    R.cam.y += (ty - R.cam.y) * f;
+    if (!R.camInit) {
+      R.cam.x = tx; R.cam.y = ty; R.camV.x = R.camV.y = 0; R.camInit = true;
+      return;
+    }
+    // Critically damped springs: no sudden starts or stops when the focus switches.
+    const spring = (key, target, w) => {
+      const a = w * w * (target - R.cam[key]) - 2 * w * R.camV[key];
+      R.camV[key] += a * dt;
+      R.cam[key] += R.camV[key] * dt;
+    };
+    spring('x', tx, 3.4);
+    spring('y', ty, 2.6);
   }
 
   // --- Stadium ------------------------------------------------------------------
@@ -144,7 +165,7 @@
     if (R.crowd && ay1 + 4 < R.H) {
       const cx = sx(-10);
       for (let yy = ay1 + 4; yy < R.H; yy += R.crowd.height) ctx.drawImage(R.crowd, cx, yy);
-      ctx.fillStyle = 'rgba(11,15,28,0.45)';
+      ctx.fillStyle = 'rgba(11,15,28,0.7)';
       ctx.fillRect(0, ay1 + 4, R.W, R.H - ay1 - 4);
     }
   }
@@ -238,11 +259,12 @@
     '..JJJJJ..',
     '..PPPPP..',
   ];
+  // Run cycle, facing right. Upper case = near leg, lower case = far leg.
   const LEGS = [
-    ['.PP...PP.', '.KK...KK.', 'KK.....KK', 'B.......B'],
-    ['..PP.PP..', '...KKK...', '...KK....', '...BB....'],
-    ['.PP...PP.', '.KK...KK.', 'KK.....KK', 'B.......B'],
-    ['..PP.PP..', '...KKK...', '....KK...', '....BB...'],
+    ['.pp..PP..', '.kk...KK.', 'kk.....KK', 'b.......B'],
+    ['..ppPP...', '..kkKK...', '...kKK...', '...bBB...'],
+    ['.PP..pp..', '.KK...kk.', 'KK.....kk', 'B.......b'],
+    ['..PPpp...', '..KKkk...', '...KkK...', '...BBb...'],
     ['..PP.PP..', '..KK.KK..', '..KK.KK..', '..BB.BB..'],
   ];
   const DOWN = [
@@ -259,6 +281,7 @@
     const colors = {
       H: uni.helmet, M: '#9aa0a6', S: skin, J: uni.jersey, T: uni.trim === uni.jersey ? shade(uni.jersey, -0.3) : uni.trim,
       P: uni.pants, K: '#eeeeee', B: '#1a1a1a', L: PAL.ball,
+      p: shade(uni.pants, -0.28), k: '#b9b9b9', b: '#3a3a3a',
     };
     let rows;
     if (pose === 'down' || pose === 'dive') rows = DOWN.slice();
@@ -288,24 +311,41 @@
     return c;
   }
 
-  function drawPlayers(ctx, V) {
+  function playerState(p, dt) {
+    let st = R.ps[p.i];
+    if (!st || Math.hypot(p.x - st.x, p.y - st.y) > 5) {
+      st = R.ps[p.i] = { x: p.x, y: p.y, spd: 0, face: p.face >= 0 ? 1 : -1, phase: p.i * 0.37, moving: false };
+    }
+    const sp = Math.hypot(p.vx || 0, p.vy || 0);
+    st.spd += (sp - st.spd) * Math.min(1, dt * 10);
+    if (st.spd > 1.3) st.moving = true;
+    else if (st.spd < 0.6) st.moving = false;
+    if (p.eng || p.down) st.face = p.face >= 0 ? 1 : -1;
+    else if ((p.vx || 0) > 1.2) st.face = 1;
+    else if ((p.vx || 0) < -1.2) st.face = -1;
+    st.phase += st.spd * dt * 1.35;
+    st.x = p.x; st.y = p.y;
+    return st;
+  }
+
+  function drawPlayers(ctx, V, dt) {
     const list = V.players.slice().sort((a, b) => a.y - b.y);
+    const vis = (px, py) => px > -20 && px < R.W + 20 && py > -20 && py < R.H + 30;
+    ctx.fillStyle = PAL.shadow;
     for (const p of list) {
       const px = sx(p.x), py = sy(p.y);
-      if (px < -20 || px > R.W + 20 || py < -20 || py > R.H + 30) continue;
-      ctx.fillStyle = PAL.shadow;
-      ellipse(ctx, px, py, 4, 1.5);
+      if (vis(px, py)) ellipse(ctx, px, py, 4, 1.5);
     }
     for (const p of list) {
+      const st = playerState(p, dt);
       const px = sx(p.x), py = sy(p.y);
-      if (px < -20 || px > R.W + 20 || py < -20 || py > R.H + 30) continue;
+      if (!vis(px, py)) continue;
       const seat = p.side === 0 ? V.offSeat : V.defSeat;
       const uni = V.uni[seat];
-      const moving = Math.hypot(p.vx || 0, p.vy || 0) > 0.6;
-      let pose = p.down ? 'down' : p.lunge ? 'dive' : p.eng ? 'block' : moving ? 'run' : 'stand';
-      const frame = moving ? Math.floor((R.t * (4 + Math.hypot(p.vx, p.vy))) + p.i) % 4 : 0;
+      const pose = p.down ? 'down' : p.lunge ? 'dive' : p.eng ? 'block' : st.moving ? 'run' : 'stand';
+      const frame = pose === 'run' ? Math.floor(st.phase) % 4 : 0;
       const carry = V.carrier === p.i && V.ball && V.ball.st !== 'air';
-      const spr = sprite(uni, p.skin, pose, frame, p.face >= 0 ? 1 : -1, carry && pose !== 'down', seat);
+      const spr = sprite(uni, p.skin, pose, frame, st.face, carry && pose !== 'down', seat);
       if (p.i === V.ctrl && V.live && !p.down) {
         ctx.fillStyle = 'rgba(255,210,63,0.9)';
         ring(ctx, px, py, 6, 2.5);
@@ -314,11 +354,11 @@
         ctx.fillStyle = 'rgba(90,230,255,0.9)';
         ring(ctx, px, py, 6, 2.5);
       }
-      const lift = pose === 'dive' ? 4 : 0;
-      ctx.drawImage(spr, px - (spr.width >> 1), py - spr.height + 1 - lift);
+      const lift = (pose === 'dive' ? 4 : 0) + (pose === 'run' && frame % 2 ? 1 : 0);
+      ctx.drawImage(spr, snap(px - spr.width / 2), snap(py - spr.height + 1 - lift));
       if (pose === 'down' && carry) {
         ctx.fillStyle = PAL.ball;
-        ctx.fillRect(px + (p.face >= 0 ? 5 : -7), py - 2, 2, 1);
+        ctx.fillRect(px + (st.face >= 0 ? 5 : -7), py - 2, 2, 1);
       }
     }
   }
@@ -331,24 +371,27 @@
     const px = sx(b.x), py = sy(b.y), pz = Math.round(b.z * R.SZ);
     ctx.fillStyle = PAL.shadow;
     ellipse(ctx, px, py, 2, 1);
-    const big = b.z > 4 ? 1 : 0;
+    const big = clamp(b.z / 3.5, 0, 1.5);
     ctx.fillStyle = '#3a1d0c';
-    ctx.fillRect(px - 3 - big, py - pz - 2, 6 + big * 2, 4 + big);
+    ctx.fillRect(px - 3 - big, py - pz - 2 - big / 2, 6 + big * 2, 4 + big);
     ctx.fillStyle = PAL.ball;
-    ctx.fillRect(px - 2 - big, py - pz - 1, 4 + big * 2, 2 + big);
+    ctx.fillRect(px - 2 - big, py - pz - 1 - big / 2, 4 + big * 2, 2 + big);
     ctx.fillStyle = '#f2efe6';
-    ctx.fillRect(px, py - pz - 1, 1, 1);
+    ctx.fillRect(px - 0.5, py - pz - 1 - big / 2, 1, 1);
   }
 
   function drawAim(ctx, V) {
     const a = V.aim;
     if (!a) return;
+    // Until the pull is long enough to throw, the arc is faint: letting go cancels.
+    ctx.globalAlpha = a.armed ? 1 : 0.35;
     ctx.fillStyle = a.max ? '#ff9a3c' : '#ffffff';
     for (const p of a.pts) ctx.fillRect(sx(p.x) - 1, sy(p.y) - Math.round(p.z * R.SZ) - 1, 2, 2);
     const tx = sx(a.x), ty = sy(a.y);
     ctx.fillStyle = a.max ? '#ff9a3c' : PAL.good;
     ring(ctx, tx, ty, 5, 2.4);
     ctx.fillRect(tx - 1, ty - 1, 2, 2);
+    ctx.globalAlpha = 1;
   }
 
   function drawLanding(ctx, V) {
@@ -629,6 +672,8 @@
   function frame(V, dt) {
     const ctx = R.ctx;
     R.t += dt;
+    ctx.setTransform(R.S, 0, 0, R.S, 0, 0);
+    ctx.imageSmoothingEnabled = false;
     if (V.uni) buildCrowd(V.uni);
     if (V.mode === 'kick' && V.kick) {
       drawKick(ctx, V);
@@ -643,7 +688,7 @@
       if (V.players) {
         drawLines(ctx, V);
         drawLanding(ctx, V);
-        drawPlayers(ctx, V);
+        drawPlayers(ctx, V, dt);
         drawBall(ctx, V);
         drawAim(ctx, V);
       }

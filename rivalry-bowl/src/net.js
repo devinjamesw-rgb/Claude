@@ -24,12 +24,13 @@
   // --- Transports -------------------------------------------------------------------
   // Both expose: me(), setPresence(obj), peers() -> [{peer, presence, isMe}],
   // connected(), close().
+  // Resolves a transport, or { fail: reason } saying why there isn't one.
   async function roomTransport() {
-    const use = root.claude && root.claude.use;
-    if (!use) return null;
+    const cl = root.claude;
+    if (!cl || typeof cl.use !== 'function') return { fail: 'no-api' };
     let room = null;
-    try { room = await use('room'); } catch (e) { room = null; }
-    if (!room) return null;
+    try { room = await cl.use('room'); } catch (e) { return { fail: 'use-threw', detail: String(e && e.message || e) }; }
+    if (!room) return { fail: 'no-room' };
     let mine = {};
     let err = null;
     let conn = false;
@@ -112,6 +113,7 @@
     const b = play.ball;
     const st = ['snap', 'held', 'air', 'dead', 'down'].indexOf(b.st);
     return {
+      ts: Math.round(performance.now()),
       s,
       b: [r2(b.x), r2(b.y), r2(b.z), st, play.carrier],
       m: [r2(play.los), r2(play.fdX), r2(play.ballY), play.phase === 'live' ? 1 : play.phase === 'pre' ? 0 : 2, play.turnover ? 1 : 0, play.humanDefIdx],
@@ -154,11 +156,20 @@
   function compactG(g) {
     return JSON.parse(JSON.stringify(g, (k, v) => (typeof v === 'number' && !Number.isInteger(v) ? r2(v) : v)));
   }
-  function code4() {
-    const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-    let s = '';
-    for (let i = 0; i < 4; i++) s += A[Math.floor(Math.random() * A.length)];
-    return s;
+
+
+  function withVel(b, a, u, span) {
+    if (!a) return Object.assign({}, b, { players: b.players.map((p) => Object.assign({ vx: 0, vy: 0 }, p)) });
+    const lerp = (x, y) => x + (y - x) * u;
+    const players = b.players.map((p, i) => {
+      const q = a.players[i];
+      if (Math.hypot(p.x - q.x, p.y - q.y) > 6) return Object.assign({ vx: 0, vy: 0 }, p);
+      return Object.assign({}, p, { x: lerp(q.x, p.x), y: lerp(q.y, p.y), vx: (p.x - q.x) / span, vy: (p.y - q.y) / span });
+    });
+    const bb = b.ball, ab = a.ball;
+    const jump = Math.hypot(bb.x - ab.x, bb.y - ab.y) > 10;
+    const ball = jump ? bb : Object.assign({}, bb, { x: lerp(ab.x, bb.x), y: lerp(ab.y, bb.y), z: lerp(ab.z, bb.z) });
+    return Object.assign({}, b, { players, ball });
   }
 
   // --- Session ------------------------------------------------------------------------------
@@ -174,18 +185,23 @@
       App.net = this;
       this.reset();
       this.state = 'connecting';
+      this.openedAt = Date.now();
       const wantLocal = /localnet/.test(location.hash);
-      let t = wantLocal ? localTransport() : await roomTransport();
-      if (!t && !wantLocal && !(root.claude && root.claude.use)) t = null;
-      if (App.net !== this || App.screen !== 'lobby') { if (t) t.close(); return; }
-      if (!t) { this.state = 'unavailable'; return; }
+      let t = wantLocal ? localTransport() || { fail: 'no-broadcast' } : await roomTransport();
+      if (App.net !== this || App.screen !== 'lobby') { if (t && !t.fail) t.close(); return; }
+      if (!t || t.fail) {
+        this.state = 'unavailable';
+        this.err = t ? t.fail : 'no-api';
+        this.errDetail = t && t.detail || '';
+        return;
+      }
       this.t = t;
-      this.state = 'lobby';
+      this.state = 'seeking';
       this.publishLobby();
     },
 
     reset() {
-      Object.assign(this, { role: null, partner: null, G: null, snap: null, kickSnap: null, disp: null, fx: [], fxn: 0, fxSeen: -1, actN: 0, actSeen: {}, dcN: 0, lastDcN: -1, pending: null, err: '', defIdx: Sim.IDX.S1, lastAdoptVer: 0 });
+      Object.assign(this, { role: null, partner: null, G: null, snap: null, kickSnap: null, disp: null, fx: [], fxn: 0, fxSeen: -1, actN: 0, actSeen: {}, dcN: 0, lastDcN: -1, pending: null, err: '', errDetail: '', defIdx: Sim.IDX.S1, lastAdoptVer: 0, tgt: '', buf: [], lastTs: -1, offset: null, lastLobbyPub: 0 });
     },
 
     leave() {
@@ -200,16 +216,15 @@
 
     base() {
       const A = this.App;
-      return { a: APP, v: 1, nm: A.names[0], tm: A.picks[0], role: this.role || 'idle' };
+      return { a: APP, v: 2, nm: A.names[0], tm: A.picks[0], role: this.role || 'idle' };
     },
 
+    // While matchmaking: who I am, what I picked, and whom I'm trying to pair with.
     publishLobby() {
       if (!this.t) return;
-      const p = this.base();
       const s = this.App.settings;
-      if (this.role === 'host') Object.assign(p, { code: this.code, open: !this.partner, gp: this.partner || '', q: s.qlen, d: s.diff, e: s.even ? 1 : 0 });
-      if (this.role === 'guest') Object.assign(p, { join: this.joinPeer, code: this.code });
-      this.t.setPresence(p);
+      this.lastLobbyPub = Date.now();
+      this.t.setPresence(Object.assign(this.base(), { role: 'seek', tgt: this.tgt || '', q: s.qlen, d: s.diff, e: s.even ? 1 : 0 }));
     },
 
     others() {
@@ -222,31 +237,16 @@
       return p ? p.presence : null;
     },
 
-    // --- Lobby actions ---
-    action(a, el) {
-      if (a === 'host') {
-        this.role = 'host';
-        this.seat = 0;
-        this.code = code4();
-        this.state = 'hosting';
-        this.publishLobby();
-      } else if (a === 'join') {
-        this.role = 'guest';
-        this.seat = 1;
-        this.joinPeer = el.dataset.peer;
-        this.code = el.dataset.code;
-        this.state = 'joining';
-        this.publishLobby();
-      } else if (a === 'cancel') {
-        this.role = null;
-        this.partner = null;
-        this.state = 'lobby';
-        this.publishLobby();
-      } else if (a === 'fallback') {
+    action(a) {
+      if (a === 'fallback') {
         this.leave();
         this.App.mode = 'local';
         this.App.step = 1;
         this.App.screen = 'teams';
+      } else if (a === 'retry') {
+        const App = this.App;
+        this.leave();
+        RB.Net.open(App);
       }
     },
 
@@ -255,32 +255,42 @@
       if (!this.t) return;
       const err = this.t.error && this.t.error();
       if (err && this.state !== 'playing') { this.state = 'unavailable'; this.err = err; }
-      if (this.state === 'hosting') this.tickHost();
-      else if (this.state === 'joining') this.tickGuest();
+      if (this.state === 'seeking') this.tickSeek();
       else if (this.state === 'playing') this.tickGame();
     },
 
-    tickHost() {
-      const guest = this.others().find((p) => p.presence.role === 'guest' && p.presence.join === this.me() && p.presence.code === this.code);
-      if (!guest) return;
-      this.partner = guest.peer;
-      const A = this.App, s = A.settings;
-      const G = Game.create({
-        mode: 'online', home: A.picks[0], away: guest.presence.tm || 'UGA',
-        names: [A.names[0], String(guest.presence.nm || 'GUEST').slice(0, 10)],
-        settings: { qlen: s.qlen, diff: s.diff, even: s.even },
-      });
-      this.startGame(G);
-    },
-
-    tickGuest() {
-      const host = this.others().find((p) => p.peer === this.joinPeer);
-      if (!host) return;
-      const hp = host.presence;
-      if (hp.gp === this.me() && validG(hp.g)) {
+    // Automatic pairing. Everyone seeking points at the lowest-id free seeker;
+    // when two point at each other they are a match, and the lower id hosts.
+    tickSeek() {
+      const me = this.me();
+      if (!me) return;
+      const others = this.others();
+      const host = others.find((p) => p.presence.role === 'host' && p.presence.gp === me && validG(p.presence.g));
+      if (host) {
+        this.role = 'guest';
+        this.seat = 1;
         this.partner = host.peer;
-        const G = { g: JSON.parse(JSON.stringify(hp.g)), rt: null };
+        const G = { g: JSON.parse(JSON.stringify(host.presence.g)), rt: null };
         Game.initRuntime(G);
+        this.startGame(G);
+        return;
+      }
+      const free = others.filter((p) => p.presence.role === 'seek' && (!p.presence.tgt || p.presence.tgt === me));
+      free.sort((a, b) => (a.peer < b.peer ? -1 : 1));
+      const pick = free[0];
+      const tgt = pick ? pick.peer : '';
+      if (tgt !== this.tgt) { this.tgt = tgt; this.publishLobby(); }
+      else if (Date.now() - this.lastLobbyPub > 2000) this.publishLobby();
+      if (pick && pick.presence.tgt === me && me < pick.peer) {
+        this.role = 'host';
+        this.seat = 0;
+        this.partner = pick.peer;
+        const A = this.App, s = A.settings;
+        const G = Game.create({
+          mode: 'online', home: A.picks[0], away: RB.TEAM_BY_ID[pick.presence.tm] ? pick.presence.tm : 'UGA',
+          names: [A.names[0], String(pick.presence.nm || 'GUEST').replace(/[^A-Z0-9 .'-]/gi, '').slice(0, 10) || 'GUEST'],
+          settings: { qlen: s.qlen, diff: s.diff, even: s.even },
+        });
         this.startGame(G);
       }
     },
@@ -350,7 +360,18 @@
         }
       } else {
         // Snapshots from the authority.
-        this.snap = pp.p && typeof pp.p.s === 'string' && pp.p.s.length === 132 && Array.isArray(pp.p.b) && Array.isArray(pp.p.m) ? decodePlay(pp.p) : null;
+        const okSnap = pp.p && typeof pp.p.s === 'string' && pp.p.s.length === 132 && Array.isArray(pp.p.b) && Array.isArray(pp.p.m) && num(pp.p.ts);
+        this.snap = okSnap ? decodePlay(pp.p) : null;
+        if (okSnap && pp.p.ts !== this.lastTs) {
+          // Buffer timestamped snapshots; drawing runs ~110 ms behind the
+          // other phone and blends between the two around that moment.
+          this.lastTs = pp.p.ts;
+          const now = performance.now();
+          const off = now - pp.p.ts;
+          this.offset = this.offset == null || off < this.offset ? off : this.offset + (off - this.offset) * 0.002;
+          this.buf.push({ ts: pp.p.ts, snap: this.snap });
+          if (this.buf.length > 30) this.buf.shift();
+        }
         this.kickSnap = pp.k ? decodeKick(pp.k) : null;
         if (num(pp.fxn) && Array.isArray(pp.fx)) {
           const first = pp.fxn - pp.fx.length + 1;
@@ -378,9 +399,7 @@
       const G = this.G;
       const p = this.base();
       p.role = this.role;
-      p.code = this.code;
-      p.gp = this.role === 'host' ? this.partner : '';
-      p.join = this.role === 'guest' ? this.partner : '';
+      p.gp = this.partner;
       p.g = compactG(G.g);
       if (this.isAuthority()) {
         const play = G.rt.play;
@@ -456,25 +475,11 @@
       V.los = C.GOAL_L + g.ballOn;
       V.ballY = g.ballY;
       V.fdX = g.twoPt ? null : C.GOAL_L + Math.min(100, g.ballOn + g.toGo);
-      const s = this.snap;
+      const s = this.interpSnap();
       if (s && ['presnap', 'play', 'after'].includes(g.phase)) {
-        const dt = 1 / 60;
-        if (!this.disp || this.disp.length !== 22) this.disp = s.players.map((p) => Object.assign({ vx: 0, vy: 0 }, p));
-        this.disp = s.players.map((p, i) => {
-          const d = this.disp[i];
-          const jump = Math.hypot(p.x - d.x, p.y - d.y) > 6;
-          const f = jump ? 1 : 0.35;
-          const nx = d.x + (p.x - d.x) * f, ny = d.y + (p.y - d.y) * f;
-          const vx = jump ? 0 : (nx - d.x) / dt, vy = jump ? 0 : (ny - d.y) / dt;
-          const skin = rt.rosters[i < 11 ? g.poss : 1 - g.poss][i < 11 ? 'off' : 'def'][i % 11].skin;
-          return Object.assign({}, p, { x: nx, y: ny, vx: vx * 0.5 + d.vx * 0.5, vy: vy * 0.5 + d.vy * 0.5, skin });
-        });
-        V.players = this.disp;
-        const b = s.ball;
-        this.dispBall = this.dispBall && Math.hypot(b.x - this.dispBall.x, b.y - this.dispBall.y) < 8
-          ? { x: this.dispBall.x + (b.x - this.dispBall.x) * 0.45, y: this.dispBall.y + (b.y - this.dispBall.y) * 0.45, z: this.dispBall.z + (b.z - this.dispBall.z) * 0.45, st: b.st, visible: true }
-          : Object.assign({}, b);
-        V.ball = this.dispBall;
+        const rosters = rt.rosters;
+        V.players = s.players.map((p) => Object.assign({}, p, { skin: rosters[p.i < 11 ? g.poss : 1 - g.poss][p.i < 11 ? 'off' : 'def'][p.i % 11].skin }));
+        V.ball = s.ball;
         V.carrier = s.carrier;
         V.los = s.los;
         V.fdX = g.twoPt ? null : s.fdX;
@@ -485,6 +490,24 @@
         if (inp) V.joy = inp.joyScreen;
       }
       return V;
+    },
+
+    // The play as it looked ~110 ms ago on the other phone, blended between the
+    // two snapshots around that moment. Velocities come from the same pair.
+    interpSnap() {
+      const buf = this.buf;
+      if (!buf.length || this.offset == null) return this.snap;
+      const t = performance.now() - this.offset - 110;
+      let a = buf[0], b = buf[buf.length - 1];
+      if (t >= b.ts) a = b;
+      else {
+        for (let i = buf.length - 1; i > 0; i--) {
+          if (buf[i - 1].ts <= t) { a = buf[i - 1]; b = buf[i]; break; }
+        }
+      }
+      if (a === b || b.ts <= a.ts) return withVel(b.snap, null, 1);
+      const u = Math.max(0, Math.min(1, (t - a.ts) / (b.ts - a.ts)));
+      return withVel(b.snap, a.snap, u, (b.ts - a.ts) / 1000);
     },
 
     controls() {
@@ -513,38 +536,46 @@
     },
 
     // --- Lobby screen ---
+    diag() {
+      if (!this.t) return '';
+      const all = this.t.peers();
+      const conn = this.t.connected();
+      const seekers = this.others().filter((p) => p.presence.role === 'seek').length;
+      const e = this.t.error && this.t.error();
+      return `${this.t.kind === 'local' ? 'Local test link' : 'Live room'}: ${conn ? 'connected' : 'connecting…'} · ${all.length} ${all.length === 1 ? 'person' : 'people'} on this page · ${seekers} other${seekers === 1 ? '' : 's'} looking${e ? ' · error ' + e : ''}`;
+    },
+
     syncLobby() {
       const UI = RB.UI, esc = UI.esc, A = this.App;
       const t = RB.TEAM_BY_ID[A.picks[0]];
       let body = '', key = this.state;
-      if (this.state === 'connecting') body = '<p class="status">Connecting to the game room…</p>';
-      else if (this.state === 'unavailable') {
+      const REASONS = {
+        'no-api': 'This copy of the page is not running inside claude.ai, so it has no live connection.',
+        'no-room': 'claude.ai did not give this page a live connection.',
+        'use-threw': 'claude.ai refused the live connection.',
+        'no-broadcast': 'This browser cannot run the local test link.',
+        not_granted: 'claude.ai says this viewer cannot join the live room.',
+        revoked: 'Access to the live room was withdrawn.',
+      };
+      if (this.state === 'connecting') {
+        const secs = Math.floor((Date.now() - (this.openedAt || Date.now())) / 1000);
+        key += secs > 4 ? 'slow' : '';
+        body = `<p class="status">Connecting to the live room…</p>${secs > 4 ? '<p class="muted">Still waiting on claude.ai. If this never finishes, open the artifact link directly (claude.ai/artifact/…) instead of from inside a chat.</p>' : ''}`;
+      } else if (this.state === 'unavailable') {
         key += this.err;
-        body = `<p class="status err">Online play isn't available here.</p>
-          <p>It runs through claude.ai: both of you open this same page while signed in, and the owner shares it with the other player. Opened anywhere else, only Pass &amp; Play works.</p>
-          <div class="row end"><button class="btn" type="button" data-action="fallback">Play Pass &amp; Play instead</button></div>`;
-      } else if (this.state === 'lobby') {
-        const hosts = this.others().filter((p) => p.presence.role === 'host' && p.presence.open);
-        key += hosts.map((h) => h.peer + h.presence.tm).join();
-        const list = hosts.length
-          ? hosts.map((h) => {
-            const ht = RB.TEAM_BY_ID[h.presence.tm];
-            return `<div class="lobby-item"><span><b>${esc(h.presence.nm || 'PLAYER')}</b> · ${esc(ht ? ht.name : '')} · ${Math.round((h.presence.q || 240) / 60)} MIN QTRS</span><button class="btn small" type="button" data-action="join" data-peer="${esc(h.peer)}" data-code="${esc(h.presence.code || '')}">Join</button></div>`;
-          }).join('')
-          : '<p class="status">No open games yet. Host one, or wait for your friend to host.</p>';
-        body = `<div class="lobby-list">${list}</div><div class="row end"><button class="btn" type="button" data-action="host">Host a game</button></div>`;
-      } else if (this.state === 'hosting') {
-        key += this.code;
-        body = `<p>Hosting as <b>${esc(A.names[0])}</b> with ${esc(t ? t.name : '')}.</p>
-          <p class="status ok">Waiting for your friend… game <span class="code">${esc(this.code)}</span></p>
-          <p class="muted">They open this same page, tap Online, pick a school and join your game. Quarter length and AI difficulty come from your settings.</p>
-          <div class="row end"><button class="btn ghost" type="button" data-action="cancel">Cancel</button></div>`;
-      } else if (this.state === 'joining') {
-        key += this.code;
-        body = `<p class="status ok">Joining game <span class="code">${esc(this.code)}</span>…</p><div class="row end"><button class="btn ghost" type="button" data-action="cancel">Cancel</button></div>`;
+        body = `<p class="status err">Online play can't start: ${esc(REASONS[this.err] || 'error ' + this.err)}</p>
+          <p>Both phones need the published artifact link open in a browser or the Claude app, signed in. Two phones on the same account is fine.</p>
+          <p class="muted">Code: ${esc(this.err)}${this.errDetail ? ' · ' + esc(this.errDetail) : ''}</p>
+          <div class="row end"><button class="btn ghost" type="button" data-action="retry">Try again</button><button class="btn" type="button" data-action="fallback">Play Pass &amp; Play instead</button></div>`;
+      } else if (this.state === 'seeking') {
+        const d = this.diag();
+        key += d + this.tgt;
+        body = `<p class="status ok">Looking for your opponent…</p>
+          <p>Have your friend open this same page, tap <b>Online</b> and pick a school. You'll be matched automatically, nothing else to press. The phone that matches first uses its quarter length and difficulty.</p>
+          <p class="muted" id="net-diag">${esc(d)}</p>`;
       }
       UI.show('lobby|' + key, `<div class="panel" style="max-width:560px"><p class="eyebrow">ONLINE · ${esc(A.names[0])} · ${esc(t ? t.name : '')}</p><h2>Head to head</h2>${body}
-        ${this.state === 'lobby' || this.state === 'connecting' ? '<div class="row"><button class="btn ghost small" type="button" data-action="back">Back</button></div>' : ''}</div>`);
+        <div class="row"><button class="btn ghost small" type="button" data-action="back">Back</button></div></div>`);
     },
   };
 
