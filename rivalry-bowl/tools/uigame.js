@@ -59,7 +59,7 @@ const VW = +(process.env.VW || 844), VH = +(process.env.VH || 390);
     if (st.phase === 'presnap') {
       const fg = await page.$('[data-action=call][data-kind=fg]');
       const punt = await page.$('[data-action=call][data-kind=punt]');
-      if (fg) await fg.click(); else if (punt) await punt.click();
+      if (fg) await fg.click({ timeout: 1000 }).catch(() => {}); else if (punt) await punt.click({ timeout: 1000 }).catch(() => {});
       else await click(`[data-action=call][data-kind=${Math.random() < 0.3 ? 'run' : 'pass'}]`);
       plays++;
       continue;
