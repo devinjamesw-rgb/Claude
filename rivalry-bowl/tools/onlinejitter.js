@@ -2,16 +2,22 @@
 // defending (follower) tab during a pass play.
 'use strict';
 const { chromium } = require('playwright');
-const URL = `http://127.0.0.1:${process.env.PORT || 8765}/index.html#localnet`;
+const MOCK = !!process.env.MOCK;
+const URL = `http://127.0.0.1:${process.env.PORT || 8765}/index.html${MOCK ? '' : '#localnet'}`;
 (async () => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 3 });
+  if (MOCK) {
+    await ctx.addInitScript(`window.__mockIsolated = ${!!process.env.ISOLATED}; window.__mockDb = ${!!process.env.DB};`);
+    await ctx.addInitScript({ path: require('path').join(__dirname, 'mockclaude.js') });
+  }
   const A = await ctx.newPage(), B = await ctx.newPage();
   await A.goto(URL); await B.goto(URL);
   await A.waitForTimeout(500);
   for (const [p, t] of [[A, 'LSU'], [B, 'CLEM']]) { await p.click('[data-action=online]'); await p.click(`[data-team=${t}]`); await p.click('[data-action=lock]'); }
-  await A.waitForFunction(() => RB.App.screen === 'game', null, { timeout: 10000 });
-  await B.waitForFunction(() => RB.App.screen === 'game', null, { timeout: 10000 });
+  if (MOCK) for (const p of [A, B]) { await p.waitForSelector('[data-action=allow]'); await p.click('[data-action=allow]'); }
+  await A.waitForFunction(() => RB.App.screen === 'game', null, { timeout: 25000 });
+  await B.waitForFunction(() => RB.App.screen === 'game', null, { timeout: 25000 });
   // Wait until some tab is authority in presnap, then snap a pass from it.
   let auth = null, fol = null;
   for (let i = 0; i < 200 && !auth; i++) {

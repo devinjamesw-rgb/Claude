@@ -9,7 +9,10 @@ const RUN_MS = +(process.env.RUN_MS || 150000);
 (async () => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 844, height: 390 } });
-  if (MOCK) await ctx.addInitScript({ path: require('path').join(__dirname, 'mockclaude.js') });
+  if (MOCK) {
+    await ctx.addInitScript(`window.__mockIsolated = ${!!process.env.ISOLATED}; window.__mockDb = ${!!process.env.DB};`);
+    await ctx.addInitScript({ path: require('path').join(__dirname, 'mockclaude.js') });
+  }
   const A = await ctx.newPage(), B = await ctx.newPage();
   const errors = [];
   for (const [n, p] of [['A', A], ['B', B]]) p.on('pageerror', (e) => errors.push(n + ' PAGEERROR ' + e.message));
@@ -28,9 +31,10 @@ const RUN_MS = +(process.env.RUN_MS || 150000);
   // No buttons: both phones are matched automatically.
   await A.waitForTimeout(150);
   await A.screenshot({ path: `${OUT}/40-lobby.png` });
-  await A.waitForFunction(() => RB.App.screen === 'game', null, { timeout: 10000 });
-  await B.waitForFunction(() => RB.App.screen === 'game', null, { timeout: 10000 });
-  console.log('paired');
+  const tPair = Date.now();
+  await A.waitForFunction(() => RB.App.screen === 'game', null, { timeout: 25000 });
+  await B.waitForFunction(() => RB.App.screen === 'game', null, { timeout: 25000 });
+  console.log('paired after', ((Date.now() - tPair) / 1000).toFixed(1), 's via', await A.evaluate(() => RB.App.net.t.kind));
   const t0 = Date.now();
   let transfers = 0, lastAuth = null, shotN = 0, defCalls = 0;
   const pages = [A, B];

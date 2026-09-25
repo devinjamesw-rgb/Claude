@@ -26,8 +26,8 @@
   // connected(), close().
   // What the lobby shows so a failure on real phones can be read off the screen.
   const Diag = {
-    perm: 'not checked', useState: 'not asked', useMs: null,
-    sent: 0, ok: 0, fail: 0, lastErr: '', listenerErr: '',
+    perm: 'not checked', permDb: 'not checked', useState: 'not asked', useMs: null, dbState: 'not asked',
+    sent: 0, ok: 0, fail: 0, lastErr: '', listenerErr: '', switched: '',
   };
   const short = (id) => (id ? '#' + String(id).slice(-4) : '#????');
 
@@ -79,6 +79,90 @@
       close() {
         try { room.presence(Object.fromEntries(Object.keys(mine).map((k) => [k, null]))); } catch (e) { /* closing anyway */ }
         unConn(); unPeers();
+      },
+    };
+  }
+
+  // Backup transport over the artifact's shared database. Each phone owns one
+  // document (its presence plus a heartbeat) in the `lobby` collection and
+  // subscribes to the collection. Writes go one at a time, latest state wins,
+  // at most every WRITE_MS (backing off if the platform says slow down).
+  const DB_WRITE_MS = 250, DB_STALE_MS = 15000, DB_BEAT_MS = 4000;
+  async function dbTransport(dbP) {
+    const cl = root.claude;
+    if (!cl || typeof cl.use !== 'function') return { fail: 'no-api' };
+    let db = null;
+    Diag.dbState = 'waiting for claude.ai';
+    try { db = await (dbP || cl.use('db')); } catch (e) { Diag.dbState = 'threw'; return { fail: 'db-threw', detail: String((e && e.message) || e) }; }
+    if (!db) { Diag.dbState = 'refused (null)'; return { fail: 'no-db' }; }
+    Diag.dbState = 'granted';
+    const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const col = db.collection('lobby');
+    const mineRef = col.doc(id);
+    let list = [], err = null, lastSnap = 0, mine = {};
+    let pending = null, inflight = false, lastWrite = 0, gap = DB_WRITE_MS, timer = null;
+    const unsub = col.onSnapshot((snap) => {
+      lastSnap = Date.now();
+      const now = Date.now();
+      const next = [];
+      let pruned = 0;
+      for (const d of snap.docs) {
+        const body = d.exists ? d.data() || {} : {};
+        const hb = typeof body.hb === 'number' ? body.hb : 0;
+        if (d.id !== id && now - hb > DB_STALE_MS) {
+          // Leftovers from closed pages: tidy a few so the store stays small.
+          if (now - hb > 10 * 60000 && pruned < 3) { pruned++; col.doc(d.id).delete().catch(() => {}); }
+          continue;
+        }
+        next.push({ peer: d.id, presence: body.p || {}, isMe: d.id === id });
+      }
+      list = next;
+    }, (e) => { err = (e && e.code) || 'unknown'; Diag.listenerErr = err; });
+    function pump() {
+      if (inflight || !pending) return;
+      const wait = lastWrite + gap - Date.now();
+      if (wait > 0) { if (!timer) timer = setTimeout(() => { timer = null; pump(); }, wait); return; }
+      const body = pending;
+      pending = null;
+      inflight = true;
+      lastWrite = Date.now();
+      Diag.sent++;
+      mineRef.set(body).then(() => { Diag.ok++; gap = Math.max(DB_WRITE_MS, gap * 0.9); }, (e) => {
+        Diag.fail++;
+        const code = (e && e.code) || 'unknown';
+        Diag.lastErr = code;
+        if (code === 'resource_exhausted') gap = Math.min(3000, gap * 2);
+        else if (code !== 'unavailable') err = code;
+      }).then(() => { inflight = false; pump(); });
+    }
+    const beat = setInterval(() => {
+      if (!pending && Date.now() - lastWrite > DB_BEAT_MS) { pending = { p: mine, hb: Date.now() }; pump(); }
+    }, 1000);
+    const bye = () => { mineRef.delete().catch(() => {}); };
+    root.addEventListener('pagehide', bye);
+    return {
+      kind: 'db',
+      me: () => id,
+      setPresence(obj) {
+        mine = JSON.parse(JSON.stringify(obj, (k, v) => (v === null && k !== '' ? undefined : v)));
+        pending = { p: mine, hb: Date.now() };
+        pump();
+      },
+      peers() {
+        const l = list.filter((x) => !x.isMe);
+        l.unshift({ peer: id, presence: mine, isMe: true });
+        return l;
+      },
+      rawPeers() { return this.peers().map((p) => ({ peer: p.peer, sameTab: p.isMe, kind: 'viewer', presence: p.presence })); },
+      connected: () => lastSnap > 0,
+      lastSnapAge: () => (lastSnap ? Date.now() - lastSnap : null),
+      error: () => err,
+      close() {
+        clearInterval(beat);
+        if (timer) clearTimeout(timer);
+        root.removeEventListener('pagehide', bye);
+        unsub();
+        bye();
       },
     };
   }
@@ -207,6 +291,8 @@
       this.permP = cl.use('permissions').then((p) => { this.perm = p; return p; }, () => null);
       this.roomP = cl.use('room');
       this.roomP.catch(() => {});
+      this.dbP = cl.use('db');
+      this.dbP.catch(() => {});
     },
 
     async open(App) {
@@ -226,9 +312,10 @@
       if (App.net !== this) return;
       if (perm) {
         try { Diag.perm = await perm.state('room'); } catch (e) { Diag.perm = 'error'; }
-      } else Diag.perm = 'no permissions api';
-      if (Diag.perm === 'prompt') { this.state = 'needperm'; return; }
-      if (Diag.perm === 'denied') { this.state = 'unavailable'; this.err = 'denied'; return; }
+        try { Diag.permDb = await perm.state('db'); } catch (e) { Diag.permDb = 'error'; }
+      } else Diag.perm = Diag.permDb = 'no permissions api';
+      if (Diag.perm === 'prompt' || Diag.permDb === 'prompt') { this.state = 'needperm'; return; }
+      if (Diag.perm === 'denied' && Diag.permDb !== 'granted') { this.state = 'unavailable'; this.err = 'denied'; return; }
       this.connect();
     },
 
@@ -236,11 +323,14 @@
     allow() {
       if (!this.perm) return this.connect();
       this.state = 'asking';
+      const names = ['room'];
+      if (Diag.permDb !== 'unavailable') names.push('db');
       let req;
-      try { req = this.perm.request(['room']); } catch (e) { req = Promise.reject(e); }
+      try { req = this.perm.request(names); } catch (e) { req = Promise.reject(e); }
       req.then((res) => {
         Diag.perm = (res && res.room) || 'unknown';
-        if (Diag.perm === 'denied') { this.state = 'unavailable'; this.err = 'denied'; return; }
+        if (res && res.db) Diag.permDb = res.db;
+        if (Diag.perm === 'denied' && Diag.permDb !== 'granted') { this.state = 'unavailable'; this.err = 'denied'; return; }
         this.connect();
       }, () => { Diag.perm = 'request failed'; this.connect(); });
     },
@@ -248,7 +338,11 @@
     async connect() {
       const App = this.App;
       this.state = 'connecting';
-      const t = await roomTransport(this.roomP);
+      let t = Diag.perm === 'denied' ? { fail: 'denied' } : await roomTransport(this.roomP);
+      if ((!t || t.fail) && this.dbP) {
+        const d = await dbTransport(this.dbP);
+        if (d && !d.fail) { Diag.switched = 'live room unavailable, using backup sync'; t = d; }
+      }
       if (App.net !== this || App.screen !== 'lobby') { if (t && !t.fail) t.close(); return; }
       if (!t || t.fail) {
         this.state = 'unavailable';
@@ -262,10 +356,28 @@
     begin(t) {
       this.t = t;
       this.state = 'seeking';
+      this.seekSince = Date.now();
       this.publishLobby();
     },
 
+    // The live room can connect yet show nobody else (seen with two phones on
+    // one account in the Claude app). After a few quiet seconds, move to the
+    // shared-database backup; the other phone does the same and they meet there.
+    async switchToDb(reason) {
+      if (this.switching || !this.dbP) return;
+      this.switching = true;
+      const d = await dbTransport(this.dbP);
+      this.switching = false;
+      if (!d || d.fail || this.state !== 'seeking' || !this.App.net) { this.noDb = true; if (d && !d.fail) d.close(); return; }
+      if (this.t) this.t.close();
+      Diag.switched = reason;
+      this.tgt = '';
+      this.begin(d);
+    },
+
     reset() {
+      Object.assign(Diag, { switched: '', sent: 0, ok: 0, fail: 0, lastErr: '', listenerErr: '' });
+      Object.assign(this, { noDb: false, switching: false, seekSince: Date.now() });
       Object.assign(this, { role: null, partner: null, G: null, snap: null, kickSnap: null, disp: null, fx: [], fxn: 0, fxSeen: -1, actN: 0, actSeen: {}, dcN: 0, lastDcN: -1, pending: null, err: '', errDetail: '', defIdx: Sim.IDX.S1, lastAdoptVer: 0, tgt: '', buf: [], lastTs: -1, offset: null, lastLobbyPub: 0 });
     },
 
@@ -324,8 +436,14 @@
       if (!this.t) return;
       const err = this.t.error && this.t.error();
       if (err && this.state !== 'playing') { this.state = 'unavailable'; this.err = err; }
-      if (this.state === 'seeking') this.tickSeek();
-      else if (this.state === 'playing') this.tickGame();
+      if (this.state === 'seeking') {
+        const alone = !this.others().length;
+        if (this.t.kind === 'room' && alone && !this.noDb && this.dbP && Date.now() - this.seekSince > 8000) {
+          this.switchToDb('nobody else in the live room after 8 s, switched to backup sync');
+          return;
+        }
+        this.tickSeek();
+      } else if (this.state === 'playing') this.tickGame();
     },
 
     // Automatic pairing. Everyone seeking points at the lowest-id free seeker;
@@ -486,6 +604,7 @@
 
     // Authority: the defense player's joystick for this step.
     remoteInput() {
+      if (this.t && this.t.kind === 'db') return {}; // too slow for live steering
       const pp = this.partnerPresence();
       if (!pp || !Array.isArray(pp.dj) || !num(pp.dj[0]) || !num(pp.dj[1])) return {};
       const x = pp.dj[0], y = pp.dj[1], m = Math.hypot(x, y);
@@ -509,7 +628,7 @@
     inputContext() {
       const g = this.G && this.G.g;
       if (!g) return 'none';
-      if (g.phase === 'play' && this.snap && this.snap.live) return 'def';
+      if (g.phase === 'play' && this.snap && this.snap.live) return this.t && this.t.kind === 'db' ? 'none' : 'def';
       if (g.phase === 'presnap') return 'pick';
       return 'none';
     },
@@ -566,7 +685,7 @@
     interpSnap() {
       const buf = this.buf;
       if (!buf.length || this.offset == null) return this.snap;
-      const t = performance.now() - this.offset - 110;
+      const t = performance.now() - this.offset - (this.t && this.t.kind === 'db' ? 520 : 110);
       let a = buf[0], b = buf[buf.length - 1];
       if (t >= b.ts) a = b;
       else {
@@ -589,7 +708,8 @@
         const label = { man: 'Man', zone: 'Zone', blitz: 'Blitz', prevent: 'Prevent' };
         const btns = Sim.DEF_CALLS.map((c) => `<button class="btn small ${picked === c ? '' : 'ghost'}" type="button" data-action="defcall" data-call="${c}">${label[c]}</button>`).join('');
         const to = Game.canTimeout(g, this.seat) ? `<button class="btn small ghost" type="button" data-action="timeout" data-seat="${this.seat}">Timeout (${g.to[this.seat]})</button>` : '';
-        return { key: `def|${g.playNo}|${picked}|${g.to}|${g.clockRunning}`, html: `<div class="who">DEFENSE · PICK A COVERAGE · TAP A DEFENDER TO STEER HIM</div><div class="row">${btns}${to}</div>` };
+        const how = this.t && this.t.kind === 'db' ? 'DEFENSE · PICK A COVERAGE' : 'DEFENSE · PICK A COVERAGE · TAP A DEFENDER TO STEER HIM';
+        return { key: `def|${g.playNo}|${picked}|${g.to}|${g.clockRunning}`, html: `<div class="who">${how}</div><div class="row">${btns}${to}</div>` };
       }
       const waitFor = { pat: 'is choosing the try', kickchoice: 'is choosing the kickoff', kick: 'is kicking', presnap: 'is calling a play' }[g.phase];
       if (waitFor) return { key: `wait|${g.phase}|${g.ctl}`, html: `<div class="who">${esc(opp)} ${waitFor}…</div>` };
@@ -598,7 +718,7 @@
 
     overlay() {
       if (this.state !== 'playing') return null;
-      if (Date.now() - this.partnerSeen > LOST_MS) {
+      if (Date.now() - this.partnerSeen > (this.t && this.t.kind === 'db' ? LOST_MS * 4 : LOST_MS)) {
         return { key: 'lost', html: `<div class="panel" style="max-width:420px"><p class="eyebrow">CONNECTION</p><h2>Your opponent dropped</h2><p class="muted">Waiting for them to come back. The game resumes on its own if they return to this page.</p><div class="row end"><button class="btn ghost" type="button" data-action="quit">Leave game</button></div></div>` };
       }
       return null;
@@ -609,11 +729,13 @@
       const L = [];
       const secs = ((Date.now() - (this.openedAt || Date.now())) / 1000).toFixed(0);
       L.push(`step: ${this.state} (${secs}s)`);
-      L.push(`permission: ${Diag.perm}`);
-      L.push(`live room: ${Diag.useState}${Diag.useMs != null ? ` in ${Diag.useMs} ms` : ''}`);
+      L.push(`permission: room ${Diag.perm} · db ${Diag.permDb}`);
+      L.push(`live room: ${Diag.useState}${Diag.useMs != null ? ` in ${Diag.useMs} ms` : ''} · backup db: ${Diag.dbState}`);
+      if (Diag.switched) L.push(`note: ${Diag.switched}`);
       if (this.t) {
         const me = this.me();
-        L.push(`link: ${this.t.kind} · ${this.t.connected() ? 'connected' : 'NOT connected'} · you ${short(me)}`);
+        const age = this.t.lastSnapAge ? this.t.lastSnapAge() : null;
+        L.push(`link: ${this.t.kind === 'db' ? 'backup sync (db)' : this.t.kind} · ${this.t.connected() ? 'connected' : 'NOT connected'}${age != null ? ` · last update ${(age / 1000).toFixed(1)}s ago` : ''} · you ${short(me)}`);
         L.push(`updates sent ${Diag.sent} · confirmed ${Diag.ok} · failed ${Diag.fail}${Diag.lastErr ? ' (' + Diag.lastErr + ')' : ''}`);
         if (Diag.listenerErr) L.push(`room error: ${Diag.listenerErr}`);
         const raw = this.t.rawPeers ? this.t.rawPeers() : this.t.peers().map((p) => ({ peer: p.peer, sameTab: p.isMe, kind: 'viewer', presence: p.presence }));

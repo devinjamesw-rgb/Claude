@@ -19,7 +19,16 @@ published artifact on claude.ai while signed in (two phones on the same account 
 tap **Online**, pick a school and, if asked, tap **Allow live connection**. They are then
 matched automatically. The lobby's connection details show the permission state, whether
 claude.ai handed over the live room, how many presence updates were confirmed, and every
-viewer the room can see, so a stall can be diagnosed from a screenshot. When the file is opened anywhere else (a
+viewer the room can see, so a stall can be diagnosed from a screenshot.
+
+**Backup sync.** Two phones signed in to the same account in the Claude app were each
+shown alone in the live room, although both connected and every update was confirmed.
+The page can also sync through the artifact's shared database: if the live room shows
+nobody else for 8 seconds, both phones switch to it and match there. It runs about half a
+second behind, so over the backup the defense picks coverage but doesn't steer a
+defender. A page that declares the database is private to the owner's organization, so
+this version is published separately (`dist/artifact-online.html`, capabilities
+`room` + `db`) from the public one (`dist/artifact.html`, `room` only). When the file is opened anywhere else (a
 download, GitHub Pages), only Pass & Play works and the Online screen says so.
 
 ## Controls
@@ -88,5 +97,6 @@ node tools/jitter.js             # on-screen motion smoothness of a running rece
 python3 -m http.server 8765 &    # then:
 node tools/onlinetest.js         # two tabs matched automatically over #localnet
 MOCK=1 node tools/onlinetest.js  # same, through a mock of the claude.ai room + permissions API
+MOCK=1 ISOLATED=1 DB=1 node tools/onlinetest.js  # room shows each phone alone; db backup pairs them
 node tools/onlinejitter.js       # smoothness on the defending (streamed) side
 ```
