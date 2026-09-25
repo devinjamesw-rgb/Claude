@@ -56,7 +56,7 @@
   }
 
   function play(name) {
-    if (!A.on || !A.ctx) return;
+    if (!A.on || !A.ctx || typeof name !== 'string') return;
     const t = A.ctx.currentTime + 0.01;
     switch (name) {
       case 'hut': noise(t, 0.08, 0.6); tone(140, t, 0.1, 'square', 0.3); break;

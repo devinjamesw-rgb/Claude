@@ -3571,7 +3571,7 @@
   }
 
   function play(name) {
-    if (!A.on || !A.ctx) return;
+    if (!A.on || !A.ctx || typeof name !== 'string') return;
     const t = A.ctx.currentTime + 0.01;
     switch (name) {
       case 'hut': noise(t, 0.08, 0.6); tone(140, t, 0.1, 'square', 0.3); break;
@@ -3751,6 +3751,14 @@
   }
 
   const r2 = (v) => Math.round(v * 100) / 100;
+  const num = (v) => typeof v === 'number' && isFinite(v);
+  // Presence comes from other people's pages: only adopt a well-formed game.
+  function validG(g) {
+    return !!(g && typeof g === 'object' && num(g.ver) && Array.isArray(g.teams) && g.teams.every((t) => RB.TEAM_BY_ID[t]) &&
+      Array.isArray(g.score) && g.score.length === 2 && g.score.every(num) && (g.ctl === 0 || g.ctl === 1) &&
+      (g.poss === 0 || g.poss === 1) && typeof g.phase === 'string' && Array.isArray(g.stats) && g.stats.length === 2 &&
+      Array.isArray(g.names) && g.settings && num(g.settings.qlen));
+  }
   function compactG(g) {
     return JSON.parse(JSON.stringify(g, (k, v) => (typeof v === 'number' && !Number.isInteger(v) ? r2(v) : v)));
   }
@@ -3877,7 +3885,7 @@
       const host = this.others().find((p) => p.peer === this.joinPeer);
       if (!host) return;
       const hp = host.presence;
-      if (hp.gp === this.me() && hp.g) {
+      if (hp.gp === this.me() && validG(hp.g)) {
         this.partner = host.peer;
         const G = { g: JSON.parse(JSON.stringify(hp.g)), rt: null };
         Game.initRuntime(G);
@@ -3908,8 +3916,12 @@
     tickGame() {
       const G = this.G;
       const pp = this.partnerPresence();
-      if (pp && pp.g && pp.g.ver > G.g.ver) this.adopt(pp);
-      if (pp) this.readPartner(pp);
+      try {
+        if (pp && validG(pp.g) && pp.g.ver > G.g.ver) this.adopt(pp);
+        if (pp) this.readPartner(pp);
+      } catch (e) {
+        // A malformed update from the other side: skip it, keep playing.
+      }
       this.publishGame(false);
     },
 
@@ -3938,7 +3950,7 @@
           this.lastDcN = pp.dcn;
           Game.act(G, { type: 'defcall', call: pp.dc });
         }
-        if (pp.di >= 11 && pp.di <= 21) Game.act(G, { type: 'defplayer', idx: pp.di });
+        if (Number.isInteger(pp.di) && pp.di >= 11 && pp.di <= 21) Game.act(G, { type: 'defplayer', idx: pp.di });
         if (pp.act && pp.act.n !== this.actSeen[this.partner]) {
           this.actSeen[this.partner] = pp.act.n;
           const a = pp.act;
@@ -3946,9 +3958,9 @@
         }
       } else {
         // Snapshots from the authority.
-        this.snap = pp.p ? decodePlay(pp.p) : null;
+        this.snap = pp.p && typeof pp.p.s === 'string' && pp.p.s.length === 132 && Array.isArray(pp.p.b) && Array.isArray(pp.p.m) ? decodePlay(pp.p) : null;
         this.kickSnap = pp.k ? decodeKick(pp.k) : null;
-        if (pp.fxn != null && pp.fx) {
+        if (num(pp.fxn) && Array.isArray(pp.fx)) {
           const first = pp.fxn - pp.fx.length + 1;
           if (this.fxSeen < 0) this.fxSeen = pp.fxn;
           for (let n = Math.max(first, this.fxSeen + 1); n <= pp.fxn; n++) {
@@ -3995,8 +4007,9 @@
     // Authority: the defense player's joystick for this step.
     remoteInput() {
       const pp = this.partnerPresence();
-      if (!pp || !pp.dj) return {};
-      return { defJoy: { x: pp.dj[0], y: pp.dj[1] } };
+      if (!pp || !Array.isArray(pp.dj) || !num(pp.dj[0]) || !num(pp.dj[1])) return {};
+      const x = pp.dj[0], y = pp.dj[1], m = Math.hypot(x, y);
+      return m > 1 ? { defJoy: { x: x / m, y: y / m } } : { defJoy: { x, y } };
     },
 
     // Follower requests.
