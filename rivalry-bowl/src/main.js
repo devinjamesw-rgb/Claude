@@ -52,6 +52,7 @@
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && App.screen === 'game' && App.mode === 'local') App.paused = true;
     });
+    RB.Net.prewarm();
     if (hot && hot.g && hot.mode === 'local') resumeLocal(hot);
     else newDemo();
     try {

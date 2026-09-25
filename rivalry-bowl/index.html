@@ -222,7 +222,11 @@
   .howto dt { font-family: var(--display); font-size: 9px; color: var(--amber); padding-top: 4px; }
   .howto dd { margin: 0; line-height: 1.1; }
 
-  .code { font-family: var(--display); font-size: 22px; letter-spacing: 0.2em; color: var(--amber); }
+  .diag {
+    font-family: var(--body); font-size: 17px; line-height: 1.15; color: var(--muted);
+    background: var(--panel); box-shadow: inset 0 0 0 2px var(--line); padding: 8px 10px; margin: 0 0 12px;
+    white-space: pre-wrap; word-break: break-word; -webkit-user-select: text; user-select: text;
+  }
   .lobby-list { display: flex; flex-direction: column; gap: 8px; margin-block: 12px; }
   .lobby-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px; background: var(--panel); box-shadow: inset 0 0 0 2px var(--line); }
   .status { font-size: 20px; color: var(--muted); }

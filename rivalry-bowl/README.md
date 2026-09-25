@@ -16,9 +16,10 @@ New Star Games. The teams use school names and colors only, with no logos.
 
 Online play runs through the claude.ai artifact `room` channel. Both phones open the
 published artifact on claude.ai while signed in (two phones on the same account work),
-tap **Online** and pick a school. They are matched automatically with nothing else to press.
-The lobby shows the connection state and how many people are on the page, which tells
-you whether the phones can see each other. When the file is opened anywhere else (a
+tap **Online**, pick a school and, if asked, tap **Allow live connection**. They are then
+matched automatically. The lobby's connection details show the permission state, whether
+claude.ai handed over the live room, how many presence updates were confirmed, and every
+viewer the room can see, so a stall can be diagnosed from a screenshot. When the file is opened anywhere else (a
 download, GitHub Pages), only Pass & Play works and the Online screen says so.
 
 ## Controls
@@ -86,5 +87,6 @@ node tools/uigame.js             # a whole game played through the UI with gestu
 node tools/jitter.js             # on-screen motion smoothness of a running receiver
 python3 -m http.server 8765 &    # then:
 node tools/onlinetest.js         # two tabs matched automatically over #localnet
+MOCK=1 node tools/onlinetest.js  # same, through a mock of the claude.ai room + permissions API
 node tools/onlinejitter.js       # smoothness on the defending (streamed) side
 ```

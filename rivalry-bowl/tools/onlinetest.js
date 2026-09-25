@@ -3,11 +3,13 @@
 const { chromium } = require('playwright');
 const OUT = process.env.OUT || '/tmp/shots';
 const PORT = +(process.env.PORT || 8765);
-const URL = `http://127.0.0.1:${PORT}/index.html#localnet`;
+const MOCK = !!process.env.MOCK;
+const URL = `http://127.0.0.1:${PORT}/index.html${MOCK ? '' : '#localnet'}`;
 const RUN_MS = +(process.env.RUN_MS || 150000);
 (async () => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 844, height: 390 } });
+  if (MOCK) await ctx.addInitScript({ path: require('path').join(__dirname, 'mockclaude.js') });
   const A = await ctx.newPage(), B = await ctx.newPage();
   const errors = [];
   for (const [n, p] of [['A', A], ['B', B]]) p.on('pageerror', (e) => errors.push(n + ' PAGEERROR ' + e.message));
@@ -18,6 +20,10 @@ const RUN_MS = +(process.env.RUN_MS || 150000);
     await p.click('[data-action=online]');
     await p.click(`[data-team=${t}]`);
     await p.click('[data-action=lock]');
+  }
+  if (MOCK) {
+    // The mock starts with the room permission at "prompt": allow it on both.
+    for (const p of [A, B]) { await p.waitForSelector('[data-action=allow]', { timeout: 5000 }); await p.click('[data-action=allow]'); }
   }
   // No buttons: both phones are matched automatically.
   await A.waitForTimeout(150);

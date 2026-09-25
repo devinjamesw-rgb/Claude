@@ -216,7 +216,11 @@
   .howto dt { font-family: var(--display); font-size: 9px; color: var(--amber); padding-top: 4px; }
   .howto dd { margin: 0; line-height: 1.1; }
 
-  .code { font-family: var(--display); font-size: 22px; letter-spacing: 0.2em; color: var(--amber); }
+  .diag {
+    font-family: var(--body); font-size: 17px; line-height: 1.15; color: var(--muted);
+    background: var(--panel); box-shadow: inset 0 0 0 2px var(--line); padding: 8px 10px; margin: 0 0 12px;
+    white-space: pre-wrap; word-break: break-word; -webkit-user-select: text; user-select: text;
+  }
   .lobby-list { display: flex; flex-direction: column; gap: 8px; margin-block: 12px; }
   .lobby-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px; background: var(--panel); box-shadow: inset 0 0 0 2px var(--line); }
   .status { font-size: 20px; color: var(--muted); }
@@ -3696,18 +3700,32 @@
   // --- Transports -------------------------------------------------------------------
   // Both expose: me(), setPresence(obj), peers() -> [{peer, presence, isMe}],
   // connected(), close().
+  // What the lobby shows so a failure on real phones can be read off the screen.
+  const Diag = {
+    perm: 'not checked', useState: 'not asked', useMs: null,
+    sent: 0, ok: 0, fail: 0, lastErr: '', listenerErr: '',
+  };
+  const short = (id) => (id ? '#' + String(id).slice(-4) : '#????');
+
   // Resolves a transport, or { fail: reason } saying why there isn't one.
-  async function roomTransport() {
+  async function roomTransport(roomP) {
     const cl = root.claude;
     if (!cl || typeof cl.use !== 'function') return { fail: 'no-api' };
     let room = null;
-    try { room = await cl.use('room'); } catch (e) { return { fail: 'use-threw', detail: String(e && e.message || e) }; }
-    if (!room) return { fail: 'no-room' };
+    const t0 = performance.now();
+    Diag.useState = 'waiting for claude.ai';
+    try { room = await (roomP || cl.use('room')); } catch (e) {
+      Diag.useState = 'threw';
+      return { fail: 'use-threw', detail: String((e && e.message) || e) };
+    }
+    Diag.useMs = Math.round(performance.now() - t0);
+    if (!room) { Diag.useState = 'refused (null)'; return { fail: 'no-room' }; }
+    Diag.useState = 'granted';
     let mine = {};
     let err = null;
-    let conn = false;
-    const unConn = room.onConnection((c) => { conn = c; }, (e) => { err = e.code; });
-    const unPeers = room.onPeers(() => {}, (e) => { err = e.code; });
+    const onErr = (e) => { err = (e && e.code) || 'unknown'; Diag.listenerErr = err; };
+    const unConn = room.onConnection(() => {}, onErr);
+    const unPeers = room.onPeers(() => {}, onErr);
     return {
       kind: 'room',
       me() {
@@ -3721,18 +3739,23 @@
         const patch = Object.assign({}, obj);
         for (const k of Object.keys(mine)) if (!(k in obj)) patch[k] = null;
         mine = obj;
-        room.presence(patch).catch((e) => { if (e && e.code && e.code !== 'upstream_error') err = e.code; });
+        Diag.sent++;
+        room.presence(patch).then(() => { Diag.ok++; }, (e) => {
+          Diag.fail++;
+          Diag.lastErr = (e && e.code) || String(e);
+          if (e && e.code && e.code !== 'upstream_error') err = e.code;
+        });
       },
       peers() {
         return room.peers().filter((p) => p.kind !== 'agent').map((p) => ({ peer: p.peer, presence: p.presence || {}, isMe: p.sameTab }));
       },
+      rawPeers() { return room.peers(); },
       connected() { return room.connected(); },
       error() { return err; },
       close() {
         try { room.presence(Object.fromEntries(Object.keys(mine).map((k) => [k, null]))); } catch (e) { /* closing anyway */ }
         unConn(); unPeers();
       },
-      _conn: () => conn,
     };
   }
 
@@ -3852,21 +3875,67 @@
     fx: [], fxn: 0, fxSeen: -1, actN: 0, actSeen: {}, dcN: 0, lastDcN: -1, defIdx: Sim.IDX.S1,
     pending: null, lastAdoptVer: 0,
 
+    // Called at page load: resolve the platform handles early (use() never
+    // prompts; consent comes on the first real call).
+    prewarm() {
+      const cl = root.claude;
+      if (!cl || typeof cl.use !== 'function' || /localnet/.test(location.hash)) return;
+      this.permP = cl.use('permissions').then((p) => { this.perm = p; return p; }, () => null);
+      this.roomP = cl.use('room');
+      this.roomP.catch(() => {});
+    },
+
     async open(App) {
       this.App = App;
       App.net = this;
       this.reset();
       this.state = 'connecting';
       this.openedAt = Date.now();
-      const wantLocal = /localnet/.test(location.hash);
-      let t = wantLocal ? localTransport() || { fail: 'no-broadcast' } : await roomTransport();
+      if (/localnet/.test(location.hash)) {
+        const t = localTransport();
+        if (!t) { this.state = 'unavailable'; this.err = 'no-broadcast'; return; }
+        return this.begin(t);
+      }
+      if (!root.claude || typeof root.claude.use !== 'function') { this.state = 'unavailable'; this.err = 'no-api'; return; }
+      if (!this.permP) this.prewarm();
+      const perm = await this.permP;
+      if (App.net !== this) return;
+      if (perm) {
+        try { Diag.perm = await perm.state('room'); } catch (e) { Diag.perm = 'error'; }
+      } else Diag.perm = 'no permissions api';
+      if (Diag.perm === 'prompt') { this.state = 'needperm'; return; }
+      if (Diag.perm === 'denied') { this.state = 'unavailable'; this.err = 'denied'; return; }
+      this.connect();
+    },
+
+    // From the viewer's tap: ask claude.ai for the live room in one dialog.
+    allow() {
+      if (!this.perm) return this.connect();
+      this.state = 'asking';
+      let req;
+      try { req = this.perm.request(['room']); } catch (e) { req = Promise.reject(e); }
+      req.then((res) => {
+        Diag.perm = (res && res.room) || 'unknown';
+        if (Diag.perm === 'denied') { this.state = 'unavailable'; this.err = 'denied'; return; }
+        this.connect();
+      }, () => { Diag.perm = 'request failed'; this.connect(); });
+    },
+
+    async connect() {
+      const App = this.App;
+      this.state = 'connecting';
+      const t = await roomTransport(this.roomP);
       if (App.net !== this || App.screen !== 'lobby') { if (t && !t.fail) t.close(); return; }
       if (!t || t.fail) {
         this.state = 'unavailable';
         this.err = t ? t.fail : 'no-api';
-        this.errDetail = t && t.detail || '';
+        this.errDetail = (t && t.detail) || '';
         return;
       }
+      this.begin(t);
+    },
+
+    begin(t) {
       this.t = t;
       this.state = 'seeking';
       this.publishLobby();
@@ -3918,7 +3987,11 @@
       } else if (a === 'retry') {
         const App = this.App;
         this.leave();
+        this.roomP = null;
+        this.permP = null;
         RB.Net.open(App);
+      } else if (a === 'allow') {
+        this.allow();
       }
     },
 
@@ -4208,46 +4281,64 @@
     },
 
     // --- Lobby screen ---
-    diag() {
-      if (!this.t) return '';
-      const all = this.t.peers();
-      const conn = this.t.connected();
-      const seekers = this.others().filter((p) => p.presence.role === 'seek').length;
-      const e = this.t.error && this.t.error();
-      return `${this.t.kind === 'local' ? 'Local test link' : 'Live room'}: ${conn ? 'connected' : 'connecting…'} · ${all.length} ${all.length === 1 ? 'person' : 'people'} on this page · ${seekers} other${seekers === 1 ? '' : 's'} looking${e ? ' · error ' + e : ''}`;
+    diagText() {
+      const L = [];
+      const secs = ((Date.now() - (this.openedAt || Date.now())) / 1000).toFixed(0);
+      L.push(`step: ${this.state} (${secs}s)`);
+      L.push(`permission: ${Diag.perm}`);
+      L.push(`live room: ${Diag.useState}${Diag.useMs != null ? ` in ${Diag.useMs} ms` : ''}`);
+      if (this.t) {
+        const me = this.me();
+        L.push(`link: ${this.t.kind} · ${this.t.connected() ? 'connected' : 'NOT connected'} · you ${short(me)}`);
+        L.push(`updates sent ${Diag.sent} · confirmed ${Diag.ok} · failed ${Diag.fail}${Diag.lastErr ? ' (' + Diag.lastErr + ')' : ''}`);
+        if (Diag.listenerErr) L.push(`room error: ${Diag.listenerErr}`);
+        const raw = this.t.rawPeers ? this.t.rawPeers() : this.t.peers().map((p) => ({ peer: p.peer, sameTab: p.isMe, kind: 'viewer', presence: p.presence }));
+        L.push(`people on this page: ${raw.length}`);
+        for (const p of raw.slice(0, 6)) {
+          const pr = p.presence || {};
+          const what = pr.a === APP ? `${pr.role || '?'}${pr.tgt ? ' → ' + short(pr.tgt) : ''} ${pr.tm || ''}` : 'no game data yet';
+          L.push(`  ${short(p.peer)}${p.sameTab ? ' (this phone)' : ''} ${p.kind || ''}: ${what}`);
+        }
+      }
+      if (this.err) L.push(`error: ${this.err}${this.errDetail ? ' · ' + this.errDetail : ''}`);
+      return L.join('\n');
     },
 
     syncLobby() {
       const UI = RB.UI, esc = UI.esc, A = this.App;
       const t = RB.TEAM_BY_ID[A.picks[0]];
-      let body = '', key = this.state;
+      let body = '';
       const REASONS = {
         'no-api': 'This copy of the page is not running inside claude.ai, so it has no live connection.',
         'no-room': 'claude.ai did not give this page a live connection.',
         'use-threw': 'claude.ai refused the live connection.',
         'no-broadcast': 'This browser cannot run the local test link.',
+        denied: 'The live connection permission was declined. Reload the page and allow it.',
         not_granted: 'claude.ai says this viewer cannot join the live room.',
         revoked: 'Access to the live room was withdrawn.',
       };
-      if (this.state === 'connecting') {
-        const secs = Math.floor((Date.now() - (this.openedAt || Date.now())) / 1000);
-        key += secs > 4 ? 'slow' : '';
-        body = `<p class="status">Connecting to the live room…</p>${secs > 4 ? '<p class="muted">Still waiting on claude.ai. If this never finishes, open the artifact link directly (claude.ai/artifact/…) instead of from inside a chat.</p>' : ''}`;
+      if (this.state === 'connecting' || this.state === 'asking') {
+        body = `<p class="status">${this.state === 'asking' ? 'Waiting for you to allow the live connection…' : 'Connecting to the live room…'}</p>`;
+      } else if (this.state === 'needperm') {
+        body = `<p>Online play needs claude.ai's live connection for this page.</p>
+          <div class="row"><button class="btn" type="button" data-action="allow">Allow live connection</button></div>`;
       } else if (this.state === 'unavailable') {
-        key += this.err;
         body = `<p class="status err">Online play can't start: ${esc(REASONS[this.err] || 'error ' + this.err)}</p>
-          <p>Both phones need the published artifact link open in a browser or the Claude app, signed in. Two phones on the same account is fine.</p>
-          <p class="muted">Code: ${esc(this.err)}${this.errDetail ? ' · ' + esc(this.errDetail) : ''}</p>
+          <p>Both phones need the published artifact link open, signed in. Two phones on the same account is fine.</p>
           <div class="row end"><button class="btn ghost" type="button" data-action="retry">Try again</button><button class="btn" type="button" data-action="fallback">Play Pass &amp; Play instead</button></div>`;
       } else if (this.state === 'seeking') {
-        const d = this.diag();
-        key += d + this.tgt;
         body = `<p class="status ok">Looking for your opponent…</p>
-          <p>Have your friend open this same page, tap <b>Online</b> and pick a school. You'll be matched automatically, nothing else to press. The phone that matches first uses its quarter length and difficulty.</p>
-          <p class="muted" id="net-diag">${esc(d)}</p>`;
+          <p>Have your friend open this same page, tap <b>Online</b> and pick a school. You're matched automatically.</p>`;
       }
-      UI.show('lobby|' + key, `<div class="panel" style="max-width:560px"><p class="eyebrow">ONLINE · ${esc(A.names[0])} · ${esc(t ? t.name : '')}</p><h2>Head to head</h2>${body}
+      const shown = UI.show('lobby|' + this.state + this.err, `<div class="panel" style="max-width:600px"><p class="eyebrow">ONLINE · ${esc(A.names[0])} · ${esc(t ? t.name : '')}</p><h2>Head to head</h2>${body}
+        <p class="eyebrow" style="margin-top:14px">CONNECTION DETAILS · SCREENSHOT THIS IF IT STALLS</p>
+        <pre id="net-diag" class="diag"></pre>
         <div class="row"><button class="btn ghost small" type="button" data-action="back">Back</button></div></div>`);
+      const el = document.getElementById('net-diag');
+      if (el) {
+        const txt = this.diagText();
+        if (shown || el.textContent !== txt) el.textContent = txt;
+      }
     },
   };
 
@@ -4504,6 +4595,7 @@
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && App.screen === 'game' && App.mode === 'local') App.paused = true;
     });
+    RB.Net.prewarm();
     if (hot && hot.g && hot.mode === 'local') resumeLocal(hot);
     else newDemo();
     try {
