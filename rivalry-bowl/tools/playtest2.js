@@ -32,18 +32,28 @@ async function setup(page) {
   await setup(page);
   await page.click('[data-action=call][data-kind=run]');
   await page.waitForTimeout(700);
-  const cx = 420, cy = 200;
+  // The fixed stick sits in the bottom-left corner; JUKE / DIVE on the right.
+  const cx = 72, cy = 390 - 72;
   await page.mouse.move(cx, cy);
   await page.mouse.down();
-  for (let i = 1; i <= 8; i++) { await page.mouse.move(cx + i * 4, cy - i * 4); await page.waitForTimeout(16); }
+  for (let i = 1; i <= 8; i++) { await page.mouse.move(cx + i * 4, cy - i * 3); await page.waitForTimeout(16); }
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${OUT}/12-run-joy.png` });
+  const pad = await page.evaluate(() => [...document.querySelectorAll('#pad [data-pad]')].map((b) => b.dataset.pad).join(','));
+  await page.dispatchEvent('[data-pad=juke]', 'pointerdown').catch(() => {});
   await page.waitForTimeout(600);
   await page.mouse.up();
-  await page.mouse.click(600, 300); // juke
+  console.log('pad', pad, 'events', JSON.stringify(await page.evaluate(() => RB.App.G.rt.play ? RB.App.G.rt.play.events.map((e) => e.type) : [])));
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${OUT}/13-run-end.png` });
-  // Force 4th and 5 at the opponent 20 then kick a FG.
+  // Force 4th and 5 at the opponent 20 then kick a FG. (The run may have
+  // changed possession: click through any hand-off, try or kickoff first.)
+  for (let i = 0; i < 60 && !(await page.$('[data-action=call][data-kind=pass]')); i++) {
+    for (const sel of ['[data-action=ready]', '[data-action=pat][data-choice=xp]', '[data-action=kickoff][data-choice=deep]', '[data-action=continue]']) {
+      const b = await page.$(sel); if (b) await b.click({ timeout: 500 }).catch(() => {});
+    }
+    await page.waitForTimeout(400);
+  }
   await page.waitForSelector('[data-action=call][data-kind=pass]', { timeout: 10000 });
   await page.evaluate(() => { const G = RB.App.G; G.g.down = 4; G.g.toGo = 5; G.g.ballOn = 80; G.g.phase = 'handoff'; G.g.holder = G.g.poss; RB.Game.act(G, { type: 'ready' }); });
   await page.waitForSelector('[data-action=call][data-kind=fg]', { timeout: 5000 });

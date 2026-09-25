@@ -7,7 +7,10 @@
  *    of the play. Offense input never crosses the network, so passing has
  *    no lag.
  *  - The other phone renders those snapshots and publishes its defensive
- *    call, the defender it steers, its joystick and timeout requests.
+ *    call and timeout requests. The defender it steers runs on that phone
+ *    (no input lag): it publishes his position, the authority places him
+ *    there and judges his tackles against where the ball carrier was on the
+ *    defense player's screen.
  *  - When possession changes, the authority writes g.ctl = other seat. The
  *    other phone sees a higher g.ver, adopts the state and takes over.
  *
@@ -227,7 +230,8 @@
       ts: Math.round(performance.now()),
       s,
       b: [r2(b.x), r2(b.y), r2(b.z), st, play.carrier],
-      m: [r2(play.los), r2(play.fdX), r2(play.ballY), play.phase === 'live' ? 1 : play.phase === 'pre' ? 0 : 2, play.turnover ? 1 : 0, play.humanDefIdx],
+      m: [r2(play.los), r2(play.fdX), r2(play.ballY), play.phase === 'live' ? 1 : play.phase === 'pre' ? 0 : 2, play.turnover ? 1 : 0, play.humanDefIdx,
+        play.humanDefIdx >= 11 && play.players[play.humanDefIdx].down > 0 ? 1 : 0],
       l: play.landing && b.st === 'air' ? [r2(play.landing.x), r2(play.landing.y)] : null,
     };
   }
@@ -243,7 +247,7 @@
       players,
       ball: { x: o.b[0], y: o.b[1], z: o.b[2], st: ['snap', 'held', 'air', 'dead', 'down'][o.b[3]] || 'held', visible: true },
       carrier: o.b[4], los: o.m[0], fdX: o.m[1], ballY: o.m[2], live: o.m[3] === 1, pre: o.m[3] === 0,
-      turnover: !!o.m[4], humanDefIdx: o.m[5], landing: o.l ? { x: o.l[0], y: o.l[1] } : null,
+      turnover: !!o.m[4], humanDefIdx: o.m[5], ownDown: o.m[6] === 1, landing: o.l ? { x: o.l[0], y: o.l[1] } : null,
     };
   }
 
@@ -387,7 +391,7 @@
     reset() {
       Object.assign(Diag, { switched: '', sent: 0, ok: 0, fail: 0, lastErr: '', listenerErr: '' });
       Object.assign(this, { noDb: false, switching: false, seekSince: Date.now() });
-      Object.assign(this, { role: null, partner: null, G: null, snap: null, kickSnap: null, disp: null, fx: [], fxn: 0, fxSeen: -1, actN: 0, actSeen: {}, dcN: 0, lastDcN: -1, pending: null, err: '', errDetail: '', defIdx: Sim.IDX.S1, lastAdoptVer: 0, tgt: '', buf: [], lastTs: -1, offset: null, lastLobbyPub: 0, gaps: [], lastArr: 0, rtt: null, lastEk: null, dc: '', dcP: null, dcPick: null });
+      Object.assign(this, { role: null, partner: null, G: null, snap: null, kickSnap: null, disp: null, fx: [], fxn: 0, fxSeen: -1, actN: 0, actSeen: {}, dcN: 0, lastDcN: -1, pending: null, err: '', errDetail: '', defIdx: Sim.IDX.S1, lastAdoptVer: 0, tgt: '', buf: [], lastTs: -1, offset: null, lastLobbyPub: 0, gaps: [], lastArr: 0, rtt: null, lastEk: null, dc: '', dcP: null, dcPick: null, own: null, dvN: 0, lastDv: 0, dq: 0, lastDq: null, dpAt: 0, diveWant: false, viewTs: null, frameDt: 1 / 60 });
     },
 
     leave() {
@@ -441,7 +445,8 @@
     },
 
     // --- Per frame ---
-    tick() {
+    tick(dt) {
+      if (dt > 0) this.frameDt = dt;
       if (!this.t) return;
       const err = this.t.error && this.t.error();
       if (err && this.state !== 'playing') { this.state = 'unavailable'; this.err = err; }
@@ -618,26 +623,33 @@
         p.fxn = this.fxn;
         if (this.rtt != null) p.rtt = Math.round(this.rtt);
       } else {
-        const inp = this.App.lastInput;
-        const joy = inp && inp.joy && this.G.g.phase === 'play' ? [r2(inp.joy.x), r2(inp.joy.y)] : null;
-        Object.assign(p, { dc: this.dc || '', dcn: this.dcN, dcp: this.dcP == null ? -1 : this.dcP, di: this.defIdx, dj: joy, ek: this.lastTs >= 0 ? this.lastTs : null, act: this.pending });
+        Object.assign(p, { dc: this.dc || '', dcn: this.dcN, dcp: this.dcP == null ? -1 : this.dcP, di: this.defIdx, dv: this.dvN, ek: this.lastTs >= 0 ? this.lastTs : null, act: this.pending });
+        const o = this.own;
+        if (o && !o.down) Object.assign(p, { dp: [r2(o.x), r2(o.y), r2(o.vx), r2(o.vy)], dq: ++this.dq, vt: this.viewTs != null ? Math.round(this.viewTs) : null });
       }
       this.t.setPresence(p);
     },
 
-    // Authority: the defense player's joystick for this step.
+    // Authority: where the defense player's phone has his defender, how old
+    // that report is, how far behind his screen was, and a new dive.
     remoteInput() {
       const pp = this.partnerPresence();
-      if (!pp || !Array.isArray(pp.dj) || !num(pp.dj[0]) || !num(pp.dj[1])) return {};
-      const x = pp.dj[0], y = pp.dj[1], m = Math.hypot(x, y);
-      return m > 1 ? { defJoy: { x: x / m, y: y / m } } : { defJoy: { x, y } };
+      if (!pp) return {};
+      const dive = num(pp.dv) && pp.dv !== this.lastDv;
+      if (num(pp.dv)) this.lastDv = pp.dv;
+      if (!Array.isArray(pp.dp) || pp.dp.length !== 4 || !pp.dp.every(num) || pp.di !== this.G.rt.humanDefIdx) return {};
+      const now = performance.now();
+      if (pp.dq !== this.lastDq) { this.lastDq = pp.dq; this.dpAt = now; }
+      if (now - this.dpAt > 1500) return {};
+      const lag = num(pp.vt) ? Math.max(0, Math.min(0.6, (now - pp.vt) / 1000)) : 0;
+      return { defOwn: { x: pp.dp[0], y: pp.dp[1], vx: pp.dp[2], vy: pp.dp[3], age: (now - this.dpAt) / 1000, lag, dive } };
     },
 
     // One line for the HUD: which link, and the measured round trip.
     netInfo() {
       if (!this.t || this.state !== 'playing') return '';
-      const link = this.t.kind === 'db' ? 'BACKUP LINK' : 'LIVE LINK';
-      return this.rtt != null ? `${link} · ${Math.round(this.rtt)} MS ROUND TRIP` : link;
+      const link = this.t.kind === 'db' ? 'BACKUP' : 'LIVE';
+      return this.rtt != null ? `${link} · ${Math.round(this.rtt)} MS` : link;
     },
 
     // Follower requests.
@@ -657,7 +669,7 @@
     inputContext() {
       const g = this.G && this.G.g;
       if (!g) return 'none';
-      if (g.phase === 'play' && this.snap && this.snap.live) return 'def';
+      if (g.phase === 'play' && this.snap && this.snap.live && !this.snap.turnover) return 'def';
       if (g.phase === 'presnap') return 'pick';
       return 'none';
     },
@@ -697,6 +709,95 @@
       if (best >= 11) this.defIdx = best;
     },
 
+    // SWITCH: the free defender closest to the ball (not the one you have).
+    switchNearest() {
+      const s = this.interpSnap();
+      if (!s) return;
+      const car = s.carrier >= 0 ? s.players[s.carrier] : null;
+      const b = s.ball.st === 'air' && s.landing ? s.landing : car || s.ball;
+      let best = -1, bd = 1e9;
+      for (const p of s.players) {
+        if (p.side !== 1 || p.i === this.defIdx || p.down) continue;
+        const d = Math.hypot(p.x - b.x, p.y - b.y) + (p.eng ? 3 : 0);
+        if (d < bd) { bd = d; best = p.i; }
+      }
+      if (best >= 11) { this.defIdx = best; this.own = null; }
+    },
+    defDive() {
+      this.diveWant = true;
+    },
+
+    // The defender you steer, moved on this phone every frame. The computer
+    // plays him until you touch the stick; from then on he's yours until the
+    // play ends or you switch (let go and he stops, like any stick game).
+    ownStep(inp, s) {
+      const g = this.G.g, latest = this.snap;
+      const live = g.phase === 'play' && s && latest && latest.live && !latest.turnover;
+      if (!live) { this.own = null; this.diveWant = false; return; }
+      let o = this.own;
+      if (o && o.idx !== this.defIdx) o = this.own = null;
+      const joy = inp && inp.joy;
+      if (!o) {
+        const p = s.players[this.defIdx];
+        if ((!joy && !this.diveWant) || !p || p.down || latest.ownDown) { this.diveWant = false; return; }
+        o = this.own = { idx: this.defIdx, x: p.x, y: p.y, vx: p.vx || 0, vy: p.vy || 0, dvx: 0, dvy: 0, face: p.face, down: false, lunge: 0, fall: 0 };
+      }
+      const dt = Math.min(0.05, this.frameDt || 1 / 60);
+      // Knocked down on the other phone (a missed tackle, a juke): stay down where he fell.
+      if (latest.ownDown && o.lunge <= 0) {
+        if (!o.down) {
+          const lp = latest.players[o.idx];
+          Object.assign(o, { down: true, x: lp.x, y: lp.y, vx: 0, vy: 0, fall: 0 });
+        }
+        this.diveWant = false;
+        return;
+      }
+      o.down = false;
+      if (o.fall > 0) {
+        o.fall -= dt;
+        o.vx *= 0.85; o.vy *= 0.85;
+        o.x += o.vx * dt; o.y += o.vy * dt;
+        this.diveWant = false;
+        return;
+      }
+      const spd = this.ownSpeed(o.idx);
+      if (o.lunge > 0) {
+        o.lunge -= dt;
+        o.x += o.vx * dt; o.y += o.vy * dt;
+        if (o.lunge <= 0) o.fall = 0.8;
+        return;
+      }
+      if (this.diveWant) {
+        // Dive the way the stick points, or at the ball carrier if he's close.
+        this.diveWant = false;
+        const car = s.carrier >= 0 ? s.players[s.carrier] : null;
+        let dx = joy ? joy.x : 0, dy = joy ? joy.y : 0;
+        if (Math.hypot(dx, dy) < 0.1 && car && Math.hypot(car.x - o.x, car.y - o.y) < 5) { dx = car.x - o.x; dy = car.y - o.y; }
+        if (Math.hypot(dx, dy) < 0.1) { dx = o.vx; dy = o.vy; }
+        if (Math.hypot(dx, dy) < 0.1) { dx = -1; dy = 0; }
+        const d = Math.hypot(dx, dy);
+        o.vx = (dx / d) * spd * 1.4;
+        o.vy = (dy / d) * spd * 1.4;
+        o.lunge = 0.34;
+        this.dvN++;
+        return;
+      }
+      // A blocker in the way slows him down.
+      let slow = 1;
+      for (const q of s.players) {
+        if (q.side === 0 && q.i !== s.carrier && !q.down && Math.hypot(q.x - o.x, q.y - o.y) < 0.95) { slow = 0.45; break; }
+      }
+      Sim.driveOwned(o, joy, spd * slow, dt);
+      o.y = Math.max(-1.5, Math.min(C.FIELD_W + 1.5, o.y));
+      if (Math.abs(o.vx) > 0.3) o.face = o.vx > 0 ? 1 : -1;
+    },
+    ownSpeed(idx) {
+      const G = this.G, g = G.g;
+      const r = G.rt.rosters[1 - g.poss].def[idx - 11];
+      const wx = g.wx && g.wx.type;
+      return (r && r.spd ? r.spd : 7) * (wx === 'snow' ? 0.95 : wx === 'rain' ? 0.98 : 1);
+    },
+
     // --- Follower rendering ---
     view(inp) {
       const G = this.G, g = G.g, rt = G.rt;
@@ -720,6 +821,12 @@
       if (s && ['presnap', 'play', 'after'].includes(g.phase)) {
         const rosters = rt.rosters;
         V.players = s.players.map((p) => Object.assign({}, p, { skin: rosters[p.i < 11 ? g.poss : 1 - g.poss][p.i < 11 ? 'off' : 'def'][p.i % 11].skin }));
+        this.ownStep(inp, s);
+        const o = this.own;
+        if (o && V.players[o.idx]) {
+          Object.assign(V.players[o.idx], { x: o.x, y: o.y, vx: o.vx, vy: o.vy, face: o.face, down: o.down || o.fall > 0.15, lunge: o.lunge > 0, eng: false });
+        }
+        V.defOwn = !!o;
         V.ball = s.ball;
         V.carrier = s.carrier;
         V.los = s.los;
@@ -747,6 +854,7 @@
       const buf = this.buf;
       if (!buf.length || this.offset == null) return this.snap;
       const t = performance.now() - this.offset - this.renderDelay();
+      this.viewTs = t; // the other phone's clock at the moment on screen
       let a = buf[0], b = buf[buf.length - 1];
       if (t >= b.ts) {
         // Newer than anything received: carry the last motion forward briefly.
@@ -842,8 +950,17 @@
       } else if (this.state === 'seeking') {
         body = `<p class="status ok">Looking for your opponent…</p>
           <p>Have your friend open this same page, tap <b>Online</b> and pick a school. You're matched automatically.</p>`;
+        // This copy has no backup sync (the public link): after a quiet wait,
+        // say why same-account phones can't meet here and where they can.
+        const alone = !this.others().length && Date.now() - this.seekSince > 9000;
+        if (alone && this.noDb && this.t && this.t.kind === 'room') {
+          const url = typeof root.RB_ONLINE_URL === 'string' && /^https:\/\/claude\.ai\//.test(root.RB_ONLINE_URL) ? root.RB_ONLINE_URL : '';
+          body += `<p class="status err">Still nobody here. If both phones are signed in to the <b>same Claude account</b>, this link can't pair them: the live room shows each phone only itself.</p>
+            <p>${url ? `Open the <b>Online</b> version on both phones instead: <a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>. It has a backup sync that works on one account.` : 'Use the Online version of this game, which has a backup sync that works on one account.'} On two different accounts, both of you need this page open at the same time.</p>`;
+        }
       }
-      const shown = UI.show('lobby|' + this.state + this.err, `<div class="panel" style="max-width:600px"><p class="eyebrow">ONLINE · ${esc(A.names[0])} · ${esc(t ? t.name : '')}</p><h2>Head to head</h2>${body}
+      const quiet = this.state === 'seeking' && this.noDb && !this.others().length && Date.now() - this.seekSince > 9000;
+      const shown = UI.show('lobby|' + this.state + this.err + (quiet ? '|quiet' : ''), `<div class="panel" style="max-width:600px"><p class="eyebrow">ONLINE · ${esc(A.names[0])} · ${esc(t ? t.name : '')}</p><h2>Head to head</h2>${body}
         <p class="eyebrow" style="margin-top:14px">CONNECTION DETAILS · SCREENSHOT THIS IF IT STALLS</p>
         <pre id="net-diag" class="diag"></pre>
         <div class="row"><button class="btn ghost small" type="button" data-action="back">Back</button></div></div>`);

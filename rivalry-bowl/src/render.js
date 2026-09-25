@@ -434,6 +434,15 @@
       if (p.i === V.defCtrl && !p.down) {
         ctx.fillStyle = 'rgba(90,230,255,0.95)';
         ring(ctx, px, py, 6 * SPR, 2.5 * SPR);
+        // A marker over his head so he's easy to find; solid once he's yours.
+        const hy = py - spr.height * SPR - 2 * SPR, t = 2.2 * SPR;
+        ctx.fillStyle = V.defOwn ? '#5ae6ff' : 'rgba(90,230,255,0.55)';
+        ctx.beginPath();
+        ctx.moveTo(px - t, hy - t * 1.2);
+        ctx.lineTo(px + t, hy - t * 1.2);
+        ctx.lineTo(px, hy);
+        ctx.closePath();
+        ctx.fill();
       }
       if (V.routeColors && V.routeColors[p.i] && !V.live) {
         ctx.fillStyle = V.routeColors[p.i];
@@ -541,20 +550,20 @@
     ring(ctx, sx(V.landing.x), sy(V.landing.y), pulse + 2, pulse * 0.6 + 1);
   }
 
-  // Floating joystick: base where the thumb landed, knob under the thumb.
+  // Fixed joystick in the bottom-left corner; the knob follows the thumb.
   function drawJoy(ctx, V) {
     const j = V.joy;
     if (!j) return;
     const r = j.r || 20;
-    ctx.fillStyle = 'rgba(13,15,20,0.28)';
+    ctx.fillStyle = j.held ? 'rgba(13,15,20,0.42)' : 'rgba(13,15,20,0.28)';
     ellipse(ctx, j.x0, j.y0, r, r);
-    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+    ctx.strokeStyle = j.held ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.4)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(j.x0, j.y0, r, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.fillStyle = j.on ? 'rgba(255,210,63,0.85)' : 'rgba(255,255,255,0.6)';
-    ellipse(ctx, j.x1, j.y1, 8, 8);
+    ctx.fillStyle = j.on ? 'rgba(255,210,63,0.9)' : j.held ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.45)';
+    ellipse(ctx, j.x1, j.y1, r * 0.36, r * 0.36);
   }
 
   // --- Weather --------------------------------------------------------------------
@@ -662,6 +671,23 @@
     ctx.fillStyle = 'rgba(13,15,20,0.7)';
     ctx.fillRect(x, y - 2, w, 11);
     F.draw(ctx, V.netInfo, x + 4, y, 1, 'rgba(255,255,255,0.8)');
+  }
+
+  // Pre-snap key: each route color, who runs it and his top ratings (* = star).
+  function drawLegend(ctx, V) {
+    if (!V.legend || V.phase !== 'presnap') return;
+    const x = 4, lh = 9;
+    // Landscape: top-left, behind the formation. Portrait: in the space under the field.
+    let y = R.portrait ? R.H - R.bottom + 4 : 5 + (V.netInfo ? 13 : 0);
+    const w = Math.max(...V.legend.map((l) => F.width(l.text, 1))) + 14;
+    ctx.fillStyle = 'rgba(13,15,20,0.55)';
+    ctx.fillRect(x, y - 2, w, V.legend.length * lh + 3);
+    for (const l of V.legend) {
+      ctx.fillStyle = l.color;
+      ctx.fillRect(x + 3, y + 1, 5, 5);
+      F.draw(ctx, l.text, x + 11, y, 1, 'rgba(255,255,255,0.9)');
+      y += lh;
+    }
   }
 
   function drawFooter(ctx, V) {
@@ -857,6 +883,7 @@
     drawHUD(ctx, V);
     drawFooter(ctx, V);
     drawNetInfo(ctx, V);
+    drawLegend(ctx, V);
     drawBanner(ctx, V);
   }
 

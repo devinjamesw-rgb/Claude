@@ -1,4 +1,5 @@
-// Online defense over the mock runtime: tap-to-switch, joystick steering,
+// Online defense over the mock runtime: tap-to-switch, the fixed joystick
+// (instant on the defense phone, followed on the offense phone), SWITCH, DIVE,
 // sticky coverage call and the round-trip readout. ISOLATED=1 DB=1 forces the backup link.
 'use strict';
 const { chromium } = require('playwright');
@@ -23,8 +24,8 @@ const OUT = process.env.OUT || '/tmp/shots';
     for (const [p, q] of [[A, B], [B, A]]) if (await p.evaluate(() => RB.App.net.isAuthority() && RB.App.G.g.phase === 'presnap' && RB.App.G.g.poss === RB.App.net.seat)) { off = p; def = q; break; }
     await A.waitForTimeout(100);
   }
-  await def.waitForSelector('[data-action=defcall][data-call=blitz]');
-  await def.click('[data-action=defcall][data-call=blitz]');
+  await def.waitForSelector('[data-action=defcall][data-call=zone]');
+  await def.click('[data-action=defcall][data-call=zone]');
   await off.waitForTimeout(900);
   const call1 = await off.evaluate(() => RB.App.G.g.defCall);
   await off.click('[data-action=call][data-kind=pass]');
@@ -34,21 +35,39 @@ const OUT = process.env.OUT || '/tmp/shots';
   await def.mouse.click(sPos.x, sPos.y);
   await def.waitForTimeout(150);
   const picked = await def.evaluate(() => RB.App.net.defIdx);
-  // Drag the joystick: the defender should run that way on the offense's phone.
+  // Push the fixed stick right: the defender moves on this phone at once and
+  // on the offense's phone shortly after.
   const dir = await def.evaluate(() => { const w = RB.Render.screenDeltaToWorld(60, 0), l = Math.hypot(w.x, w.y); return { x: w.x / l, y: w.y / l }; });
+  const joyC = await def.evaluate(() => { const h = document.getElementById('game').getBoundingClientRect().height; return { x: RB.Input.JOY_M + RB.Input.JOY_R, y: h - RB.Input.JOY_M - RB.Input.JOY_R }; });
+  const local0 = await def.evaluate(() => { const s = RB.App.net.interpSnap(), p = s.players[RB.App.net.defIdx]; return { x: p.x, y: p.y }; });
   const pos0 = await off.evaluate(() => { const G = RB.App.G, p = G.rt.play.players[G.rt.play.humanDefIdx]; return { x: p.x, y: p.y }; });
-  await def.mouse.move(560, 300); await def.mouse.down();
-  for (let i = 1; i <= 6; i++) { await def.mouse.move(560 + i * 10, 300); await def.waitForTimeout(16); }
-  await def.waitForTimeout(1200);
+  await def.mouse.move(joyC.x, joyC.y); await def.mouse.down();
+  await def.mouse.move(joyC.x + 20, joyC.y); await def.mouse.move(joyC.x + 44, joyC.y);
+  await def.waitForTimeout(300);
+  const localAfter300 = await def.evaluate(([d, p0]) => { const o = RB.App.net.own; return o ? ((o.x - p0.x) * d.x + (o.y - p0.y) * d.y).toFixed(1) : 'not owned'; }, [dir, local0]);
+  await def.waitForTimeout(900);
   const seen = await off.evaluate(([d, p0]) => { const G = RB.App.G, p = G.rt.play.players[G.rt.play.humanDefIdx]; return { idx: G.rt.play.humanDefIdx, along: ((p.x - p0.x) * d.x + (p.y - p0.y) * d.y).toFixed(1), across: Math.abs((p.x - p0.x) * -d.y + (p.y - p0.y) * d.x).toFixed(1) }; }, [dir, pos0]);
   await def.screenshot({ path: `${OUT}/80-def-steer.png` });
+  // Let go: he stops (no computer takeover).
   await def.mouse.up();
+  await def.waitForTimeout(500);
+  const stopped = await def.evaluate(() => { const o = RB.App.net.own; return o ? Math.hypot(o.vx, o.vy).toFixed(2) : 'not owned'; });
+  // SWITCH, then DIVE with the new defender.
+  const padBtns = await def.evaluate(() => [...document.querySelectorAll('#pad [data-pad]')].map((b) => b.dataset.pad).join(','));
+  const before = await def.evaluate(() => RB.App.net.defIdx);
+  const live = await def.evaluate(() => RB.App.net.inputContext());
+  if (live === 'def') await def.dispatchEvent('[data-pad=switch]', 'pointerdown');
+  await def.waitForTimeout(100);
+  const after = await def.evaluate(() => RB.App.net.defIdx);
+  if (live === 'def') await def.dispatchEvent('[data-pad=dive]', 'pointerdown');
+  await def.waitForTimeout(60);
+  const dived = await def.evaluate(() => ({ dvN: RB.App.net.dvN, lunge: RB.App.net.own ? +RB.App.net.own.lunge.toFixed(2) : null }));
   // Wait for the next pre-snap and check the call carried over.
   await off.waitForFunction(() => RB.App.G.g.phase === 'presnap' || RB.App.G.g.poss !== RB.App.net.seat, null, { timeout: 20000 });
   await off.waitForTimeout(1500);
   const call2 = await off.evaluate(() => ({ phase: RB.App.G.g.phase, call: RB.App.G.g.defCall, stillOffense: RB.App.G.g.poss === RB.App.net.seat }));
   const info = await def.evaluate(() => RB.App.net.netInfo());
-  console.log(JSON.stringify({ link: await A.evaluate(() => RB.App.net.t.kind), call1, picked, seen, call2, info }));
+  console.log(JSON.stringify({ link: await A.evaluate(() => RB.App.net.t.kind), call1, picked, localAfter300, seen, stopped, padBtns, switched: [before, after], ctxAtSwitch: live, dived, call2, info }));
   console.log('errors:', errors.length ? errors.join('\n') : 'none');
   await browser.close();
 })();

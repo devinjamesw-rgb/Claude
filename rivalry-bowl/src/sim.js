@@ -649,7 +649,7 @@
       if (!['pass_pro', 'run_block', 'stalk', 'escort'].includes(a.role) || play.turnover) continue;
       for (let j = 11; j < 22; j++) {
         const d = P[j];
-        if (d.eng >= 0 || d.shedCd > 0 || d.down > 0 || d.i === play.carrier) continue;
+        if (d.eng >= 0 || d.shedCd > 0 || d.down > 0 || d.i === play.carrier || d.i === play.ownIdx) continue;
         if (dist(a, d) > 0.95) continue;
         if (a.role === 'pass_pro' && play.ball.st === 'air') continue;
         engage(play, a, d);
@@ -984,8 +984,26 @@
     const rng = play.rng;
     for (const d of play.players) {
       if (d.side === car.side || d.down > 0 || d.tackleCd > 0) continue;
-      const dd = dist(d, car);
-      const r = d.eng >= 0 ? 0.62 : 0.88;
+      let dd = dist(d, car);
+      const owned = d.i === play.ownIdx && d.own;
+      if (owned) {
+        // Favor the defense player's screen: he sees the carrier a little late.
+        const then = carrierAt(play, d.own.lag || 0);
+        dd = Math.min(dd, hyp(d.own.x - then.x, d.own.y - then.y));
+        if (d.lunge > 0 && dd <= 1.9) {
+          d.lunge = 0; d.ownLunge = false; d.tackleCd = 1.0;
+          const ux = (car.x - d.x) / (dist(d, car) || 1), uy = (car.y - d.y) / (dist(d, car) || 1);
+          if (car.juke <= 0 && rng.chance(clamp(tackleOdds(play, d, car) - 0.05, 0.35, 0.95))) {
+            d.x = car.x - ux * 0.7; d.y = car.y - uy * 0.7;
+            tackled(play, car, d);
+            return;
+          }
+          d.down = 1.0;
+          event(play, 'broken', '');
+          continue;
+        }
+      }
+      const r = d.eng >= 0 ? 0.62 : owned ? 1.05 : 0.88;
       if (dd <= r) {
         if (car.juke > 0 && d.eng < 0) {
           d.down = 0.9;
@@ -1118,8 +1136,8 @@
     p.x += p.vx * dt; p.y += p.vy * dt;
   }
 
-  const TURN_RATE = 9.5; // rad/s, about 540 degrees a second
-  const TURN_BLEED = 0.22; // speed lost per radian turned
+  const TURN_RATE = 17; // rad/s, about 970 degrees a second
+  const TURN_BLEED = 0.1; // speed lost per radian turned
   function integrateSteered(p, accel, dt) {
     const sp = hyp(p.vx, p.vy), want = hyp(p.dvx, p.dvy);
     if (sp < 1.2 || want < 0.2) { integrate(p, accel * 1.3, dt); return; }
@@ -1181,8 +1199,12 @@
     }
     if (input.dive && (ctrl.i !== QB || play.scramble)) {
       ctrl.dive = 0.36;
-      const d = hyp(input.dive.x, input.dive.y) || 1;
-      ctrl.divX = input.dive.x / d; ctrl.divY = input.dive.y / d;
+      // Dive the way the stick points; with the stick idle, the way he's running.
+      let dx = input.dive.x, dy = input.dive.y;
+      if (hyp(dx, dy) < 0.1) { dx = ctrl.vx; dy = ctrl.vy; }
+      if (hyp(dx, dy) < 0.5) { dx = 1; dy = 0; }
+      const d = hyp(dx, dy);
+      ctrl.divX = dx / d; ctrl.divY = dy / d;
       event(play, 'dive', '');
       return true;
     }
@@ -1202,11 +1224,11 @@
       return true;
     }
     if (input.joy) {
-      // Floating joystick: run the way the stick points. Past the dead zone he
-      // is already at better than half speed, so small nudges don't bog down.
+      // Joystick: run the way the stick points. Past the dead zone he is
+      // already at two-thirds speed, so small nudges don't bog down.
       play.manual = true;
       const jx = input.joy.x, jy = input.joy.y, mag = Math.min(1, hyp(jx, jy));
-      steerDir(ctrl, jx, jy, spd * Math.max(0.55, mag));
+      steerDir(ctrl, jx, jy, spd * Math.max(0.65, mag));
       if (ctrl.i === QB && !play.scramble) ctrl.drop = { x: ctrl.x, y: ctrl.y };
       return true;
     }
@@ -1218,17 +1240,47 @@
     return true;
   }
 
-  // The defense player's joystick steers his defender.
-  function applyDefenderInput(play, input) {
-    const i = play.humanDefIdx;
-    const j = input.defJoy;
-    if (i < 11 || !j || play.phase !== 'live') return false;
+  // Online defense: the defense player's phone moves his defender itself and
+  // reports where he is (input.defOwn). Here he follows those reports instead
+  // of running AI, can't be locked up by a block, and tackles are judged
+  // against where the ball carrier was on the defense player's screen.
+  function applyDefenderInput(play, input, dt) {
+    play.ownIdx = -1;
+    const i = play.humanDefIdx, o = input.defOwn;
+    if (i < 11 || !o || play.phase !== 'live' || play.turnover) return false;
     const p = play.players[i];
-    if (p.eng >= 0 || p.down > 0) return false;
-    const mag = Math.min(1, hyp(j.x, j.y));
-    if (mag <= 0) return false;
-    steerDir(p, j.x, j.y, effSpeed(play, p) * Math.max(0.55, mag));
+    play.ownIdx = i;
+    if (p.eng >= 0) { play.players[p.eng].eng = -1; p.eng = -1; }
+    p.own = o;
+    if (o.dive && p.down <= 0 && p.tackleCd <= 0) { p.lunge = 0.34; p.ownLunge = true; }
+    if (p.down > 0) return false; // he stays where he fell
+    const ahead = Math.min(0.25, o.age || 0);
+    const tx = o.x + o.vx * ahead, ty = o.y + o.vy * ahead;
+    if (hyp(tx - p.x, ty - p.y) > 5) { p.x = tx; p.y = ty; }
+    else {
+      const f = 1 - Math.exp(-dt * 16);
+      p.x += (tx - p.x) * f;
+      p.y += (ty - p.y) * f;
+    }
+    p.vx = o.vx; p.vy = o.vy; p.dvx = o.vx; p.dvy = o.vy;
+    if (Math.abs(o.vx) > 0.3) p.face = o.vx > 0 ? 1 : -1;
     return true;
+  }
+
+  // Where the ball carrier was `lag` seconds ago.
+  function carrierAt(play, lag) {
+    const car = carrierP(play);
+    const h = play.hist[play.carrier];
+    if (!car || !h || !h.length) return car;
+    return h[clamp(Math.round(lag / C.DT), 0, h.length - 1)];
+  }
+
+  // The defense player's phone runs the same movement for the defender it
+  // steers: joystick direction, quick turns, a hard slow-down when released.
+  function driveOwned(p, joy, spd, dt) {
+    if (joy && hyp(joy.x, joy.y) > 0) steerDir(p, joy.x, joy.y, spd * Math.max(0.65, Math.min(1, hyp(joy.x, joy.y))));
+    else { p.dvx = 0; p.dvy = 0; }
+    integrateSteered(p, 34, dt);
   }
 
   // --- Main step -----------------------------------------------------------------
@@ -1244,7 +1296,11 @@
       p.juke = Math.max(0, p.juke - dt);
       p.jukeCd = Math.max(0, p.jukeCd - dt);
       p.slow = Math.max(0, p.slow - dt);
-      if (p.lunge) p.lunge = Math.max(0, p.lunge - dt);
+      if (p.lunge) {
+        p.lunge = Math.max(0, p.lunge - dt);
+        // A diving defender who comes up empty ends up on the turf.
+        if (!p.lunge && p.ownLunge) { p.ownLunge = false; if (play.phase === 'live' && p.down <= 0) { p.down = 0.8; p.tackleCd = 0.8; } }
+      }
       if (p.down > 0 && p.down < 50) p.down = Math.max(0, p.down - dt);
     }
 
@@ -1274,7 +1330,7 @@
 
     if (play.kind === 'pass' && !play.thrown) assignProtection(play);
     const userMoved = applyUserInput(play, input, dt);
-    const defMoved = applyDefenderInput(play, input);
+    const defMoved = applyDefenderInput(play, input, dt);
     if (play.phase !== 'live') return;
     const car = carrierP(play);
     for (const p of P) {
@@ -1291,10 +1347,11 @@
     tryEngage(play);
     for (const p of P) {
       if (p.eng >= 0) continue;
-      if ((userMoved && car && p === car && !play.turnover) || (defMoved && p.i === play.humanDefIdx)) {
-        // Players on a joystick turn their running direction quickly and pay
+      if (defMoved && p.i === play.humanDefIdx) continue; // placed from the defense's reports
+      if (userMoved && car && p === car && !play.turnover) {
+        // A runner on the joystick turns his running direction quickly and pays
         // for hard cuts with a little speed, like an arcade runner.
-        integrateSteered(p, p === car ? 18 : 14, dt);
+        integrateSteered(p, 34, dt);
       } else {
         const acc = p.i === play.carrier ? 18 : p.side === 0 ? 11 : 10.5;
         integrate(p, acc, dt);
@@ -1311,7 +1368,7 @@
     for (const p of P) {
       const h = play.hist[p.i];
       h.unshift({ x: p.x, y: p.y, vx: p.vx, vy: p.vy });
-      if (h.length > 40) h.pop();
+      if (h.length > 60) h.pop();
     }
   }
 
@@ -1334,5 +1391,6 @@
     IDX: { QB, RBK, OC, LG, RG, LT, RT, TE, WR1, WR2, WR3, DE1, DT1, DT2, DE2, LB1, LB2, LB3, CB1, CB2, S1, S2 },
     OL, ELIGIBLE, DIFF, DEF_CALLS, ROUTES,
     createPlay, setDefense, snap, step, canThrow, throwBall, clampAim, flightTime, maxRange, aiDefCall, predictRoute, assistAim,
+    driveOwned, effSpeed,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

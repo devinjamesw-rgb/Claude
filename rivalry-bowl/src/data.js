@@ -142,12 +142,54 @@
     DL: [90, 99], LB: [30, 59], CB: [1, 39], S: [1, 49], K: [1, 49],
   };
 
-  // Converts 50-99 ratings into sim attributes (speeds in yd/s, skills 0-1).
+  // Each school's stars follow its long-standing program identity (WR U, DB U,
+  // Linebacker U, the service academies' option QBs...). Player names are
+  // made up; only the kind of team is real.
+  const STAR = {
+    qb_arm: { side: 'off', slot: 0, boost: { ARM: 14, ACC: 3 }, tag: 'CANNON ARM' },
+    qb_acc: { side: 'off', slot: 0, boost: { ACC: 14, ARM: 3 }, tag: 'PINPOINT' },
+    qb_run: { side: 'off', slot: 0, boost: { SPD: 22, ELU: 14 }, tag: 'DUAL THREAT' },
+    rb_spd: { side: 'off', slot: 1, boost: { SPD: 10, ELU: 10 }, tag: 'BURNER' },
+    rb_pow: { side: 'off', slot: 1, boost: { STR: 14, ELU: 6 }, tag: 'BULLDOZER' },
+    te: { side: 'off', slot: 7, boost: { HND: 10, SPD: 6 }, tag: 'SAFE HANDS' },
+    wr_spd: { side: 'off', slot: 8, boost: { SPD: 12, HND: 2 }, tag: 'DEEP THREAT' },
+    wr_hnd: { side: 'off', slot: 9, boost: { HND: 12, ELU: 4 }, tag: 'SURE HANDS' },
+    edge: { side: 'def', slot: 0, boost: { RSH: 14, SPD: 6 }, tag: 'EDGE RUSHER' },
+    dt: { side: 'def', slot: 1, boost: { RSH: 12, TKL: 6 }, tag: 'INTERIOR WALL' },
+    lb: { side: 'def', slot: 4, boost: { TKL: 10, SPD: 8, COV: 6 }, tag: 'TACKLING MACHINE' },
+    cb: { side: 'def', slot: 7, boost: { COV: 12, SPD: 8, HND: 6 }, tag: 'LOCKDOWN' },
+    k: { side: 'k', slot: undefined, boost: { PWR: 8, ACC: 8 }, tag: 'BIG LEG' },
+  };
+  const TRAITS = {
+    ALA: ['edge', 'wr_spd'], UGA: ['lb', 'dt', 'rb_pow'], OSU: ['wr_spd', 'wr_hnd'], MICH: ['rb_pow', 'dt', 'cb'],
+    TEX: ['qb_arm', 'wr_spd'], LSU: ['wr_spd', 'cb'], CLEM: ['dt', 'edge'], ORE: ['qb_acc', 'wr_spd'],
+    USC: ['qb_acc', 'wr_hnd'], ND: ['te', 'rb_pow'], FSU: ['edge', 'wr_spd'], PSU: ['lb', 'rb_spd'],
+    OU: ['qb_acc', 'wr_spd'], TENN: ['qb_arm', 'wr_spd'], UF: ['wr_spd', 'cb'], MIA: ['edge', 'wr_spd'],
+    TAMU: ['dt', 'wr_hnd'], AUB: ['rb_spd', 'edge'], WIS: ['rb_pow', 'te'], UW: ['qb_arm', 'wr_hnd'],
+    NEB: ['rb_pow', 'lb'], IOWA: ['cb', 'te', 'k'], COLO: ['qb_acc', 'cb'], BSU: ['rb_spd', 'qb_acc'],
+    UTAH: ['dt', 'lb'], MISS: ['qb_arm', 'wr_spd'], OKST: ['rb_spd', 'wr_spd'], VT: ['k', 'cb'],
+    ARMY: ['qb_run', 'rb_pow'], NAVY: ['qb_run', 'rb_spd'],
+  };
+  // Which ratings each position shows, in order of importance.
+  const SHOWN = {
+    QB: ['ARM', 'ACC', 'SPD'], RB: ['SPD', 'ELU', 'STR'], TE: ['HND', 'SPD'], WR: ['SPD', 'HND', 'ELU'],
+    OL: ['BLK'], DL: ['RSH', 'TKL'], LB: ['TKL', 'SPD', 'COV'], CB: ['COV', 'SPD'], S: ['COV', 'SPD'], K: ['PWR', 'ACC'],
+  };
+  // Speed rating <-> yards per second: 99 runs 8.6, 85 runs 7.9, 60 runs 6.8.
+  const speedRating = (yds) => Math.round(Math.max(40, Math.min(99, (yds - 4.2) / 0.044)));
+
+  // Every player gets his own ratings: his position group's team rating
+  // (compressed so stars can stand above it), his own form, a little noise
+  // per rating, and the school's stars on top. The sim reads them as
+  // attributes; the shown SPD comes from his real speed, so an SPD 90
+  // corner runs exactly as fast as an SPD 90 receiver.
   function buildRoster(team, even) {
     const r = even ? evenRatings() : team.r;
     const rng = makeRng(hashStr(team.id + (even ? ':even' : '')));
-    const f = (v) => (v - 50) / 50; // 0..1
-    const jit = (a) => a + rng.range(-0.03, 0.03);
+    const spread = even ? 0 : 1;
+    const traits = even ? [] : TRAITS[team.id] || [];
+    const lvl = (g) => 60 + (g - 50) * 0.6; // team rating 50-99 -> 60-89
+    const f = (v) => Math.max(-0.5, Math.min(1.3, (v - 60) / 30)); // 0 at 60, 1 at 90
     const used = new Set();
     function number(pos) {
       const [lo, hi] = NUM_RANGE[pos];
@@ -165,25 +207,80 @@
         skin: rng.pick(SKIN),
       };
     }
+    function rate(base, side, slot) {
+      const form = rng.gauss() * 3 * spread;
+      const v = {};
+      for (const [k, x] of Object.entries(base)) v[k] = x + form + rng.gauss() * 2.5 * spread;
+      let star = null;
+      for (const t of traits) {
+        const S = STAR[t];
+        if (S.side !== side || S.slot !== slot) continue;
+        star = S.tag;
+        for (const [k, x] of Object.entries(S.boost)) v[k] += x;
+      }
+      for (const k of Object.keys(v)) v[k] = Math.round(Math.max(45, Math.min(99, v[k])));
+      return { v, star };
+    }
+    const depth = [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, -3]; // WR1 a touch better, WR3 a step down
     const off = OFF_POS.map((pos, i) => {
       const p = person(pos);
-      if (pos === 'QB') Object.assign(p, { spd: 6.3 + f(r.qb) * 0.5 + rng.range(-0.3, 0.5), arm: jit(0.72 + f(r.qb) * 0.28), acc: jit(0.6 + f(r.qb) * 0.38), hands: 0.6, str: 0.5, elus: 0.45 });
-      if (pos === 'RB') Object.assign(p, { spd: 7.35 + f(r.rb) * 0.75, hands: jit(0.78 + f(r.rb) * 0.12), str: jit(0.5 + f(r.rb) * 0.4), elus: jit(0.5 + f(r.rb) * 0.45), block: 0.45 });
-      if (pos === 'OL') Object.assign(p, { spd: 5.4, block: jit(0.45 + f(r.ol) * 0.5), str: 0.9 });
-      if (pos === 'TE') Object.assign(p, { spd: 6.8 + f(r.wr) * 0.4, hands: jit(0.8 + f(r.wr) * 0.12), str: 0.75, elus: 0.35, block: jit(0.4 + f(r.ol) * 0.35) });
-      if (pos === 'WR') Object.assign(p, { spd: 7.55 + f(r.wr) * 0.8 - (i === 10 ? 0.1 : 0), hands: jit(0.84 + f(r.wr) * 0.12), str: 0.4, elus: jit(0.5 + f(r.wr) * 0.4), block: 0.3 });
-      return p;
+      let q;
+      if (pos === 'QB') {
+        q = rate({ ARM: lvl(r.qb), ACC: lvl(r.qb), SPD: 64, ELU: 62 }, 'off', i);
+        const v = q.v;
+        Object.assign(p, { spd: 6.45 + f(v.SPD) * 1.4, arm: 0.72 + f(v.ARM) * 0.28, acc: 0.6 + f(v.ACC) * 0.38, hands: 0.6, str: 0.5, elus: 0.3 + f(v.ELU) * 0.4 });
+      } else if (pos === 'RB') {
+        q = rate({ SPD: lvl(r.rb), ELU: lvl(r.rb), STR: lvl(r.rb), HND: lvl(r.rb) }, 'off', i);
+        const v = q.v;
+        Object.assign(p, { spd: 7.35 + f(v.SPD) * 0.75, hands: 0.78 + f(v.HND) * 0.12, str: 0.5 + f(v.STR) * 0.4, elus: 0.5 + f(v.ELU) * 0.45, block: 0.45 });
+      } else if (pos === 'OL') {
+        q = rate({ BLK: lvl(r.ol) }, 'off', i);
+        Object.assign(p, { spd: 5.4, block: 0.45 + f(q.v.BLK) * 0.5, str: 0.9 });
+      } else if (pos === 'TE') {
+        q = rate({ HND: lvl(r.wr), SPD: lvl(r.wr), BLK: lvl(r.ol) }, 'off', i);
+        const v = q.v;
+        Object.assign(p, { spd: 6.8 + f(v.SPD) * 0.4, hands: 0.8 + f(v.HND) * 0.12, str: 0.75, elus: 0.35, block: 0.4 + f(v.BLK) * 0.35 });
+      } else {
+        const b = lvl(r.wr) + depth[i];
+        q = rate({ SPD: b, HND: b, ELU: b }, 'off', i);
+        const v = q.v;
+        Object.assign(p, { spd: 7.55 + f(v.SPD) * 0.8, hands: 0.84 + f(v.HND) * 0.12, str: 0.4, elus: 0.5 + f(v.ELU) * 0.4, block: 0.3 });
+      }
+      return Object.assign(p, { rt: Object.assign(q.v, { SPD: speedRating(p.spd) }), star: q.star });
     });
-    const def = DEF_POS.map((pos) => {
+    const def = DEF_POS.map((pos, i) => {
       const p = person(pos);
-      if (pos === 'DL') Object.assign(p, { spd: 6.1 + f(r.dl) * 0.5, rush: jit(0.45 + f(r.dl) * 0.5), tackle: jit(0.75 + f(r.dl) * 0.2), cover: 0.2, hands: 0.25 });
-      if (pos === 'LB') Object.assign(p, { spd: 6.9 + f(r.lb) * 0.5, rush: jit(0.4 + f(r.lb) * 0.4), tackle: jit(0.78 + f(r.lb) * 0.18), cover: jit(0.4 + f(r.lb) * 0.35), hands: 0.4 });
-      if (pos === 'CB') Object.assign(p, { spd: 7.45 + f(r.db) * 0.8, tackle: jit(0.62 + f(r.db) * 0.2), cover: jit(0.5 + f(r.db) * 0.45), hands: jit(0.45 + f(r.db) * 0.2), rush: 0.35 });
-      if (pos === 'S') Object.assign(p, { spd: 7.3 + f(r.db) * 0.6, tackle: jit(0.7 + f(r.db) * 0.2), cover: jit(0.45 + f(r.db) * 0.45), hands: jit(0.45 + f(r.db) * 0.2), rush: 0.35 });
-      return p;
+      let q;
+      if (pos === 'DL') {
+        q = rate({ RSH: lvl(r.dl), TKL: lvl(r.dl), SPD: lvl(r.dl) }, 'def', i);
+        const v = q.v;
+        Object.assign(p, { spd: 6.1 + f(v.SPD) * 0.5, rush: 0.45 + f(v.RSH) * 0.5, tackle: 0.75 + f(v.TKL) * 0.2, cover: 0.2, hands: 0.25 });
+      } else if (pos === 'LB') {
+        q = rate({ TKL: lvl(r.lb), SPD: lvl(r.lb), COV: lvl(r.lb), RSH: lvl(r.lb) }, 'def', i);
+        const v = q.v;
+        Object.assign(p, { spd: 6.9 + f(v.SPD) * 0.5, rush: 0.4 + f(v.RSH) * 0.4, tackle: 0.78 + f(v.TKL) * 0.18, cover: 0.4 + f(v.COV) * 0.35, hands: 0.4 });
+      } else if (pos === 'CB') {
+        q = rate({ COV: lvl(r.db), SPD: lvl(r.db), HND: lvl(r.db), TKL: lvl(r.db) }, 'def', i);
+        const v = q.v;
+        Object.assign(p, { spd: 7.45 + f(v.SPD) * 0.8, tackle: 0.62 + f(v.TKL) * 0.2, cover: 0.5 + f(v.COV) * 0.45, hands: 0.45 + f(v.HND) * 0.2, rush: 0.35 });
+      } else {
+        q = rate({ COV: lvl(r.db), SPD: lvl(r.db), HND: lvl(r.db), TKL: lvl(r.db) }, 'def', i);
+        const v = q.v;
+        Object.assign(p, { spd: 7.3 + f(v.SPD) * 0.6, tackle: 0.7 + f(v.TKL) * 0.2, cover: 0.45 + f(v.COV) * 0.45, hands: 0.45 + f(v.HND) * 0.2, rush: 0.35 });
+      }
+      return Object.assign(p, { rt: Object.assign(q.v, { SPD: speedRating(p.spd) }), star: q.star });
     });
-    const k = { power: 49 + f(r.k) * 11, acc: 0.7 + f(r.k) * 0.28, name: rng.pick(FIRST.split('')) + '. ' + rng.pick(LAST), num: number('K') };
+    const kq = rate({ PWR: lvl(r.k), ACC: lvl(r.k) }, 'k', undefined);
+    const k = { power: 49 + f(kq.v.PWR) * 11, acc: Math.min(0.99, 0.7 + f(kq.v.ACC) * 0.28), name: rng.pick(FIRST.split('')) + '. ' + rng.pick(LAST), num: number('K'), pos: 'K', rt: kq.v, star: kq.star };
     return { off, def, k };
+  }
+
+  // The players worth knowing about: the stars, then the QB and top receiver.
+  function keyPlayers(roster) {
+    const all = roster.off.concat(roster.def, [roster.k]);
+    const list = all.filter((p) => p.star);
+    for (const p of [roster.off[0], roster.off[8]]) if (list.length < 3 && !list.includes(p)) list.push(p);
+    return list.map((p) => ({ pos: p.pos, num: p.num, name: p.name, star: p.star, show: (SHOWN[p.pos] || Object.keys(p.rt)).map((k) => [k, p.rt[k]]) }));
   }
 
   // Swap the away side to white jerseys when both teams' jerseys look alike.
@@ -209,5 +306,7 @@
   RB.TEAM_BY_ID = TEAM_BY_ID;
   RB.teamStars = teamStars;
   RB.buildRoster = buildRoster;
+  RB.keyPlayers = keyPlayers;
+  RB.SHOWN = SHOWN;
   RB.uniforms = uniforms;
 })(typeof window !== 'undefined' ? window : globalThis);

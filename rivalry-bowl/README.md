@@ -25,16 +25,21 @@ viewer the room can see, so a stall can be diagnosed from a screenshot.
 shown alone in the live room, although both connected and every update was confirmed.
 The page can also sync through the artifact's shared database: if the live room shows
 nobody else for 8 seconds, both phones switch to it and match there. Its round trip is
-about a third of a second, so a defender steered over the backup reacts noticeably late.
+about a third of a second. The defender you steer runs on your own phone, so that delay
+shows only in how late you see the offense, not in how he answers the stick.
 A page that declares the database is private to the owner's organization, so
 this version is published separately (`dist/artifact-online.html`, capabilities
-`room` + `db`) from the public one (`dist/artifact.html`, `room` only). When the file is opened anywhere else (a
-download, GitHub Pages), only Pass & Play works and the Online screen says so.
+`room` + `db`) from the public one (`dist/artifact.html`, `room` only). The public page
+can't pair two phones on one account; after 9 seconds alone its lobby says so and links
+to the online version (set `ONLINE_URL` when building to change the link). When the file
+is opened anywhere else (a download, GitHub Pages), only Pass & Play works and the Online
+screen says so.
 
 ## Controls
 
 - **Read the play**: before the snap the camera pulls back and each receiver's route is
-  drawn in his color (a dashed arrow shows the run lane). **New play** rerolls the
+  drawn in his color (a dashed arrow shows the run lane). A key in the corner lists who
+  runs each route and his best ratings; `*` marks a star. **New play** rerolls the
   formation and routes; the play clock keeps running.
 - **Snap**: tap PASS or RUN. On 4th down you also get PUNT and FG.
 - **Throw**: touch anywhere and pull back, away from the end zone, like a slingshot.
@@ -43,19 +48,31 @@ download, GitHub Pages), only Pass & Play works and the Online screen says so.
   long enough; letting go before then cancels the throw. With **aim assist** on (title
   screen), a reticle near where a receiver will be locks onto his catch point and turns
   green, with a ring on that receiver.
-- **Scramble**: drag forward to run with the QB (the joystick takes over). Once he
-  crosses the line he can't throw.
-- **Run**: after the catch (or once the QB scrambles) put a thumb down anywhere and drag.
-  A joystick appears under your thumb and the runner goes the way it points; if your
-  thumb drifts past the rim, the base follows it. Let go and he keeps running upfield on
-  his own. Hard cuts cost a little speed. Tap to juke, flick to dive.
+- **Move**: the joystick is fixed in the bottom-left corner and has its own finger, so the
+  other thumb stays free for the buttons. The QB moves with it in the pocket; once he
+  crosses the line he can't throw. After a catch or handoff the runner keeps going
+  upfield until you steer him. **JUKE** and **DIVE** are buttons on the right. A
+  steered runner turns a 90 degree cut in about 83 ms.
 - **Kick**: drag down for power and sideways to aim (the ball goes the opposite way).
   Clear the white line on the power bar and watch the wind.
 - **Defense (online only)**: pick a coverage before the snap; it carries over to later
   plays until you change it. Tap any defender to take control of him (before or during
-  the play), then steer him with the same drag joystick. A tap away from everyone
-  switches to the free defender nearest the ball. The HUD shows the link type and the
-  measured round trip.
+  the play). He is run by the computer until you touch the stick; from then on he runs
+  on your phone with no network delay and stops when you let go. **SWITCH** jumps to the
+  free defender nearest the ball and **DIVE** lays out for a tackle. Tackles are judged
+  against where the ball carrier was on your screen, so the lag doesn't cost you
+  tackles. The HUD shows the link type and the measured round trip.
+
+## Teams and ratings
+
+Every player has his own ratings (SPD, HND, ELU, ARM, ACC, RSH, TKL, COV...), built from
+his school's position-group rating, his own spread, and the school's stars. The stars
+follow each program's long-standing identity: deep-threat receivers at Ohio State and
+LSU, edge rushers at Alabama, linebackers at Penn State, option quarterbacks at Army and
+Navy, and so on. Team select lists each school's key players. Names are made up: real
+rosters change every season and the game makes no claim to match them. Displayed SPD
+comes straight from a player's speed in yards per second, so equal SPD means equal speed
+at any position.
 
 ## Rules
 
@@ -111,4 +128,5 @@ MOCK=1 ISOLATED=1 DB=1 node tools/onlinetest.js  # room shows each phone alone; 
 node tools/onlinejitter.js       # smoothness on the defending (streamed) side
 MOCK=1 node tools/onlinedef.js   # defense: tap to switch, joystick steering, sticky call
 node tools/response.js           # how fast a joystick cut changes the runner's direction
+node tools/owntest.js            # online defense tackles judged against the defense's screen
 ```

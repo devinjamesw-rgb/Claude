@@ -5,14 +5,15 @@
   const RB = root.RB;
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-  let screenEl, controlsEl, hintEl, pauseEl;
-  let screenKey = null, controlsKey = null, hintKey = null;
+  let screenEl, controlsEl, hintEl, pauseEl, padEl;
+  let screenKey = null, controlsKey = null, hintKey = null, padKey = null;
 
   function init() {
     screenEl = document.getElementById('screen');
     controlsEl = document.getElementById('controls');
     hintEl = document.getElementById('hint');
     pauseEl = document.getElementById('pause');
+    padEl = document.getElementById('pad');
   }
 
   function stars(v) {
@@ -65,7 +66,9 @@
         <h2 style="margin-bottom:6px">${esc(t.name)}</h2>
         <p>OFF ${stars(st.off)}<br>DEF ${stars(st.def)}</p>
         <div class="ratings"><span>QB <b>${r.qb}</b></span><span>RB <b>${r.rb}</b></span><span>WR <b>${r.wr}</b></span><span>OL <b>${r.ol}</b></span>
-        <span>DL <b>${r.dl}</b></span><span>LB <b>${r.lb}</b></span><span>DB <b>${r.db}</b></span><span>K <b>${r.k}</b></span></div></div></div>`;
+        <span>DL <b>${r.dl}</b></span><span>LB <b>${r.lb}</b></span><span>DB <b>${r.db}</b></span><span>K <b>${r.k}</b></span></div>
+        <p class="eyebrow" style="margin:10px 0 4px">KEY PLAYERS</p>
+        <ul class="keys">${RB.keyPlayers(RB.buildRoster(t, even)).map((p) => `<li><b>${esc(p.pos)} #${p.num}</b> ${esc(p.name)}${p.star ? ` <i>${esc(p.star)}</i>` : ''}<br><span>${p.show.map(([k, v]) => `${k} <b>${v}</b>`).join(' · ')}</span></li>`).join('')}</ul></div></div>`;
     }
     return `<div class="panel teams">
       <header><div><p class="eyebrow">${who}</p><h2 style="margin:0">Pick your school</h2></div>
@@ -140,10 +143,10 @@
       <dl>
         <dt>SNAP</dt><dd>Pick PASS or RUN. The ball is snapped right away. On 4th down you can also punt or kick a field goal.</dd>
         <dt>THROW</dt><dd>Touch anywhere and pull <b>back</b>, away from the end zone, like a slingshot. The dotted arc shows where the ball will land. Release to throw. Lead your receiver: the ball goes where you aim, not where he is now.</dd>
-        <dt>SCRAMBLE</dt><dd>Drag <b>forward</b> to run with the QB. Once he crosses the line he can't throw.</dd>
-        <dt>RUN</dt><dd>After a catch or handoff the runner keeps going upfield. Put your thumb down anywhere and drag: a joystick appears under it. Tap to juke, flick to dive.</dd>
+        <dt>READ</dt><dd>Before the snap, the key in the corner shows who runs each colored route and his best ratings (SPD speed, HND hands, ARM and ACC for the QB). A * marks a star.</dd>
+        <dt>MOVE</dt><dd>The joystick sits in the bottom-left corner. The QB moves with it in the pocket (cross the line and he can't throw). After a catch or handoff the runner keeps going upfield until you steer him. JUKE and DIVE are the buttons on the right.</dd>
         <dt>KICK</dt><dd>Drag down for power and sideways to aim (the ball goes the opposite way). Clear the white line on the power bar and watch the wind.</dd>
-        <dt>HEAD TO HEAD</dt><dd>Pass &amp; Play: each of you plays your own offense against the computer's defense; hand the phone over on every change of possession. Online: the defense player calls the coverage, taps any defender to take him over and steers him with the joystick.</dd>
+        <dt>HEAD TO HEAD</dt><dd>Pass &amp; Play: each of you plays your own offense against the computer's defense; hand the phone over on every change of possession. Online: the defense player calls the coverage and taps any defender to take him over. Touch the stick and he's yours with no delay (let go and he stops); SWITCH jumps to the defender nearest the ball, DIVE lays out for a tackle.</dd>
         <dt>CLOCK</dt><dd>The clock runs between plays after tackles in bounds. Snap quickly to save time. Incompletions, out of bounds, scores and timeouts stop it. Overtime uses college rules.</dd>
       </dl>
       <div class="row end"><button class="btn" type="button" data-action="back">Got it</button></div></div>`;
@@ -177,13 +180,24 @@
     hintEl.hidden = !text;
     hintEl.textContent = text || '';
   }
+  // Action buttons beside the joystick (JUKE / DIVE / SWITCH). They act on
+  // pointerdown, so they respond instantly and work while the other thumb steers.
+  const PAD_LABEL = { juke: 'JUKE', dive: 'DIVE', switch: 'SWITCH' };
+  function pad(list) {
+    const key = list ? list.join() : '';
+    if (key === padKey) return;
+    padKey = key;
+    padEl.hidden = !list || !list.length;
+    padEl.innerHTML = (list || []).map((a) => `<button class="pad-btn pad-${a}" type="button" data-pad="${a}">${PAD_LABEL[a]}</button>`).join('');
+  }
   function showPause(v) {
     pauseEl.hidden = !v;
   }
   function invalidate() {
     screenKey = null;
     controlsKey = null;
+    padKey = null;
   }
 
-  RB.UI = { init, show, controls, hint, showPause, invalidate, esc, title, teams, handoff, halftime, final, pause, howto, stars };
+  RB.UI = { init, show, controls, hint, pad, showPause, invalidate, esc, title, teams, handoff, halftime, final, pause, howto, stars };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -48,6 +48,7 @@
     window.addEventListener('orientationchange', () => setTimeout(doResize, 200));
     Input.attach(canvas, inputContext);
     document.addEventListener('click', onClick);
+    document.getElementById('pad').addEventListener('pointerdown', onPad);
     document.addEventListener('input', onInput);
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && App.screen === 'game' && App.mode === 'local') App.paused = true;
@@ -192,8 +193,6 @@
         const play = G.rt.play;
         inp = Input.poll(play ? play.players[0] : null);
         if (inp.throwAt) App.once.throwAt = inp.throwAt;
-        if (inp.juke) App.once.juke = true;
-        if (inp.dive) App.once.dive = inp.dive;
         App.lastInput = inp;
       }
       const authority = isDemo || !App.net || App.net.isAuthority();
@@ -301,6 +300,17 @@
     return out;
   }
 
+  // Before the snap: who runs each colored route, and how good he is.
+  const LEGEND_ORDER = [0, 8, 9, 10, 7, 1];
+  function legendView(roster) {
+    return LEGEND_ORDER.map((i) => {
+      const p = roster.off[i];
+      const keys = RB.SHOWN[p.pos].slice(0, 2);
+      const who = i === 0 ? 'QB' : `#${p.num}`;
+      return { color: ROUTE_COLORS[i] || '#ffffff', text: `${who} ${keys.map((k) => `${k} ${p.rt[k]}`).join(' ')}${p.star ? ' *' : ''}` };
+    });
+  }
+
   function buildView(G, inp) {
     const g = G.g, rt = G.rt, play = rt.play;
     const V = {
@@ -341,7 +351,10 @@
       if (inp) V.joy = inp.joyScreen;
       V.routes = routesView(play);
       if (App.net) V.netInfo = App.net.netInfo();
-      if (V.routes && play.phase === 'pre') V.routeColors = ROUTE_COLORS;
+      if (V.routes && play.phase === 'pre') {
+        V.routeColors = ROUTE_COLORS;
+        V.legend = legendView(rt.rosters[g.poss]);
+      }
     }
     return V;
   }
@@ -377,14 +390,15 @@
 
   function hintFor(ctx, g) {
     if (!g || g.playNo > 8) return '';
-    if (ctx === 'qb') return 'PULL BACK TO AIM · RELEASE TO THROW · DRAG FORWARD TO RUN';
-    if (ctx === 'run') return 'DRAG TO STEER · TAP TO JUKE · FLICK TO DIVE';
-    if (ctx === 'def') return 'DRAG TO STEER · TAP A PLAYER TO SWITCH';
+    if (ctx === 'qb') return 'PULL BACK TO AIM · RELEASE TO THROW · STICK MOVES THE QB';
+    if (ctx === 'run') return 'STICK TO RUN';
+    if (ctx === 'def') return 'STICK TO MOVE · TAP A PLAYER OR SWITCH';
     return '';
   }
 
   function syncUI() {
     const s = App.screen;
+    if (s !== 'game' || !App.G) UI.pad(null);
     if (s === 'title') {
       UI.show('title', UI.title(App.settings));
       UI.controls('', null);
@@ -420,7 +434,9 @@
     let ctl = App.paused || g.phase === 'handoff' ? null : controlsFor(G, mine);
     if (!ctl && online && !App.paused) ctl = App.net.controls();
     UI.controls(ctl ? ctl.key + portrait : '', ctl ? ctl.html : null, portrait);
-    UI.hint(App.paused ? '' : hintFor(inputContext(), g));
+    const ictx = App.paused ? 'none' : inputContext();
+    UI.hint(hintFor(ictx, g));
+    UI.pad(ictx === 'run' ? ['dive', 'juke'] : ictx === 'def' ? ['switch', 'dive'] : null);
   }
 
   function drawHelmet() {
@@ -522,6 +538,29 @@
         if (App.net) App.net.action(a, b);
     }
     UI.invalidate();
+  }
+
+  // JUKE / DIVE / SWITCH, pressed with the thumb that isn't on the stick.
+  function onPad(e) {
+    const b = e.target.closest('[data-pad]');
+    if (!b) return;
+    e.preventDefault();
+    RB.Audio.unlock();
+    b.classList.add('on');
+    setTimeout(() => b.classList.remove('on'), 140);
+    const a = b.dataset.pad, ctx = inputContext();
+    if (ctx === 'def' && App.net) {
+      if (a === 'switch') App.net.switchNearest();
+      if (a === 'dive') App.net.defDive();
+      return;
+    }
+    if (ctx !== 'run') return;
+    if (a === 'juke') App.once.juke = true;
+    if (a === 'dive') {
+      // Dive the way the stick points, or straight ahead.
+      const j = App.lastInput && App.lastInput.joy;
+      App.once.dive = j ? { x: j.x, y: j.y } : { x: 0, y: 0 };
+    }
   }
 
   function sendAct(act) {

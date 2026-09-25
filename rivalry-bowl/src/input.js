@@ -1,26 +1,27 @@
 /* Rivalry Bowl: touch / mouse gestures -> game intents.
  * Contexts: 'qb' (can throw), 'run' (steer carrier), 'def' (steer defender),
  * 'pick' (tap a defender before the snap), 'kick' (aim + power), 'none'.
- * Runners, scrambling QBs and defenders use a floating joystick that appears
- * where the finger lands; a tap jukes (runner) or switches to the tapped
- * defender (defense). */
+ * Players move with a joystick fixed in the bottom-left corner. It follows
+ * its own finger, so the other hand can aim a throw, tap a defender or press
+ * the JUKE / DIVE / SWITCH buttons at the same time. */
 (function (root) {
   'use strict';
   const RB = root.RB;
   const AIM_GAIN = 1.6; // the reticle moves 1.6x as far as your finger
   const DEAD = 12; // css px before a drag counts
   const MIN_THROW = 26; // shorter pulls cancel instead of throwing
-  // Joystick: responds from JOY_DEAD px, full speed at JOY_FULL px; the base
-  // trails the finger beyond JOY_MAX px so reversing direction stays quick.
-  const JOY_DEAD = 8, JOY_FULL = 40, JOY_MAX = 50;
+  // Joystick, css px: radius JOY_R, JOY_M in from the corner. It responds
+  // from JOY_DEAD px off center and is at full speed from JOY_FULL px.
+  const JOY_R = 50, JOY_M = 22, JOY_DEAD = 6, JOY_FULL = 32;
   const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
   const S = {
     el: null, ctxFn: null,
     id: null, mode: null, x0: 0, y0: 0, x: 0, y: 0, t0: 0,
-    intents: { throwAt: null, juke: false, dive: null, kick: null, tapAt: null },
+    intents: { throwAt: null, kick: null, tapAt: null },
     lastCtx: 'none',
   };
+  const J = { id: null, x: 0, y: 0 }; // the joystick finger
 
   function attach(el, ctxFn) {
     S.el = el;
@@ -37,53 +38,68 @@
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   }
 
+  const moves = (c) => c === 'qb' || c === 'run' || c === 'def';
+  function joyCenter() {
+    const h = S.el ? S.el.getBoundingClientRect().height : 390;
+    return { x: JOY_M + JOY_R, y: h - JOY_M - JOY_R };
+  }
+  // Runners and defenders grab the stick anywhere near it; the QB only on the
+  // stick itself, so pulling back to aim never moves him by accident.
+  function onJoy(p, c) {
+    const o = joyCenter();
+    const d = Math.hypot(p.x - o.x, p.y - o.y);
+    return c === 'qb' ? d <= JOY_R + 14 : d <= JOY_R * 2.1;
+  }
+
   function down(e) {
-    if (S.id !== null) return;
     const c = S.ctxFn();
     if (c === 'none') return;
+    const p = pos(e);
+    if (J.id === null && moves(c) && onJoy(p, c)) {
+      e.preventDefault();
+      J.id = e.pointerId;
+      J.x = p.x;
+      J.y = p.y;
+      try { S.el.setPointerCapture(e.pointerId); } catch (err) { /* capture is optional */ }
+      if (RB.Audio) RB.Audio.unlock();
+      return;
+    }
+    if (S.id !== null) return;
     e.preventDefault();
     S.id = e.pointerId;
     try { S.el.setPointerCapture(e.pointerId); } catch (err) { /* capture is optional */ }
-    const p = pos(e);
     S.x0 = S.x = p.x;
     S.y0 = S.y = p.y;
     S.t0 = performance.now();
-    S.mode = null;
+    S.mode = c === 'kick' ? 'kick' : null;
     S.lastCtx = c;
-    if (c === 'kick') S.mode = 'kick';
     if (RB.Audio) RB.Audio.unlock();
   }
 
   function move(e) {
-    if (e.pointerId !== S.id) return;
-    e.preventDefault();
     const p = pos(e);
-    S.x = p.x;
-    S.y = p.y;
-    if (S.mode === 'joy') {
-      // Drag the base along once the finger runs past the rim.
-      const jx = S.x - S.ax, jy = S.y - S.ay, jl = Math.hypot(jx, jy);
-      if (jl > JOY_MAX) { S.ax = S.x - (jx / jl) * JOY_MAX; S.ay = S.y - (jy / jl) * JOY_MAX; }
+    if (e.pointerId === J.id) {
+      e.preventDefault();
+      J.x = p.x;
+      J.y = p.y;
       return;
     }
+    if (e.pointerId !== S.id) return;
+    e.preventDefault();
+    S.x = p.x;
+    S.y = p.y;
     if (S.mode) return;
-    const dx = S.x - S.x0, dy = S.y - S.y0;
-    // Aim-vs-scramble needs a slightly longer drag to read reliably.
-    if (Math.hypot(dx, dy) < (S.lastCtx === 'qb' ? DEAD : JOY_DEAD)) return;
-    const c = S.lastCtx;
-    // Pulling back aims; only a clearly forward drag scrambles.
-    if (c === 'qb') S.mode = dx > 0 && dx > Math.abs(dy) * 1.2 ? 'joy' : 'aim';
-    else if (c === 'run' || c === 'def') S.mode = 'joy';
-    if (S.mode === 'joy') { S.ax = S.x0; S.ay = S.y0; }
+    if (S.lastCtx === 'qb' && Math.hypot(S.x - S.x0, S.y - S.y0) >= DEAD) S.mode = 'aim';
   }
 
   function up(e) {
+    if (e.pointerId === J.id) { J.id = null; return; }
     if (e.pointerId !== S.id) return;
     const p = pos(e);
     S.x = p.x;
     S.y = p.y;
     const dt = performance.now() - S.t0;
-    const dx = S.x - S.x0, dy = S.y - S.y0, len = Math.hypot(dx, dy);
+    const len = Math.hypot(S.x - S.x0, S.y - S.y0);
     const c = S.ctxFn();
     if (S.mode === 'aim' && c === 'qb') {
       // Throw exactly where the reticle was drawn.
@@ -91,25 +107,25 @@
     } else if (S.mode === 'kick' && c === 'kick') {
       const k = kickVals();
       if (k.power > 0.08) S.intents.kick = k;
-    } else if (len < JOY_DEAD && dt < 220) {
-      if (c === 'pick' || c === 'def') {
-        const k = RB.Render.R.k;
-        S.intents.tapAt = RB.Render.toWorld(S.x / k, S.y / k);
-      } else if (c === 'run') S.intents.juke = true;
-    } else if (dt < 200 && len > 48 && c === 'run') {
-      const w = RB.Render.screenDeltaToWorld(dx, dy);
-      S.intents.dive = { x: w.x, y: w.y };
+    } else if (len < 12 && dt < 300 && (c === 'pick' || c === 'def')) {
+      const k = RB.Render.R.k;
+      S.intents.tapAt = RB.Render.toWorld(S.x / k, S.y / k);
     }
-    reset();
+    resetGesture();
   }
 
   function cancel(e) {
-    if (e.pointerId === S.id) reset();
+    if (e.pointerId === J.id) J.id = null;
+    if (e.pointerId === S.id) resetGesture();
   }
-  function reset() {
+  function resetGesture() {
     S.id = null;
     S.mode = null;
     S.aimS = null;
+  }
+  function reset() {
+    resetGesture();
+    J.id = null;
   }
 
   // World-space throw target for the current drag (pull back to aim).
@@ -132,46 +148,51 @@
   // Called once per frame by main: live aim, joystick and one-shot intents.
   function poll(qbWorld) {
     S.qb = qbWorld;
+    const c = S.ctxFn ? S.ctxFn() : 'none';
     const out = {
-      aiming: S.id !== null && S.mode === 'aim',
+      aiming: S.id !== null && S.mode === 'aim' && c === 'qb',
       aimAt: null,
       joy: null,
       joyScreen: null,
       kick: null,
       throwAt: S.intents.throwAt,
-      juke: S.intents.juke,
-      dive: S.intents.dive,
       kickLaunch: S.intents.kick,
       tapAt: S.intents.tapAt,
     };
-    S.intents = { throwAt: null, juke: false, dive: null, kick: null, tapAt: null };
+    S.intents = { throwAt: null, kick: null, tapAt: null };
     if (out.aiming) {
       // Light smoothing takes the jitter out of the reticle.
       const raw = aimTarget();
       if (raw) S.aimS = S.aimS ? { x: S.aimS.x + (raw.x - S.aimS.x) * 0.45, y: S.aimS.y + (raw.y - S.aimS.y) * 0.45 } : raw;
       out.aimAt = S.aimS;
-      const dx = S.x - S.x0, dy = S.y - S.y0;
-      out.aimArmed = Math.hypot(dx, dy) >= MIN_THROW;
+      out.aimArmed = Math.hypot(S.x - S.x0, S.y - S.y0) >= MIN_THROW;
     }
-    if (S.id !== null && S.mode === 'joy') {
-      const dx = S.x - S.ax, dy = S.y - S.ay, len = Math.hypot(dx, dy);
+    if (moves(c)) {
+      // The stick is always drawn while someone can be moved, so it is easy to find.
+      const o = joyCenter(), k = RB.Render.R.k;
+      let dx = 0, dy = 0;
+      if (J.id !== null) { dx = J.x - o.x; dy = J.y - o.y; }
+      const len = Math.hypot(dx, dy);
       const mag = clamp((len - JOY_DEAD) / (JOY_FULL - JOY_DEAD), 0, 1);
       if (mag > 0) {
         const w = RB.Render.screenDeltaToWorld(dx, dy);
         const wl = Math.hypot(w.x, w.y) || 1;
         out.joy = { x: (w.x / wl) * mag, y: (w.y / wl) * mag };
       }
-      const k = RB.Render.R.k;
-      const lim = Math.min(len, JOY_MAX);
-      out.joyScreen = { x0: S.ax / k, y0: S.ay / k, x1: (S.ax + (len ? (dx / len) * lim : 0)) / k, y1: (S.ay + (len ? (dy / len) * lim : 0)) / k, r: JOY_MAX / k, on: mag > 0 };
+      const lim = Math.min(len, JOY_R);
+      out.joyScreen = {
+        x0: o.x / k, y0: o.y / k, r: JOY_R / k,
+        x1: (o.x + (len ? (dx / len) * lim : 0)) / k, y1: (o.y + (len ? (dy / len) * lim : 0)) / k,
+        on: mag > 0, held: J.id !== null,
+      };
     }
     if (S.id !== null && S.mode === 'kick') out.kick = kickVals();
     return out;
   }
 
   function active() {
-    return S.id !== null;
+    return S.id !== null || J.id !== null;
   }
 
-  RB.Input = { attach, poll, active, reset, AIM_GAIN };
+  RB.Input = { attach, poll, active, reset, AIM_GAIN, JOY_R, JOY_M };
 })(typeof window !== 'undefined' ? window : globalThis);
