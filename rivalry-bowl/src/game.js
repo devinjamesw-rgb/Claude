@@ -139,6 +139,20 @@
   }
 
   function enterPresnap(G) {
+    const g = G.g;
+    makePresnapPlay(G);
+    g.drained = 0;
+    // Lining up takes a few seconds even in a hurry-up.
+    if (g.clockRunning && !g.ot) {
+      const d = Math.min(C.MIN_RUNOFF, g.clock);
+      g.clock -= d;
+      g.drained = d;
+    }
+    setPhase(G, 'presnap');
+  }
+
+  // The formation for the next snap (AI picks the coverage until a human does).
+  function makePresnapPlay(G) {
     const g = G.g, rt = G.rt;
     const o = g.poss, d = 1 - o;
     const secsLeft = g.clock;
@@ -153,14 +167,6 @@
       humanDefIdx: g.mode === 'online' ? rt.humanDefIdx == null ? Sim.IDX.S1 : rt.humanDefIdx : -1,
     });
     rt.defCallFrom = 'ai';
-    g.drained = 0;
-    // Lining up takes a few seconds even in a hurry-up.
-    if (g.clockRunning && !g.ot) {
-      const d = Math.min(C.MIN_RUNOFF, g.clock);
-      g.clock -= d;
-      g.drained = d;
-    }
-    setPhase(G, 'presnap');
   }
 
   // --- Actions from the players ----------------------------------------------------
@@ -272,6 +278,7 @@
         updateKick(G, dt);
         break;
       case 'after':
+        if (rt.play && rt.play.phase === 'dead') Sim.step(rt.play, dt, null);
         if (g.phaseT > (rt.pending ? rt.pending.wait : 1.2) && !rt.bannerQ.length && !g.banner) {
           const f = rt.pending && rt.pending.next;
           rt.pending = null;
@@ -705,9 +712,28 @@
     setPhase(G, 'final');
   }
 
+  // A device picking a game back up (hot reload): replay the current down.
+  function resume(G) {
+    const g = G.g;
+    g.banner = null;
+    if (['play', 'after', 'kick', 'coin', 'quarter', 'presnap'].includes(g.phase)) {
+      g.holder = g.poss;
+      if (g.phase === 'coin') return kickoffStart(G, 1 - g.openRecv);
+      if (g.phase === 'quarter') { g.phaseT = 0; return; }
+      enterPresnap(G);
+    }
+  }
+
+  // Online: this phone just became the authority with state from the other one.
+  function takeover(G) {
+    const g = G.g;
+    if (g.phase === 'presnap' && !G.rt.play) { makePresnapPlay(G); bump(G); }
+    if (['play', 'after', 'kick'].includes(g.phase)) resume(G);
+  }
+
   // --- Public ---------------------------------------------------------------------------
   RB.Game = {
-    create, initRuntime, update, act, team,
+    create, initRuntime, update, act, team, resume, takeover,
     fmtClock, spotText, downText, periodText,
     presnapOptions, canTimeout, mustGoForTwo,
   };

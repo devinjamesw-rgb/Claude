@@ -1,0 +1,51 @@
+// Drives the game in Chromium: menus -> pass & play -> a pass play.
+'use strict';
+const { chromium } = require('playwright');
+const path = require('path');
+const OUT = process.env.OUT || '/tmp/shots';
+const W = +(process.env.VW || 844), H = +(process.env.VH || 390);
+(async () => {
+  const browser = await chromium.launch();
+  const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 2 });
+  const errors = [];
+  page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(m.text()); });
+  page.on('pageerror', (e) => errors.push('PAGEERROR ' + e.message));
+  await page.goto('file://' + path.resolve(__dirname, '../index.html'));
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: `${OUT}/01-title.png` });
+  await page.click('[data-action=local]');
+  await page.click('[data-team=ALA]');
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: `${OUT}/02-teams.png` });
+  await page.click('[data-action=lock]');
+  await page.click('[data-team=UGA]');
+  await page.click('[data-action=lock]');
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: `${OUT}/03-coin.png` });
+  await page.waitForSelector('[data-action=ready]', { timeout: 15000 });
+  await page.screenshot({ path: `${OUT}/04-handoff.png` });
+  await page.click('[data-action=ready]');
+  await page.waitForSelector('[data-action=call][data-kind=pass]', { timeout: 8000 });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: `${OUT}/05-presnap.png` });
+  await page.click('[data-action=call][data-kind=pass]');
+  await page.waitForTimeout(1300);
+  // Pull back to aim: press mid-screen, drag left/down.
+  const cx = W * 0.5, cy = H * 0.5;
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  for (let i = 1; i <= 10; i++) { await page.mouse.move(cx - i * 16, cy + i * 3); await page.waitForTimeout(16); }
+  await page.waitForTimeout(100);
+  await page.screenshot({ path: `${OUT}/06-aim.png` });
+  await page.mouse.up();
+  await page.waitForTimeout(450);
+  await page.screenshot({ path: `${OUT}/07-flight.png` });
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: `${OUT}/08-after.png` });
+  await page.waitForTimeout(2500);
+  await page.screenshot({ path: `${OUT}/09-next.png` });
+  const state = await page.evaluate(() => { const g = RB.App.G.g; return { phase: g.phase, down: g.down, toGo: g.toGo, ballOn: g.ballOn, score: g.score, clock: g.clock, last: g.lastPlay }; });
+  console.log(JSON.stringify(state));
+  console.log('errors:', errors.length ? errors.join('\n') : 'none');
+  await browser.close();
+})();

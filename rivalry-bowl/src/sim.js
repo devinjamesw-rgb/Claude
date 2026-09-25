@@ -1181,6 +1181,7 @@
       p.juke = Math.max(0, p.juke - dt);
       p.jukeCd = Math.max(0, p.jukeCd - dt);
       p.slow = Math.max(0, p.slow - dt);
+      if (p.lunge) p.lunge = Math.max(0, p.lunge - dt);
       if (p.down > 0 && p.down < 50) p.down = Math.max(0, p.down - dt);
     }
 
