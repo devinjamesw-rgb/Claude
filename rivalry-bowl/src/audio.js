@@ -55,7 +55,16 @@
     s.stop(t0 + dur + 0.02);
   }
 
+  // Short vibrations for the big moments, on phones that support it (not iOS).
+  const BUZZ = { juke: 20, bad: 70, td: [50, 50, 120], first: 25, kick: 15, final: [80, 60, 80] };
+  let buzzOn = true;
+  function buzz(name) {
+    if (!buzzOn || !BUZZ[name]) return;
+    try { if (root.navigator && typeof root.navigator.vibrate === 'function') root.navigator.vibrate(BUZZ[name]); } catch (e) { /* optional */ }
+  }
+
   function play(name) {
+    buzz(name);
     if (!A.on || !A.ctx || typeof name !== 'string') return;
     const t = A.ctx.currentTime + 0.01;
     switch (name) {
@@ -85,5 +94,5 @@
     }
   }
 
-  RB.Audio = { unlock, play, setOn: (v) => { A.on = v; }, isOn: () => A.on };
+  RB.Audio = { unlock, play, setOn: (v) => { A.on = v; }, isOn: () => A.on, setBuzz: (v) => { buzzOn = !!v; } };
 })(typeof window !== 'undefined' ? window : globalThis);

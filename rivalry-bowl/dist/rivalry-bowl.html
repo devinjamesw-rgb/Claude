@@ -189,6 +189,21 @@
   .keys i { font-style: normal; font-family: var(--display); font-size: 7px; color: var(--ink); background: var(--amber); padding: 2px 4px; vertical-align: 2px; }
   .keys span { color: var(--muted); }
   .panel a { color: var(--amber); word-break: break-all; }
+  .settings.opts { padding: 0; }
+  .series { margin: 4px 0 10px; font-size: 22px; display: flex; flex-direction: column; gap: 2px; }
+  .series b { font-weight: normal; color: var(--amber); }
+  .prog { font-size: 18px; color: var(--muted); margin: 8px 0 0; }
+  .prog b, .keys em { font-weight: normal; font-style: normal; color: var(--good); }
+  .panel.wide { max-width: 860px; }
+  .cols { display: grid; grid-template-columns: 1fr; gap: 4px 20px; }
+  @media (min-width: 640px) { .cols { grid-template-columns: 1fr 1fr; align-items: start; } .cols table.box { margin-top: 0; } }
+  .series span b { font-weight: normal; color: var(--amber); }
+  .standouts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; margin: 4px 0 8px; }
+  .leaders { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: 17px; line-height: 1.05; }
+  .leaders span { display: block; color: var(--muted); }
+  .leaders.grow li { color: var(--good); }
+  .hot { font-size: 13px; }
+  #pad.left { right: auto; left: 16px; flex-direction: row-reverse; }
 
   /* In-game controls */
   #controls {
@@ -256,9 +271,10 @@
     .title { max-width: 920px; display: grid; grid-template-columns: 0.9fr 1.3fr; gap: 12px 26px; align-items: start; }
     .title .logo { grid-column: 1; grid-row: 1; font-size: clamp(26px, 5vw, 40px); }
     .title .tag { grid-column: 1; grid-row: 2; font-size: 20px; }
-    .title > .row { grid-column: 1; grid-row: 3; }
+    .title .series { grid-column: 1; grid-row: 3; margin: 0; }
+    .title > .row { grid-column: 1; grid-row: 4; }
     .title .menu { grid-column: 2; grid-row: 1 / span 2; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .title .settings { grid-column: 2; grid-row: 3; grid-template-columns: 1fr 1fr; padding: 10px; gap: 8px 12px; }
+    .title .settings { grid-column: 2; grid-row: 3 / span 2; grid-template-columns: 1fr 1fr; padding: 10px; gap: 8px 12px; }
     .btn.big { font-size: 12px; padding: 12px 14px; }
     .btn.big small { font-size: 17px; }
     .panel { padding: 14px; }
@@ -473,7 +489,7 @@
   // per rating, and the school's stars on top. The sim reads them as
   // attributes; the shown SPD comes from his real speed, so an SPD 90
   // corner runs exactly as fast as an SPD 90 receiver.
-  function buildRoster(team, even) {
+  function buildRoster(team, even, dev) {
     const r = even ? evenRatings() : team.r;
     const rng = makeRng(hashStr(team.id + (even ? ':even' : '')));
     const spread = even ? 0 : 1;
@@ -497,10 +513,14 @@
         skin: rng.pick(SKIN),
       };
     }
+    // Growth from earlier games (per player, per rating), unless ratings are even.
+    const grown = (!even && dev && typeof dev === 'object') ? dev : null;
     function rate(base, side, slot) {
       const form = rng.gauss() * 3 * spread;
       const v = {};
       for (const [k, x] of Object.entries(base)) v[k] = x + form + rng.gauss() * 2.5 * spread;
+      const gk = side === 'off' ? 'o' + slot : side === 'def' ? 'd' + slot : 'k';
+      const gd = grown && grown[gk];
       let star = null;
       for (const t of traits) {
         const S = STAR[t];
@@ -508,8 +528,10 @@
         star = S.tag;
         for (const [k, x] of Object.entries(S.boost)) v[k] += x;
       }
+      let up = 0;
+      if (gd) for (const k of Object.keys(v)) if (typeof gd[k] === 'number') { const n = Math.max(0, Math.min(GROW_CAP, gd[k])); v[k] += n; up += n; }
       for (const k of Object.keys(v)) v[k] = Math.round(Math.max(45, Math.min(99, v[k])));
-      return { v, star };
+      return { v, star, up };
     }
     const depth = [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, -3]; // WR1 a touch better, WR3 a step down
     const off = OFF_POS.map((pos, i) => {
@@ -536,7 +558,7 @@
         const v = q.v;
         Object.assign(p, { spd: 7.55 + f(v.SPD) * 0.8, hands: 0.84 + f(v.HND) * 0.12, str: 0.4, elus: 0.5 + f(v.ELU) * 0.4, block: 0.3 });
       }
-      return Object.assign(p, { rt: Object.assign(q.v, { SPD: speedRating(p.spd) }), star: q.star });
+      return Object.assign(p, { rt: Object.assign(q.v, { SPD: speedRating(p.spd) }), star: q.star, up: q.up, slot: 'o' + i });
     });
     const def = DEF_POS.map((pos, i) => {
       const p = person(pos);
@@ -558,11 +580,69 @@
         const v = q.v;
         Object.assign(p, { spd: 7.3 + f(v.SPD) * 0.6, tackle: 0.7 + f(v.TKL) * 0.2, cover: 0.45 + f(v.COV) * 0.45, hands: 0.45 + f(v.HND) * 0.2, rush: 0.35 });
       }
-      return Object.assign(p, { rt: Object.assign(q.v, { SPD: speedRating(p.spd) }), star: q.star });
+      return Object.assign(p, { rt: Object.assign(q.v, { SPD: speedRating(p.spd) }), star: q.star, up: q.up, slot: 'd' + i });
     });
     const kq = rate({ PWR: lvl(r.k), ACC: lvl(r.k) }, 'k', undefined);
-    const k = { power: 49 + f(kq.v.PWR) * 11, acc: Math.min(0.99, 0.7 + f(kq.v.ACC) * 0.28), name: rng.pick(FIRST.split('')) + '. ' + rng.pick(LAST), num: number('K'), pos: 'K', rt: kq.v, star: kq.star };
+    const k = { power: 49 + f(kq.v.PWR) * 11, acc: Math.min(0.99, 0.7 + f(kq.v.ACC) * 0.28), name: rng.pick(FIRST.split('')) + '. ' + rng.pick(LAST), num: number('K'), pos: 'K', rt: kq.v, star: kq.star, up: kq.up, slot: 'k' };
     return { off, def, k };
+  }
+
+  // --- Growth between games ------------------------------------------------------
+  // After each game a school's players grow from what they did in it (one
+  // point per milestone, at most GROW_CAP per rating over a career). `ps` is
+  // the game's player stats for this seat (keys "o8", "d7"...; see game.js).
+  const GROW_CAP = 12;
+  function growthFrom(ps, won, rng) {
+    const out = [];
+    const bump = (slot, rating, why) => out.push({ slot, rating, why });
+    for (const [slot, r] of Object.entries(ps)) {
+      if (slot === 'o0') {
+        if ((r.y || 0) >= 150) bump(slot, 'ACC', `${r.y} PASS YDS`);
+        if ((r.t || 0) >= 2) bump(slot, 'ARM', `${r.t} TD PASSES`);
+        else if ((r.a || 0) >= 10 && !(r.i || 0)) bump(slot, 'ACC', 'NO PICKS');
+      } else if (slot[0] === 'o') {
+        const ry = r.rcy || 0, rt = (r.rct || 0) + (r.rt || 0);
+        if (ry >= 50) bump(slot, 'HND', `${ry} REC YDS`);
+        if (ry >= 100 || (r.rct || 0) >= 1) bump(slot, 'SPD', (r.rct || 0) ? `${r.rct} TD CATCH${r.rct > 1 ? 'ES' : ''}` : `${ry} REC YDS`);
+        if ((r.ry || 0) >= 40) bump(slot, 'ELU', `${r.ry} RUSH YDS`);
+        if ((r.ry || 0) >= 90 || (r.rt || 0) >= 1) bump(slot, 'STR', (r.rt || 0) ? `${r.rt} RUSH TD` : `${r.ry} RUSH YDS`);
+        void rt;
+      } else {
+        if ((r.tk || 0) >= 3) bump(slot, 'TKL', `${r.tk} TACKLES`);
+        if ((r.sk || 0) >= 1) bump(slot, 'RSH', `${r.sk} SACK${r.sk > 1 ? 'S' : ''}`);
+        if ((r.pi || 0) >= 1) bump(slot, 'COV', `${r.pi} INT`);
+      }
+    }
+    if (won) {
+      // A win lifts somebody who didn't make the box score.
+      const slot = rng.pick(['o2', 'o3', 'o4', 'o5', 'o6', 'd0', 'd1', 'd2', 'd3']);
+      bump(slot, slot[0] === 'o' ? 'BLK' : 'RSH', 'WIN');
+    }
+    return out;
+  }
+  // Applies a game's growth to a stored program; returns what actually grew.
+  function applyGrowth(dev, list) {
+    const done = [];
+    for (const b of list) {
+      const d = dev[b.slot] || (dev[b.slot] = {});
+      if ((d[b.rating] || 0) >= GROW_CAP) continue;
+      d[b.rating] = (d[b.rating] || 0) + 1;
+      done.push(b);
+    }
+    return done;
+  }
+  // Only well-formed growth from another phone: known slots, small numbers.
+  function cleanDev(dev) {
+    if (!dev || typeof dev !== 'object') return null;
+    const out = {};
+    for (const [slot, r] of Object.entries(dev)) {
+      if (!/^(o([0-9]|10)|d([0-9]|10)|k)$/.test(slot) || !r || typeof r !== 'object') continue;
+      for (const [k, v] of Object.entries(r)) {
+        if (!/^[A-Z]{3}$/.test(k) || typeof v !== 'number' || !isFinite(v)) continue;
+        (out[slot] || (out[slot] = {}))[k] = Math.max(0, Math.min(GROW_CAP, Math.round(v)));
+      }
+    }
+    return out;
   }
 
   // The players worth knowing about: the stars, then the QB and top receiver.
@@ -570,7 +650,7 @@
     const all = roster.off.concat(roster.def, [roster.k]);
     const list = all.filter((p) => p.star);
     for (const p of [roster.off[0], roster.off[8]]) if (list.length < 3 && !list.includes(p)) list.push(p);
-    return list.map((p) => ({ pos: p.pos, num: p.num, name: p.name, star: p.star, show: (SHOWN[p.pos] || Object.keys(p.rt)).map((k) => [k, p.rt[k]]) }));
+    return list.map((p) => ({ pos: p.pos, num: p.num, name: p.name, star: p.star, up: p.up || 0, show: (SHOWN[p.pos] || Object.keys(p.rt)).map((k) => [k, p.rt[k]]) }));
   }
 
   // --- Home stadiums -----------------------------------------------------------
@@ -644,6 +724,24 @@
   RB.ENV = ENV;
   RB.buildRoster = buildRoster;
   RB.keyPlayers = keyPlayers;
+  // Growth travels between phones as a short string ("o8:SPD3HND4;d7:COV1")
+  // to stay well inside the live room's 4 KiB presence limit.
+  function encodeDev(dev) {
+    const d = cleanDev(dev);
+    if (!d) return '';
+    return Object.entries(d).map(([slot, r]) => slot + ':' + Object.entries(r).filter(([, v]) => v > 0).map(([k, v]) => k + v).join('')).filter((x) => !/:$/.test(x)).join(';').slice(0, 1000);
+  }
+  function decodeDev(str) {
+    if (typeof str !== 'string' || !str) return null;
+    const out = {};
+    for (const part of str.split(';')) {
+      const m = /^(o(?:[0-9]|10)|d(?:[0-9]|10)|k):((?:[A-Z]{3}\d{1,2})+)$/.exec(part);
+      if (!m) continue;
+      for (const [, k, v] of m[2].matchAll(/([A-Z]{3})(\d{1,2})/g)) (out[m[1]] || (out[m[1]] = {}))[k] = Math.min(GROW_CAP, +v);
+    }
+    return Object.keys(out).length ? out : null;
+  }
+  RB.Growth = { from: growthFrom, apply: applyGrowth, clean: cleanDev, encode: encodeDev, decode: decodeDev, CAP: GROW_CAP };
   RB.SHOWN = SHOWN;
   RB.uniforms = uniforms;
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -740,7 +838,7 @@
       ctrl: QB, // offense player the user steers
       thrown: false, scramble: false, handedOff: false, turnover: false, manual: false,
       events: [], result: null,
-      stats: { passAtt: 0, comp: 0, passYds: 0, rushAtt: 0, rushYds: 0, sack: 0, int: 0, fum: 0, receiver: -1, rusher: -1 },
+      stats: { passAtt: 0, comp: 0, passYds: 0, rushAtt: 0, rushYds: 0, sack: 0, int: 0, fum: 0, receiver: -1, rusher: -1, tackler: -1, picker: -1 },
       aimTarget: null,
       landing: null,
     };
@@ -1651,7 +1749,7 @@
         event(play, 'hit', '');
         return tackled(play, p, d);
       }
-      d.down = 0.35;
+      knock(play, d, 0.35);
     }
   }
 
@@ -1661,6 +1759,7 @@
     play.carrier = d.i;
     play.turnover = true;
     play.stats.int = 1;
+    play.stats.picker = d.i;
     d.role = 'returner';
     d.eng = -1;
     for (const q of play.players) {
@@ -1704,7 +1803,7 @@
             tackled(play, car, d);
             return;
           }
-          d.down = 1.0;
+          knock(play, d, 0.5);
           event(play, 'broken', '');
           continue;
         }
@@ -1712,7 +1811,7 @@
       const r = d.eng >= 0 ? 0.62 : owned ? 1.05 : 0.88;
       if (dd <= r) {
         if (car.juke > 0 && d.eng < 0) {
-          d.down = 0.9;
+          knock(play, d, owned ? 0.6 : 0.9);
           d.tackleCd = 0.9;
           event(play, 'juke', '');
           continue;
@@ -1722,7 +1821,7 @@
         if (car.i === QB && !play.scramble && play.ball.holder === QB) p += 0.12;
         if (rng.chance(clamp(p, 0.3, 0.97))) { tackled(play, car, d); return; }
         d.tackleCd = 0.6;
-        if (d.eng < 0) d.down = 0.4;
+        if (d.eng < 0) knock(play, d, 0.4);
         car.slow = 0.35;
         event(play, 'broken', '');
         continue;
@@ -1751,6 +1850,7 @@
   }
 
   function tackled(play, car, d) {
+    play.stats.tackler = d.i;
     car.down = 99;
     d.down = 99;
     d.vx = car.vx * 0.5; d.vy = car.vy * 0.5;
@@ -1958,8 +2058,9 @@
     play.ownIdx = i;
     if (p.eng >= 0) { play.players[p.eng].eng = -1; p.eng = -1; }
     p.own = o;
-    if (o.dive && p.down <= 0 && p.tackleCd <= 0) { p.lunge = 0.34; p.ownLunge = true; }
-    if (p.down > 0) return false; // he stays where he fell
+    if (o.dive && p.down <= 0) { p.lunge = 0.34; p.ownLunge = true; p.tackleCd = 0; }
+    // Always follow his phone, even while he's down: that phone plays the fall
+    // where he really is, so freezing him here would pull him back later.
     const ahead = Math.min(0.25, o.age || 0);
     const tx = o.x + o.vx * ahead, ty = o.y + o.vy * ahead;
     if (hyp(tx - p.x, ty - p.y) > 5) { p.x = tx; p.y = ty; }
@@ -1971,6 +2072,13 @@
     p.vx = o.vx; p.vy = o.vy; p.dvx = o.vx; p.dvy = o.vy;
     if (Math.abs(o.vx) > 0.3) p.face = o.vx > 0 ? 1 : -1;
     return true;
+  }
+
+  // Knocks a defender off his feet. For the one the defense player steers,
+  // the count tells his phone to play the stumble there, where he really is.
+  function knock(play, d, dur) {
+    d.down = dur;
+    if (d.i === play.ownIdx) play.ownKnock = (play.ownKnock || 0) + 1;
   }
 
   // Where the ball carrier was `lag` seconds ago.
@@ -2005,7 +2113,8 @@
       if (p.lunge) {
         p.lunge = Math.max(0, p.lunge - dt);
         // A diving defender who comes up empty ends up on the turf.
-        if (!p.lunge && p.ownLunge) { p.ownLunge = false; if (play.phase === 'live' && p.down <= 0) { p.down = 0.8; p.tackleCd = 0.8; } }
+        // A diving defender who comes up empty stumbles (his phone plays it too).
+        if (!p.lunge && p.ownLunge) { p.ownLunge = false; if (play.phase === 'live' && p.down <= 0) { p.down = 0.3; p.tackleCd = 0.35; } }
       }
       if (p.down > 0 && p.down < 50) p.down = Math.max(0, p.down - dt);
     }
@@ -2098,7 +2207,7 @@
     IDX: { QB, RBK, OC, LG, RG, LT, RT, TE, WR1, WR2, WR3, DE1, DT1, DT2, DE2, LB1, LB2, LB3, CB1, CB2, S1, S2 },
     OL, ELIGIBLE, DIFF, DEF_CALLS, ROUTES,
     createPlay, setDefense, snap, step, canThrow, throwBall, clampAim, flightTime, maxRange, aiDefCall, predictRoute, assistAim,
-    driveOwned, effSpeed,
+    driveOwned, effSpeed, pursuitPoint,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -2263,6 +2372,11 @@
       banner: null, bannerId: 0,
       defCall: 'zone', playNo: 0, lastPlay: '',
       kick: null,
+      // Player stats by "<seat><o|d><slot>" (only what happened), hot streaks
+      // by the same key, the QBs' completion streaks, and each school's
+      // growth from earlier games (see RB.buildRoster).
+      ps: {}, heat: {}, form: {},
+      devs: (opts.devs || [null, null]).map((d) => (typeof d === 'string' ? d : RB.Growth.encode(d))),
       seed,
     };
     g.clock = g.settings.qlen;
@@ -2282,7 +2396,7 @@
     const home = RB.TEAM_BY_ID[g.teams[0]], away = RB.TEAM_BY_ID[g.teams[1]];
     G.rt = {
       rng: rng || RB.makeRng((g.seed ^ (g.ver * 2654435761)) >>> 0),
-      rosters: [RB.buildRoster(home, g.settings.even), RB.buildRoster(away, g.settings.even)],
+      rosters: [0, 1].map((s) => RB.buildRoster(s ? away : home, g.settings.even, g.devs ? RB.Growth.decode(g.devs[s]) : null)),
       uniforms: RB.uniforms(home, away),
       play: null, kick: null,
       bannerQ: [], bannerT: 0,
@@ -2384,7 +2498,7 @@
       secsLeft, q: g.ot ? 5 : g.q,
     });
     rt.play = Sim.createPlay({
-      offRoster: rt.rosters[o], defRoster: rt.rosters[d],
+      offRoster: heated(g, rt.rosters[o], o), defRoster: heated(g, rt.rosters[d], d),
       ballOn: g.ballOn, ballY: g.ballY, fdX: C.GOAL_L + Math.min(100, g.ballOn + g.toGo),
       defCall: g.defCall, diff: g.settings.diff, rng: rt.rng, wx: g.wx, assist: g.settings.assist !== false,
       humanDefIdx: g.mode === 'online' ? rt.humanDefIdx == null ? Sim.IDX.S1 : rt.humanDefIdx : -1,
@@ -2403,10 +2517,22 @@
   function canPunt(g) {
     return !g.twoPt && !g.ot && g.down === 4;
   }
+  // Clock tools for the end of a half: spike to stop the clock, kneel to run it out.
+  function lateHalf(g) {
+    return !g.ot && !g.twoPt && (g.q === 2 || g.q === 4) && g.clock <= 120;
+  }
+  function canSpike(g) {
+    return lateHalf(g) && g.clockRunning && g.down < 4;
+  }
+  function canKneel(g) {
+    return lateHalf(g) && g.down < 4 && g.score[g.poss] >= g.score[1 - g.poss] && g.ballOn > 2;
+  }
   function presnapOptions(g) {
     const o = [{ id: 'pass', label: 'PASS' }, { id: 'run', label: 'RUN' }];
     if (canPunt(g)) o.push({ id: 'punt', label: 'PUNT' });
     if (canFG(g)) o.push({ id: 'fg', label: `FG ${100 - g.ballOn + 17}` });
+    if (canSpike(g)) o.push({ id: 'spike', label: 'SPIKE' });
+    if (canKneel(g)) o.push({ id: 'kneel', label: 'KNEEL' });
     return o;
   }
   function canTimeout(g, seat) {
@@ -2427,6 +2553,8 @@
         if (a.kind === 'pass' || a.kind === 'run') snapBall(G, a.kind);
         else if (a.kind === 'punt' && canPunt(g)) punt(G);
         else if (a.kind === 'fg' && canFG(g)) startKick(G, 'fg', 100 - g.ballOn + 17);
+        else if (a.kind === 'spike' && canSpike(g)) spike(G);
+        else if (a.kind === 'kneel' && canKneel(g)) kneel(G);
         break;
       case 'shuffle':
         // A different formation and set of routes; the play clock keeps running.
@@ -2474,6 +2602,34 @@
         if (g.phase === 'half') startSecondHalf(G);
         break;
     }
+  }
+
+  // Spike: an intentional incompletion that stops the clock (it costs a down
+  // and the second or so the snap takes).
+  function spike(G) {
+    const g = G.g;
+    g.playNo++;
+    g.clock = Math.max(0, g.clock - 1);
+    g.clockRunning = false;
+    g.stats[g.poss].pa++;
+    sfx(G, 'whistle');
+    banner(G, 'SPIKE', 'CLOCK STOPPED', 1.1);
+    g.lastPlay = 'SPIKE';
+    after(G, 0.2, () => advanceDowns(G, g.ballOn, g.ballY));
+  }
+
+  // Kneel: lose a yard, keep the clock running.
+  function kneel(G) {
+    const g = G.g;
+    g.playNo++;
+    g.clock = Math.max(0, g.clock - 2);
+    g.clockRunning = true;
+    g.stats[g.poss].ra++;
+    g.stats[g.poss].ry--;
+    sfx(G, 'whistle');
+    banner(G, 'KNEEL DOWN', 'CLOCK RUNNING', 1.1);
+    g.lastPlay = 'KNEEL -1';
+    after(G, 0.2, () => advanceDowns(G, Math.max(1, g.ballOn - 1), g.ballY));
   }
 
   function snapBall(G, kind) {
@@ -2583,6 +2739,113 @@
     }
   }
 
+  // --- Player stats and hot streaks -------------------------------------------------
+  const pkey = (seat, i) => `${seat}${i < 11 ? 'o' : 'd'}${i % 11}`;
+  function add(g, key, field, n) {
+    const r = g.ps[key] || (g.ps[key] = {});
+    r[field] = (r[field] || 0) + n;
+  }
+
+  // Who did what on this play. Keys are "<seat><o|d><slot>"; fields:
+  // passing c/a/y/t/i, rushing r/ry/rt, receiving rc/rcy/rct, defense tk/sk/pi.
+  function playerStats(G, res) {
+    const g = G.g, o = g.poss, d = 1 - o, st = res.stats;
+    const td = res.kind === 'td';
+    if (st.passAtt) {
+      const q = pkey(o, 0);
+      add(g, q, 'a', 1);
+      if (st.comp) { add(g, q, 'c', 1); add(g, q, 'y', st.passYds); if (td) add(g, q, 't', 1); }
+      if (st.int) add(g, q, 'i', 1);
+    }
+    if (st.comp && st.receiver >= 0) {
+      const k = pkey(o, st.receiver);
+      add(g, k, 'rc', 1); add(g, k, 'rcy', st.passYds);
+      if (td) add(g, k, 'rct', 1);
+    }
+    if (st.rushAtt && st.rusher >= 0) {
+      const k = pkey(o, st.rusher);
+      add(g, k, 'r', 1); add(g, k, 'ry', st.rushYds);
+      if (td && !st.comp) add(g, k, 'rt', 1);
+    }
+    if (st.tackler >= 11 && !G.rt.play.turnover) {
+      add(g, pkey(d, st.tackler), 'tk', 1);
+      if (st.sack) add(g, pkey(d, st.tackler), 'sk', 1);
+    }
+    if (st.int && st.picker >= 11) add(g, pkey(d, st.picker), 'pi', 1);
+    updateForm(G, res);
+    updateHeat(G);
+  }
+
+  // Recent form: every play it fades a little, and whoever made the play
+  // gains (or loses) some. Hot streaks come from form, so they come and go.
+  function updateForm(G, res) {
+    const g = G.g, o = g.poss, d = 1 - o, st = res.stats, f = g.form || (g.form = {});
+    for (const k of Object.keys(f)) { f[k] = Math.round(f[k] * 0.88 * 100) / 100; if (Math.abs(f[k]) < 0.2) delete f[k]; }
+    const bump = (k, v) => { f[k] = Math.round(((f[k] || 0) + v) * 100) / 100; };
+    const td = res.kind === 'td';
+    if (st.passAtt) {
+      const q = pkey(o, 0);
+      if (st.int) bump(q, -2.5);
+      else if (st.comp) bump(q, 0.5 + Math.max(0, st.passYds) / 40 + (td ? 1 : 0));
+      else bump(q, -0.3);
+    }
+    if (st.comp && st.receiver >= 0) bump(pkey(o, st.receiver), 1 + Math.max(0, st.passYds) / 25 + (td ? 1.5 : 0));
+    if (st.rushAtt && st.rusher >= 0) bump(pkey(o, st.rusher), st.rushYds >= 4 ? st.rushYds / 15 + (td ? 1.5 : 0) : -0.3);
+    if (st.tackler >= 11 && !G.rt.play.turnover) bump(pkey(d, st.tackler), st.sack ? 2 : res.yds <= 0 ? 1 : 0.5);
+    if (st.int && st.picker >= 11) bump(pkey(d, st.picker), 3);
+  }
+
+  // Hot streaks: production heats players up (1 = hot, 2 = on fire), which
+  // shows on the field and nudges their ratings for the rest of the game.
+  function heatFor(g, key) {
+    const v = (g.form && g.form[key]) || 0;
+    if (key.slice(1) === 'o0' && v <= -2) return -1; // a rattled QB
+    return v >= 5 ? 2 : v >= 2.5 ? 1 : 0;
+  }
+  function updateHeat(G) {
+    const g = G.g;
+    const keys = new Set(Object.keys(g.form || {}).concat(Object.keys(g.heat)));
+    let news = null; // at most one banner per play: the biggest change
+    for (const key of keys) {
+      const was = g.heat[key] || 0, now = heatFor(g, key);
+      if (now === was) continue;
+      if (now) g.heat[key] = now; else delete g.heat[key];
+      if ((now > was && now > 0) || now < 0) {
+        const rank = now < 0 ? 0.5 : now;
+        if (!news || rank > news.rank) news = { key, now, rank };
+      }
+    }
+    if (!news) return;
+    const seat = +news.key[0], side = news.key[1] === 'o' ? 'off' : 'def', p = G.rt.rosters[seat][side][+news.key.slice(2)];
+    if (!p) return;
+    if (news.now > 0) banner(G, news.now === 2 ? 'ON FIRE' : 'HEATING UP', `${team(G, seat).id} ${p.pos} #${p.num} ${p.name}`, 1.2, 'good');
+    else banner(G, 'RATTLED', `${team(G, seat).id} QB #${p.num} ${p.name}`, 1.1, 'bad');
+  }
+  // A team's players with their streaks applied, for building the next play.
+  function heated(g, roster, seat) {
+    const boost = (p, key) => {
+      const h = g.heat && g.heat[key];
+      if (!h) return p;
+      const q = Object.assign({}, p, { hot: h });
+      if (h < 0) { q.acc = p.acc - 0.05; return q; } // rattled QB: shakier throws
+      const k = h;
+      q.spd = p.spd + 0.12 * k;
+      if (p.hands != null) q.hands = Math.min(0.995, p.hands + 0.03 * k);
+      if (p.elus != null) q.elus = p.elus + 0.05 * k;
+      if (p.acc != null) q.acc = Math.min(0.99, p.acc + 0.045 * k);
+      if (p.arm != null) q.arm = p.arm + 0.02 * k;
+      if (p.tackle != null) q.tackle = p.tackle + 0.04 * k;
+      if (p.cover != null) q.cover = p.cover + 0.05 * k;
+      if (p.rush != null) q.rush = p.rush + 0.06 * k;
+      return q;
+    };
+    return {
+      off: roster.off.map((p, i) => boost(p, `${seat}o${i}`)),
+      def: roster.def.map((p, i) => boost(p, `${seat}d${i}`)),
+      k: roster.k,
+    };
+  }
+
   // --- Applying a play result -------------------------------------------------------
   function finishPlay(G, res) {
     const g = G.g, rt = G.rt, play = rt.play;
@@ -2596,6 +2859,7 @@
     if (st.sack) S.sk++;
     if (st.fum) { S.fum++; S.to++; }
     rt.lastResult = res;
+    playerStats(G, res);
 
     if (g.twoPt) return finishTwoPoint(G, res);
 
@@ -2968,7 +3232,7 @@
   RB.Game = {
     create, initRuntime, update, act, team, resume, takeover,
     fmtClock, spotText, downText, periodText,
-    presnapOptions, canTimeout, mustGoForTwo,
+    presnapOptions, canTimeout, mustGoForTwo, heatFor,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -3007,6 +3271,7 @@
     ')': '01000001000001000010000100010001000', '·': '00000000000000001100011000000000000',
     '%': '11000110010001000100010001001100011', '<': '00010001000100010000010000010000010',
     '>': '01000001000001000001000100010001000', ' ': '00000000000000000000000000000000000',
+    '~': '00100001100111001111110111101101110',
     '*': '00000001001010101110101010010000000',
   };
   const cache = new Map();
@@ -3437,6 +3702,21 @@
     }
   }
 
+  // The halo around a bank of stadium lights, drawn once and reused.
+  let GLOW = null;
+  function glowSprite() {
+    if (GLOW) return GLOW;
+    GLOW = document.createElement('canvas');
+    GLOW.width = 54; GLOW.height = 52;
+    const x = GLOW.getContext('2d');
+    const g = x.createRadialGradient(27, 26, 1, 27, 26, 26);
+    g.addColorStop(0, 'rgba(255,246,208,0.55)');
+    g.addColorStop(1, 'rgba(255,246,208,0)');
+    x.fillStyle = g;
+    x.fillRect(0, 0, 54, 52);
+    return GLOW;
+  }
+
   // Light towers along the rim for dusk and night games.
   function lightTowers(ctx, env, rim) {
     if (env.time === 'day') return;
@@ -3445,11 +3725,7 @@
       if (x0 < -20 || x0 > R.W + 20) continue;
       ctx.fillStyle = '#3a3f4f';
       ctx.fillRect(x0, rim - 26, 2, 26);
-      const glow = ctx.createRadialGradient(x0 + 1, rim - 30, 1, x0 + 1, rim - 30, 26);
-      glow.addColorStop(0, 'rgba(255,246,208,0.55)');
-      glow.addColorStop(1, 'rgba(255,246,208,0)');
-      ctx.fillStyle = glow;
-      ctx.fillRect(x0 - 26, rim - 56, 54, 52);
+      ctx.drawImage(glowSprite(), x0 - 26, rim - 56);
       ctx.fillStyle = '#fff6d0';
       ctx.fillRect(x0 - 6, rim - 33, 14, 6);
       ctx.fillStyle = '#c9c2a0';
@@ -3772,6 +4048,20 @@
       if (p.i === V.ctrl && V.live && !p.down) {
         ctx.fillStyle = 'rgba(255,210,63,0.95)';
         ring(ctx, px, py, 6 * SPR, 2.5 * SPR);
+      }
+      if (p.hot && !st.down) {
+        // Hot streak: a flickering flame over his head (a cold QB gets a blue drip).
+        const hy = py - spr.height * SPR - 3 * SPR, f = Math.floor(R.t * 10 + p.i) % 2;
+        if (p.hot > 0) {
+          ctx.fillStyle = p.hot > 1 ? '#ff4a1c' : '#ff8a1c';
+          ctx.fillRect(px - SPR, hy - (f ? 2 : 1.5) * SPR, 2 * SPR, 2.5 * SPR);
+          ctx.fillStyle = '#ffd23f';
+          ctx.fillRect(px - 0.5 * SPR, hy - (f ? 1 : 0.5) * SPR, SPR, 1.5 * SPR);
+          if (p.hot > 1) { ctx.fillStyle = '#ff4a1c'; ctx.fillRect(px + (f ? 1 : -2) * SPR, hy - 3 * SPR, SPR, SPR); }
+        } else {
+          ctx.fillStyle = '#5ab4ff';
+          ctx.fillRect(px - 0.5 * SPR, hy - SPR, SPR, 2 * SPR);
+        }
       }
       if (p.i === V.defCtrl && !p.down) {
         ctx.fillStyle = 'rgba(90,230,255,0.95)';
@@ -4272,6 +4562,7 @@
     lastCtx: 'none',
   };
   const J = { id: null, x: 0, y: 0 }; // the joystick finger
+  let hand = 'L'; // which corner the stick sits in
 
   function attach(el, ctxFn) {
     S.el = el;
@@ -4290,8 +4581,8 @@
 
   const moves = (c) => c === 'qb' || c === 'run' || c === 'def';
   function joyCenter() {
-    const h = S.el ? S.el.getBoundingClientRect().height : 390;
-    return { x: JOY_M + JOY_R, y: h - JOY_M - JOY_R };
+    const r = S.el ? S.el.getBoundingClientRect() : { width: 844, height: 390 };
+    return { x: hand === 'R' ? r.width - JOY_M - JOY_R : JOY_M + JOY_R, y: r.height - JOY_M - JOY_R };
   }
   // Runners and defenders grab the stick anywhere near it; the QB only on the
   // stick itself, so pulling back to aim never moves him by accident.
@@ -4444,7 +4735,7 @@
     return S.id !== null || J.id !== null;
   }
 
-  RB.Input = { attach, poll, active, reset, AIM_GAIN, JOY_R, JOY_M };
+  RB.Input = { attach, poll, active, reset, AIM_GAIN, JOY_R, JOY_M, joyCenter, setHand: (h) => { hand = h === 'R' ? 'R' : 'L'; reset(); } };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -4507,7 +4798,16 @@
     s.stop(t0 + dur + 0.02);
   }
 
+  // Short vibrations for the big moments, on phones that support it (not iOS).
+  const BUZZ = { juke: 20, bad: 70, td: [50, 50, 120], first: 25, kick: 15, final: [80, 60, 80] };
+  let buzzOn = true;
+  function buzz(name) {
+    if (!buzzOn || !BUZZ[name]) return;
+    try { if (root.navigator && typeof root.navigator.vibrate === 'function') root.navigator.vibrate(BUZZ[name]); } catch (e) { /* optional */ }
+  }
+
   function play(name) {
+    buzz(name);
     if (!A.on || !A.ctx || typeof name !== 'string') return;
     const t = A.ctx.currentTime + 0.01;
     switch (name) {
@@ -4537,7 +4837,7 @@
     }
   }
 
-  RB.Audio = { unlock, play, setOn: (v) => { A.on = v; }, isOn: () => A.on };
+  RB.Audio = { unlock, play, setOn: (v) => { A.on = v; }, isOn: () => A.on, setBuzz: (v) => { buzzOn = !!v; } };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -4776,7 +5076,7 @@
       s,
       b: [r2(b.x), r2(b.y), r2(b.z), st, play.carrier],
       m: [r2(play.los), r2(play.fdX), r2(play.ballY), play.phase === 'live' ? 1 : play.phase === 'pre' ? 0 : 2, play.turnover ? 1 : 0, play.humanDefIdx,
-        play.humanDefIdx >= 11 && play.players[play.humanDefIdx].down > 0 ? 1 : 0],
+        play.ownKnock || 0],
       l: play.landing && b.st === 'air' ? [r2(play.landing.x), r2(play.landing.y)] : null,
       // The throw itself, so the other phone can draw the ball's exact flight.
       f: b.st === 'air' ? [r2(b.fx), r2(b.fy), r2(b.tx), r2(b.ty), r2(b.T), r2(b.z0), r2(b.vz0), Math.round(b.bt * 1000) / 1000] : null,
@@ -4794,7 +5094,7 @@
       players,
       ball: { x: o.b[0], y: o.b[1], z: o.b[2], st: ['snap', 'held', 'air', 'dead', 'down'][o.b[3]] || 'held', visible: true },
       carrier: o.b[4], los: o.m[0], fdX: o.m[1], ballY: o.m[2], live: o.m[3] === 1, pre: o.m[3] === 0,
-      turnover: !!o.m[4], humanDefIdx: o.m[5], ownDown: o.m[6] === 1, landing: o.l ? { x: o.l[0], y: o.l[1] } : null,
+      turnover: !!o.m[4], humanDefIdx: o.m[5], ownKnock: num(o.m[6]) ? o.m[6] : 0, landing: o.l ? { x: o.l[0], y: o.l[1] } : null,
       flight: Array.isArray(o.f) && o.f.length === 8 && o.f.every(num) ? { fx: o.f[0], fy: o.f[1], tx: o.f[2], ty: o.f[3], T: o.f[4], z0: o.f[5], vz0: o.f[6], bt: o.f[7] } : null,
     };
   }
@@ -4962,7 +5262,8 @@
       if (!this.t) return;
       const s = this.App.settings;
       this.lastLobbyPub = Date.now();
-      this.t.setPresence(Object.assign(this.base(), { role: 'seek', tgt: this.tgt || '', q: s.qlen, d: s.diff, e: s.even ? 1 : 0 }));
+      const dv = RB.Main && RB.Main.devFor ? RB.Main.devFor(this.App.picks[0]) : null;
+      this.t.setPresence(Object.assign(this.base(), { role: 'seek', tgt: this.tgt || '', q: s.qlen, d: s.diff, e: s.even ? 1 : 0, dv: RB.Growth.encode(dv) }));
     },
 
     others() {
@@ -5020,6 +5321,7 @@
         this.seat = 1;
         this.partner = host.peer;
         const G = { g: JSON.parse(JSON.stringify(host.presence.g)), rt: null };
+        G.g.devs = Array.isArray(G.g.devs) ? G.g.devs.map((d) => RB.Growth.encode(RB.Growth.decode(d))) : ['', ''];
         Game.initRuntime(G);
         this.startGame(G);
         return;
@@ -5039,6 +5341,8 @@
           mode: 'online', home: A.picks[0], away: RB.TEAM_BY_ID[pick.presence.tm] ? pick.presence.tm : 'UGA',
           names: [A.names[0], String(pick.presence.nm || 'GUEST').replace(/[^A-Z0-9 .'-]/gi, '').slice(0, 10) || 'GUEST'],
           settings: { qlen: s.qlen, diff: s.diff, even: s.even, assist: s.assist !== false },
+          // Each school's growth: mine from this phone, theirs from their lobby entry.
+          devs: s.growth === false || s.even ? ['', ''] : [RB.Main.devFor(A.picks[0]), RB.Growth.decode(pick.presence.dv)],
         });
         this.startGame(G);
       }
@@ -5083,7 +5387,13 @@
       const G = this.G;
       const wasAuth = this.isAuthority();
       const prevPhase = G.g.phase;
+      const devs = G.g.devs, prevPs = G.g.ps;
       G.g = JSON.parse(JSON.stringify(pp.g));
+      // Growth is sent now and then (it never changes mid-game); keep ours.
+      G.g.devs = Array.isArray(G.g.devs) ? G.g.devs.map((d) => RB.Growth.encode(RB.Growth.decode(d))) : devs;
+      // Stats may be left out of an update that would be too big; keep ours then.
+      if (!G.g.ps || typeof G.g.ps !== 'object') G.g.ps = prevPs || {};
+      if (!G.g.heat || typeof G.g.heat !== 'object') G.g.heat = {};
       this.lastAdoptVer = G.g.ver;
       if (!wasAuth && this.isAuthority()) {
         // Possession came to us: build fresh runtime and carry on.
@@ -5163,6 +5473,10 @@
       p.role = this.role;
       p.gp = this.partner;
       p.g = compactG(G.g);
+      // Growth doesn't change during a game: send it early on and every ~2 s
+      // (for a phone that reconnects), not in every update.
+      this.pubN = (this.pubN || 0) + 1;
+      if (G.g.phase !== 'coin' && this.pubN % 36 !== 0) delete p.g.devs;
       if (this.isAuthority()) {
         const play = G.rt.play;
         p.p = ['presnap', 'play', 'after'].includes(G.g.phase) && play ? encodePlay(play) : null;
@@ -5173,8 +5487,10 @@
       } else {
         Object.assign(p, { dc: this.dc || '', dcn: this.dcN, dcp: this.dcP == null ? -1 : this.dcP, di: this.defIdx, dv: this.dvN, ek: this.lastTs >= 0 ? this.lastTs : null, act: this.pending });
         const o = this.own;
-        if (o && !o.down) Object.assign(p, { dp: [r2(o.x), r2(o.y), r2(o.vx), r2(o.vy)], dq: ++this.dq, vt: this.viewTs != null ? Math.round(this.viewTs) : null });
+        if (o) Object.assign(p, { dp: [r2(o.x), r2(o.y), r2(o.vx), r2(o.vy)], dq: ++this.dq, vt: this.viewTs != null ? Math.round(this.viewTs) : null });
       }
+      // The live room takes at most 4 KiB per phone: drop what can wait.
+      if (JSON.stringify(p).length > 3600 && p.g) { delete p.g.devs; if (JSON.stringify(p).length > 3600) delete p.g.ps; }
       this.t.setPresence(p);
     },
 
@@ -5278,6 +5594,9 @@
     // The defender you steer, moved on this phone every frame. The computer
     // plays him until you touch the stick; from then on he's yours until the
     // play ends or you switch (let go and he stops, like any stick game).
+    // Everything that happens to him (dives, stumbles, missed tackles) plays
+    // out here, where he is, so he never jumps back to where the other phone
+    // last saw him.
     ownStep(inp, s) {
       const g = this.G.g, latest = this.snap;
       const live = g.phase === 'play' && s && latest && latest.live && !latest.turnover;
@@ -5287,20 +5606,17 @@
       const joy = inp && inp.joy;
       if (!o) {
         const p = s.players[this.defIdx];
-        if ((!joy && !this.diveWant) || !p || p.down || latest.ownDown) { this.diveWant = false; return; }
-        o = this.own = { idx: this.defIdx, x: p.x, y: p.y, vx: p.vx || 0, vy: p.vy || 0, dvx: 0, dvy: 0, face: p.face, down: false, lunge: 0, fall: 0 };
+        if ((!joy && !this.diveWant) || !p || p.down) { this.diveWant = false; return; }
+        o = this.own = { idx: this.defIdx, x: p.x, y: p.y, vx: p.vx || 0, vy: p.vy || 0, dvx: 0, dvy: 0, face: p.face, lunge: 0, fall: 0, knock: latest.ownKnock };
       }
       const dt = Math.min(0.05, this.frameDt || 1 / 60);
-      // Knocked down on the other phone (a missed tackle, a juke): stay down where he fell.
-      if (latest.ownDown && o.lunge <= 0) {
-        if (!o.down) {
-          const lp = latest.players[o.idx];
-          Object.assign(o, { down: true, x: lp.x, y: lp.y, vx: 0, vy: 0, fall: 0 });
-        }
-        this.diveWant = false;
-        return;
+      // The other phone says he missed a tackle or got juked: stumble right here.
+      if (latest.ownKnock !== o.knock) {
+        o.knock = latest.ownKnock;
+        o.lunge = 0;
+        o.fall = 0.45;
+        o.vx *= 0.3; o.vy *= 0.3;
       }
-      o.down = false;
       if (o.fall > 0) {
         o.fall -= dt;
         o.vx *= 0.85; o.vy *= 0.85;
@@ -5308,25 +5624,31 @@
         this.diveWant = false;
         return;
       }
-      const spd = this.ownSpeed(o.idx);
+      const car = s.carrier >= 0 ? s.players[s.carrier] : null;
+      // Chasing a runner (anyone but the QB in his pocket): full pursuit speed.
+      const chasing = !!car && car.side === 0 && (car.i !== 0 || car.x > s.los + 0.5);
+      const spd = this.ownSpeed(o.idx) * (chasing ? 1.08 : 1);
       if (o.lunge > 0) {
         o.lunge -= dt;
         o.x += o.vx * dt; o.y += o.vy * dt;
-        if (o.lunge <= 0) o.fall = 0.8;
+        if (o.lunge <= 0) { o.fall = 0.35; o.vx *= 0.4; o.vy *= 0.4; }
         return;
       }
       if (this.diveWant) {
-        // Dive the way the stick points, or at the ball carrier if he's close.
+        // Dive the way the stick points; with the stick idle, at where the
+        // ball carrier is going to be.
         this.diveWant = false;
-        const car = s.carrier >= 0 ? s.players[s.carrier] : null;
         let dx = joy ? joy.x : 0, dy = joy ? joy.y : 0;
-        if (Math.hypot(dx, dy) < 0.1 && car && Math.hypot(car.x - o.x, car.y - o.y) < 5) { dx = car.x - o.x; dy = car.y - o.y; }
+        if (Math.hypot(dx, dy) < 0.2 && car && Math.hypot(car.x - o.x, car.y - o.y) < 7) {
+          dx = car.x + (car.vx || 0) * 0.25 - o.x;
+          dy = car.y + (car.vy || 0) * 0.25 - o.y;
+        }
         if (Math.hypot(dx, dy) < 0.1) { dx = o.vx; dy = o.vy; }
         if (Math.hypot(dx, dy) < 0.1) { dx = -1; dy = 0; }
-        const d = Math.hypot(dx, dy);
-        o.vx = (dx / d) * spd * 1.4;
-        o.vy = (dy / d) * spd * 1.4;
-        o.lunge = 0.34;
+        const d = Math.hypot(dx, dy), sp = Math.max(spd * 1.5, Math.hypot(o.vx, o.vy) + 2.5);
+        o.vx = (dx / d) * sp;
+        o.vy = (dy / d) * sp;
+        o.lunge = 0.32;
         this.dvN++;
         return;
       }
@@ -5335,7 +5657,18 @@
       for (const q of s.players) {
         if (q.side === 0 && q.i !== s.carrier && !q.down && Math.hypot(q.x - o.x, q.y - o.y) < 0.95) { slow = 0.45; break; }
       }
-      Sim.driveOwned(o, joy, spd * slow, dt);
+      // Pursuit angle: point the stick roughly at the runner and he takes the
+      // angle that cuts him off instead of chasing his heels.
+      let j = joy;
+      if (joy && chasing) {
+        const dx = car.x - o.x, dy = car.y - o.y, dd = Math.hypot(dx, dy), jl = Math.hypot(joy.x, joy.y);
+        if (dd > 0.5 && dd < 20 && jl > 0 && (joy.x * dx + joy.y * dy) / (jl * dd) > 0.77) {
+          const t = Sim.pursuitPoint(o, { x: car.x, y: car.y, vx: car.vx || 0, vy: car.vy || 0 }, spd * slow);
+          const px = t.x - o.x, py = t.y - o.y, pl = Math.hypot(px, py);
+          if (pl > 0.1) j = { x: (px / pl) * jl, y: (py / pl) * jl };
+        }
+      }
+      Sim.driveOwned(o, j, spd * slow, dt);
       o.y = Math.max(-1.5, Math.min(C.FIELD_W + 1.5, o.y));
       if (Math.abs(o.vx) > 0.3) o.face = o.vx > 0 ? 1 : -1;
     },
@@ -5368,11 +5701,15 @@
       const s = this.displaySnap();
       if (s && ['presnap', 'play', 'after'].includes(g.phase)) {
         const rosters = rt.rosters;
-        V.players = s.players.map((p) => Object.assign({}, p, { skin: rosters[p.i < 11 ? g.poss : 1 - g.poss][p.i < 11 ? 'off' : 'def'][p.i % 11].skin }));
+        const heat = g.heat || {};
+        V.players = s.players.map((p) => {
+          const seat = p.i < 11 ? g.poss : 1 - g.poss;
+          return Object.assign({}, p, { skin: rosters[seat][p.i < 11 ? 'off' : 'def'][p.i % 11].skin, hot: heat[`${seat}${p.i < 11 ? 'o' : 'd'}${p.i % 11}`] || 0 });
+        });
         this.ownStep(inp, s);
         const o = this.own;
         if (o && V.players[o.idx]) {
-          Object.assign(V.players[o.idx], { x: o.x, y: o.y, vx: o.vx, vy: o.vy, face: o.face, down: o.down || o.fall > 0.15, lunge: o.lunge > 0, eng: false });
+          Object.assign(V.players[o.idx], { x: o.x, y: o.y, vx: o.vx, vy: o.vy, face: o.face, down: o.fall > 0.12, lunge: o.lunge > 0, eng: false });
         }
         V.defOwn = !!o;
         V.ball = s.ball;
@@ -5601,10 +5938,19 @@
   }
 
   // --- Screens ------------------------------------------------------------------
-  function title(s) {
+  // The running head-to-head record between the last two names that played.
+  function seriesLine(sr) {
+    if (!sr) return '';
+    const [a, b] = sr.names, wa = sr.w[a] || 0, wb = sr.w[b] || 0;
+    const lead = wa === wb ? 'SERIES TIED' : `${esc(wa > wb ? a : b)} LEADS`;
+    return `<p class="series"><span class="eyebrow">RIVALRY · ${lead}</span><span><b>${esc(a)} ${wa}</b> – <b>${wb} ${esc(b)}</b></span></p>`;
+  }
+
+  function title(s, sr, armed) {
     return `<div class="title">
       <h1 class="logo">RIVALRY<span class="b">BOWL</span></h1>
       <p class="tag">Head-to-head college football. Pull back to throw, race for the end zone, hand the phone over.</p>
+      ${seriesLine(sr)}
       <div class="menu">
         <button class="btn big" type="button" data-action="local">Pass &amp; Play<small>One phone. You each drive on offense and swap on every change of possession.</small></button>
         <button class="btn big alt" type="button" data-action="online">Online<small>Two phones. The defense picks the coverage and steers a safety.</small></button>
@@ -5614,13 +5960,26 @@
         ${seg('diff', 'AI DEFENSE', s.diff, [[0, 'EASY'], [1, 'NORMAL'], [2, 'HARD']])}
         ${seg('even', 'TEAM RATINGS', s.even ? 1 : 0, [[0, 'REAL'], [1, 'EVEN']])}
         ${seg('assist', 'AIM ASSIST', s.assist === false ? 0 : 1, [[1, 'ON'], [0, 'OFF']])}
-        ${seg('sound', 'SOUND', s.sound ? 1 : 0, [[1, 'ON'], [0, 'OFF']])}
       </div>
-      <div class="row"><button class="btn ghost" type="button" data-action="howto">How to play</button></div>
+      <div class="row"><button class="btn ghost" type="button" data-action="howto">How to play</button><button class="btn ghost" type="button" data-action="options">Settings</button></div>
     </div>`;
   }
 
-  function teams(step, picks, names, even, online) {
+  // Less-used settings: growth, stick side, sound, vibration.
+  function options(s, armed) {
+    return `<div class="panel" style="max-width:640px"><p class="eyebrow">SETTINGS</p>
+      <div class="settings opts">
+        ${seg('growth', 'PLAYER GROWTH', s.growth === false ? 0 : 1, [[1, 'ON'], [0, 'OFF']])}
+        ${seg('hand', 'STICK SIDE', s.hand === 1 ? 1 : 0, [[0, 'LEFT'], [1, 'RIGHT']])}
+        ${seg('sound', 'SOUND', s.sound ? 1 : 0, [[1, 'ON'], [0, 'OFF']])}
+        ${seg('buzz', 'VIBRATION', s.buzz === false ? 0 : 1, [[1, 'ON'], [0, 'OFF']])}
+        <div class="setting"><span>SAVED GROWTH</span><div class="seg"><button type="button" data-action="resetgrowth" ${armed ? 'data-armed="1" aria-pressed="true"' : ''}>${armed ? 'TAP AGAIN TO RESET' : 'RESET ALL SCHOOLS'}</button></div></div>
+      </div>
+      <p class="muted" style="margin-top:10px">Player growth: after each game your school's players improve from what they did in it (yards, touchdowns, tackles, sacks, picks), up to +12 per rating. It's saved on this phone. Even ratings turn it off for that game. Vibration works on Android; iPhones don't allow it.</p>
+      <div class="row end"><button class="btn" type="button" data-action="back">Done</button></div></div>`;
+  }
+
+  function teams(step, picks, names, even, online, prog, dev) {
     const who = online ? 'YOUR SCHOOL' : `PLAYER ${step + 1} · ${step === 0 ? 'HOME' : 'AWAY'}`;
     const cur = picks[step];
     const other = online ? null : picks[1 - step];
@@ -5640,8 +5999,9 @@
         <p>OFF ${stars(st.off)}<br>DEF ${stars(st.def)}</p>
         <div class="ratings"><span>QB <b>${r.qb}</b></span><span>RB <b>${r.rb}</b></span><span>WR <b>${r.wr}</b></span><span>OL <b>${r.ol}</b></span>
         <span>DL <b>${r.dl}</b></span><span>LB <b>${r.lb}</b></span><span>DB <b>${r.db}</b></span><span>K <b>${r.k}</b></span></div>
+        ${prog && prog.gp ? `<p class="prog">PROGRAM · ${prog.gp} GAME${prog.gp > 1 ? 'S' : ''} · ${prog.w}-${prog.l}${dev ? ` · <b>+${Object.values(dev).reduce((a, r) => a + Object.values(r).reduce((x, y) => x + y, 0), 0)} GROWTH</b>` : ''}</p>` : ''}
         <p class="eyebrow" style="margin:10px 0 4px">KEY PLAYERS</p>
-        <ul class="keys">${RB.keyPlayers(RB.buildRoster(t, even)).map((p) => `<li><b>${esc(p.pos)} #${p.num}</b> ${esc(p.name)}${p.star ? ` <i>${esc(p.star)}</i>` : ''}<br><span>${p.show.map(([k, v]) => `${k} <b>${v}</b>`).join(' · ')}</span></li>`).join('')}</ul></div></div>`;
+        <ul class="keys">${RB.keyPlayers(RB.buildRoster(t, even, dev)).map((p) => `<li><b>${esc(p.pos)} #${p.num}</b> ${esc(p.name)}${p.star ? ` <i>${esc(p.star)}</i>` : ''}${p.up ? ` <em>▲${p.up}</em>` : ''}<br><span>${p.show.map(([k, v]) => `${k} <b>${v}</b>`).join(' · ')}</span></li>`).join('')}</ul></div></div>`;
     }
     return `<div class="panel teams">
       <header><div><p class="eyebrow">${who}</p><h2 style="margin:0">Pick your school</h2></div>
@@ -5683,13 +6043,34 @@
     </tbody></table>`;
   }
 
+  // Standouts for each side from the player stats (g.ps).
+  function leaders(G) {
+    const g = G.g, ps = g.ps || {};
+    const col = (seat) => {
+      const R = G.rt.rosters[seat], out = [];
+      const who = (k) => { const side = k[1] === 'o' ? 'off' : 'def', p = R[side][+k.slice(2)]; return `${p.pos} #${p.num} ${esc(p.name)}${g.heat && g.heat[k] > 0 ? ' <span class="hot">🔥</span>' : ''}`; };
+      const mine = Object.entries(ps).filter(([k]) => +k[0] === seat);
+      const best = (score) => { let b = null, bs = 0; for (const [k, r] of mine) { const v = score(k, r); if (v > bs) { bs = v; b = [k, r]; } } return b; };
+      const q = mine.find(([k]) => k.slice(1) === 'o0');
+      if (q && q[1].a) out.push(`${who(q[0])}<span>${q[1].c || 0}/${q[1].a} · ${q[1].y || 0} YDS · ${q[1].t || 0} TD${q[1].i ? ` · ${q[1].i} INT` : ''}</span>`);
+      const rec = best((k, r) => r.rcy || 0);
+      if (rec) out.push(`${who(rec[0])}<span>${rec[1].rc} REC · ${rec[1].rcy} YDS${rec[1].rct ? ` · ${rec[1].rct} TD` : ''}</span>`);
+      const rush = best((k, r) => (r.r ? (r.ry || 0) + 1 : 0));
+      if (rush && rush[1].r) out.push(`${who(rush[0])}<span>${rush[1].r} CAR · ${rush[1].ry || 0} YDS${rush[1].rt ? ` · ${rush[1].rt} TD` : ''}</span>`);
+      const dfd = best((k, r) => (r.tk || 0) + 2 * (r.sk || 0) + 3 * (r.pi || 0));
+      if (dfd) out.push(`${who(dfd[0])}<span>${dfd[1].tk || 0} TKL${dfd[1].sk ? ` · ${dfd[1].sk} SACK` : ''}${dfd[1].pi ? ` · ${dfd[1].pi} INT` : ''}</span>`);
+      return `<div><p class="eyebrow">${esc(RB.Game.team(G, seat).id)}</p><ul class="leaders">${out.map((x) => `<li>${x}</li>`).join('') || '<li class="muted">—</li>'}</ul></div>`;
+    };
+    return `<div class="standouts">${col(0)}${col(1)}</div>`;
+  }
+
   function scoreBig(G) {
     const g = G.g;
     return `<div class="score-big"><span>${esc(RB.Game.team(G, 0).id)}</span><span class="s">${g.score[0]}</span><span class="muted">–</span><span class="s">${g.score[1]}</span><span>${esc(RB.Game.team(G, 1).id)}</span></div>`;
   }
 
   function halftime(G, canContinue) {
-    return `<div class="panel"><p class="eyebrow">HALFTIME</p>${scoreBig(G)}${statsTable(G)}
+    return `<div class="panel wide"><p class="eyebrow">HALFTIME</p>${scoreBig(G)}<div class="cols"><div>${statsTable(G)}</div><div>${leaders(G)}</div></div>
       <div class="row end">${canContinue ? '<button class="btn" type="button" data-action="continue">Start 2nd half</button>' : '<span class="status">Waiting for the host to start the 2nd half</span>'}</div></div>`;
   }
 
@@ -5697,9 +6078,11 @@
     const g = G.g;
     const w = g.score[0] > g.score[1] ? 0 : 1;
     const ot = g.ot ? ` in ${g.ot.n > 1 ? g.ot.n + ' overtimes' : 'overtime'}` : '';
-    return `<div class="panel"><p class="eyebrow">FINAL${g.ot ? ' · OT' : ''}</p>
+    return `<div class="panel wide"><p class="eyebrow">FINAL${g.ot ? ' · OT' : ''}</p>
       <h2>${esc(g.names[w])} and ${esc(RB.Game.team(G, w).name)} win${ot}</h2>
-      ${scoreBig(G)}${statsTable(G)}
+      ${scoreBig(G)}${G.rt.series ? seriesLine(G.rt.series) : ''}
+      <div class="cols"><div>${statsTable(G)}</div><div>${leaders(G)}
+      ${(G.rt.growth || []).filter((x) => x.lines.length).map((x) => `<p class="eyebrow" style="margin-top:10px">${esc(RB.Game.team(G, x.seat).name)} PLAYER GROWTH</p><ul class="leaders grow">${x.lines.map((l) => `<li>▲ ${esc(l)}</li>`).join('')}</ul>`).join('')}</div></div>
       <div class="row end"><button class="btn ghost" type="button" data-action="menu">Main menu</button>
       ${online ? '' : '<button class="btn" type="button" data-action="rematch">Rematch</button>'}</div></div>`;
   }
@@ -5720,7 +6103,9 @@
         <dt>MOVE</dt><dd>The joystick sits in the bottom-left corner. The QB moves with it in the pocket (cross the line and he can't throw). After a catch or handoff the runner keeps going upfield until you steer him. JUKE and DIVE are the buttons on the right.</dd>
         <dt>KICK</dt><dd>Drag down for power and sideways to aim (the ball goes the opposite way). Clear the white line on the power bar and watch the wind.</dd>
         <dt>HEAD TO HEAD</dt><dd>Pass &amp; Play: each of you plays your own offense against the computer's defense; hand the phone over on every change of possession. Online: the defense player calls the coverage and taps any defender to take him over. Touch the stick and he's yours with no delay (let go and he stops); SWITCH jumps to the defender nearest the ball, DIVE lays out for a tackle, or at a pass to knock it away or pick it off. Throwing into tight coverage gets intercepted.</dd>
-        <dt>CLOCK</dt><dd>The clock runs between plays after tackles in bounds. Snap quickly to save time. Incompletions, out of bounds, scores and timeouts stop it. Overtime uses college rules.</dd>
+        <dt>CLOCK</dt><dd>The clock runs between plays after tackles in bounds. Snap quickly to save time. Incompletions, out of bounds, scores and timeouts stop it. In the last two minutes of a half you can SPIKE (costs a down, stops the clock) or, with the lead, KNEEL (runs it). Overtime uses college rules.</dd>
+        <dt>STREAKS</dt><dd>Players who keep producing heat up (a flame over them, and in the play key): a little faster, surer hands, better throws or tackles. It fades if they go quiet. A QB who throws a pick gets rattled until his next completion.</dd>
+        <dt>GROWTH</dt><dd>After each game your school's players improve from what they did (yards, touchdowns, tackles, sacks, picks), saved on this phone. Team select shows your program's record and growth; the final screen lists who improved. The title screen keeps your head-to-head series. Turn growth off or reset it in Settings.</dd>
       </dl>
       <div class="row end"><button class="btn" type="button" data-action="back">Got it</button></div></div>`;
   }
@@ -5772,7 +6157,7 @@
     padKey = null;
   }
 
-  RB.UI = { init, show, controls, hint, pad, showPause, invalidate, esc, title, teams, handoff, halftime, final, pause, howto, stars };
+  RB.UI = { init, show, controls, hint, pad, showPause, options, invalidate, esc, title, teams, handoff, halftime, final, pause, howto, stars };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -5802,7 +6187,7 @@
 
   const App = {
     screen: 'title', back: 'title',
-    settings: Object.assign({ qlen: 240, diff: 1, even: false, sound: true, assist: true }, store.get('settings', {})),
+    settings: Object.assign({ qlen: 240, diff: 1, even: false, sound: true, assist: true, growth: true, hand: 0, buzz: true }, store.get('settings', {})),
     picks: [null, null],
     names: store.get('names', ['PLAYER 1', 'PLAYER 2']),
     step: 0,
@@ -5821,6 +6206,8 @@
     Render.init(canvas);
     UI.init();
     RB.Audio.setOn(App.settings.sound);
+    if (RB.Audio.setBuzz) RB.Audio.setBuzz(App.settings.buzz);
+    applyHand();
     const app = document.getElementById('app');
     const doResize = () => Render.resize(app.clientWidth, app.clientHeight);
     doResize();
@@ -5917,6 +6304,7 @@
     App.G = Game.create({
       mode: 'local', home: App.picks[0], away: App.picks[1], names: App.names.slice(),
       settings: { qlen: App.settings.qlen, diff: App.settings.diff, even: App.settings.even, assist: App.settings.assist },
+      devs: [devFor(App.picks[0]), devFor(App.picks[1])],
     });
     App.mode = 'local';
     App.screen = 'game';
@@ -5934,6 +6322,70 @@
     Input.reset();
     UI.invalidate();
     if (!App.demo) newDemo();
+  }
+
+  // --- Programs and the series (kept on this phone) ----------------------------------------
+  // Each school's growth from earlier games, as RB.buildRoster takes it.
+  function programs() { return store.get('programs', {}); }
+  function devFor(teamId) {
+    if (!App.settings.growth || App.settings.even) return null;
+    const p = programs()[teamId];
+    return p && p.dev ? p.dev : null;
+  }
+  function programOf(teamId) {
+    return programs()[teamId] || { dev: {}, gp: 0, w: 0, l: 0 };
+  }
+  // At the final whistle: grow the schools this phone plays for and add the
+  // result to the head-to-head series. Runs once per game.
+  function recordFinal(G) {
+    const g = G.g, rt = G.rt;
+    if (rt.recorded) return;
+    rt.recorded = true;
+    const seats = App.net ? [App.net.seat] : [0, 1];
+    const all = programs();
+    rt.growth = [];
+    const rng = RB.makeRng((g.seed ^ 0x5eed) >>> 0);
+    for (const seat of seats) {
+      const id = g.teams[seat], won = g.score[seat] > g.score[1 - seat];
+      const prog = all[id] || { dev: {}, gp: 0, w: 0, l: 0 };
+      prog.gp++;
+      if (won) prog.w++; else prog.l++;
+      if (App.settings.growth && !g.settings.even) {
+        const mine = {};
+        for (const [k, v] of Object.entries(g.ps || {})) if (+k[0] === seat) mine[k.slice(1)] = v;
+        const grew = RB.Growth.apply(prog.dev, RB.Growth.from(mine, won, rng));
+        const R = rt.rosters[seat];
+        rt.growth.push({ seat, lines: grew.map((b) => {
+          const p = b.slot === 'k' ? R.k : R[b.slot[0] === 'o' ? 'off' : 'def'][+b.slot.slice(1)];
+          return `${p.pos} #${p.num} ${p.name} ${b.rating} +1 (${b.why})`;
+        }) });
+      }
+      all[id] = prog;
+    }
+    store.set('programs', all);
+    // Head-to-head series between these two names.
+    const names = g.names.slice();
+    const key = names.slice().sort().join('|');
+    const series = store.get('series', {});
+    const sr = series[key] || { names: names.slice().sort(), w: {}, games: [] };
+    const winner = names[g.score[0] > g.score[1] ? 0 : 1];
+    sr.w[winner] = (sr.w[winner] || 0) + 1;
+    sr.games.unshift({ n: names, t: g.teams.slice(), s: g.score.slice(), d: Date.now() });
+    sr.games = sr.games.slice(0, 10);
+    series[key] = sr;
+    store.set('series', series);
+    store.set('lastSeries', key);
+    rt.series = sr;
+  }
+  function lastSeries() {
+    const key = store.get('lastSeries', null);
+    return key ? store.get('series', {})[key] || null : null;
+  }
+  function applyHand() {
+    const right = App.settings.hand === 1;
+    if (Input.setHand) Input.setHand(right ? 'R' : 'L');
+    const pad = document.getElementById('pad');
+    if (pad) pad.classList.toggle('left', right);
   }
 
   // --- Input context ---------------------------------------------------------------------
@@ -6033,7 +6485,7 @@
   function viewPlayer(p, a) {
     return {
       i: p.i, x: mix(p.px, p.x, a), y: mix(p.py, p.y, a), vx: p.vx, vy: p.vy, side: p.side, face: p.face,
-      down: p.down > 0.35, lunge: (p.lunge || 0) > 0 || (p.dive || 0) > 0, eng: p.eng >= 0, skin: p.skin,
+      down: p.down > 0.35, lunge: (p.lunge || 0) > 0 || (p.dive || 0) > 0, eng: p.eng >= 0, skin: p.skin, hot: p.hot || 0,
     };
   }
 
@@ -6082,12 +6534,12 @@
 
   // Before the snap: who runs each colored route, and how good he is.
   const LEGEND_ORDER = [0, 8, 9, 10, 7, 1];
-  function legendView(roster) {
+  function legendView(roster, heat, seat) {
     return LEGEND_ORDER.map((i) => {
-      const p = roster.off[i];
+      const p = roster.off[i], h = heat && heat[`${seat}o${i}`];
       const keys = RB.SHOWN[p.pos].slice(0, 2);
       const who = i === 0 ? 'QB' : `#${p.num}`;
-      return { color: ROUTE_COLORS[i] || '#ffffff', text: `${who} ${keys.map((k) => `${k} ${p.rt[k]}`).join(' ')}${p.star ? ' *' : ''}` };
+      return { color: ROUTE_COLORS[i] || '#ffffff', text: `${who} ${keys.map((k) => `${k} ${p.rt[k]}`).join(' ')}${p.star ? ' *' : ''}${h > 0 ? ' ~'.repeat(h) : h < 0 ? ' -' : ''}` };
     });
   }
 
@@ -6133,7 +6585,7 @@
       if (App.net) V.netInfo = App.net.netInfo();
       if (V.routes && play.phase === 'pre') {
         V.routeColors = ROUTE_COLORS;
-        V.legend = legendView(rt.rosters[g.poss]);
+        V.legend = legendView(rt.rosters[g.poss], g.heat, g.poss);
       }
     }
     return V;
@@ -6150,7 +6602,7 @@
     if (!mine) return null;
     if (g.phase === 'presnap') {
       const opts = Game.presnapOptions(g);
-      const cls = { pass: '', run: 'alt', punt: 'ghost', fg: 'ghost' };
+      const cls = { pass: '', run: 'alt', punt: 'ghost', fg: 'ghost', spike: 'ghost', kneel: 'ghost' };
       const who = `${team(G, g.poss).name} BALL · ${g.names[g.poss]}`;
       const main = opts.map((o) => `<button class="btn ${cls[o.id]}" type="button" data-action="call" data-kind="${o.id}">${esc(o.label)}</button>`).join('');
       const seats = App.net ? [App.net.seat] : [0, 1];
@@ -6180,15 +6632,18 @@
     const s = App.screen;
     if (s !== 'game' || !App.G) UI.pad(null);
     if (s === 'title') {
-      UI.show('title', UI.title(App.settings));
+      const sr = lastSeries();
+      UI.show('title|' + (sr ? JSON.stringify(sr.w) : '') + '|' + JSON.stringify(App.settings), UI.title(App.settings, sr));
       UI.controls('', null);
       UI.hint('');
       UI.showPause(false);
       return;
     }
     if (s === 'howto') { UI.show('howto', UI.howto()); return; }
+    if (s === 'options') { UI.show(`options|${JSON.stringify(App.settings)}|${!!App.resetArmed}`, UI.options(App.settings, App.resetArmed)); return; }
     if (s === 'teams') {
-      if (UI.show(`teams|${App.step}|${App.picks.join()}|${App.settings.even}|${App.mode}`, UI.teams(App.step, App.picks, App.names, App.settings.even, App.mode === 'online'))) drawHelmet();
+      const cur = App.picks[App.step];
+      if (UI.show(`teams|${App.step}|${App.picks.join()}|${App.settings.even}|${App.mode}`, UI.teams(App.step, App.picks, App.names, App.settings.even, App.mode === 'online', cur ? programOf(cur) : null, cur ? devFor(cur) : null))) drawHelmet();
       UI.controls('', null);
       UI.showPause(false);
       return;
@@ -6206,7 +6661,7 @@
     if (App.paused) UI.show('pause', UI.pause(online));
     else if (g.phase === 'handoff' && !online) UI.show(`handoff|${g.ctl}|${g.playNo}|${g.afterHandoff}`, UI.handoff(G));
     else if (g.phase === 'half') UI.show(`half|${online && App.net.seat === 0}`, UI.halftime(G, !online || App.net.seat === 0));
-    else if (g.phase === 'final' && g.phaseT > 2.4) UI.show('final', UI.final(G, online));
+    else if (g.phase === 'final' && g.phaseT > 2.4) { recordFinal(G); UI.show('final', UI.final(G, online)); }
     else if (online && App.net.overlay()) UI.show('net|' + App.net.overlay().key, App.net.overlay().html);
     else UI.show('', null);
     UI.showPause(!App.paused && g.phase !== 'final');
@@ -6270,8 +6725,13 @@
         App.back = App.screen;
         App.screen = 'howto';
         break;
+      case 'options':
+        App.screen = 'options';
+        App.resetArmed = false;
+        break;
       case 'back':
-        if (App.screen === 'howto') App.screen = App.back || 'title';
+        if (App.screen === 'options') App.screen = 'title';
+        else if (App.screen === 'howto') App.screen = App.back || 'title';
         else if (App.screen === 'teams') {
           readName();
           if (App.step === 1) App.step = 0;
@@ -6283,8 +6743,10 @@
         break;
       case 'set': {
         const k = b.dataset.key, v = +b.dataset.val;
-        App.settings[k] = k === 'even' || k === 'sound' || k === 'assist' ? !!v : v;
+        App.settings[k] = k === 'even' || k === 'sound' || k === 'assist' || k === 'growth' || k === 'buzz' ? !!v : v;
         if (k === 'sound') RB.Audio.setOn(!!v);
+        if (k === 'buzz' && RB.Audio.setBuzz) RB.Audio.setBuzz(!!v);
+        if (k === 'hand') applyHand();
         store.set('settings', App.settings);
         UI.invalidate();
         break;
@@ -6314,6 +6776,11 @@
       case 'resume': App.paused = false; App.acc = 0; break;
       case 'quit': case 'menu': quitToMenu(); break;
       case 'rematch': startLocal(); break;
+      case 'resetgrowth':
+        // Two taps: the first arms it, the second wipes every school's growth.
+        if (b.dataset.armed) { store.set('programs', {}); App.resetArmed = false; }
+        else { App.resetArmed = true; }
+        break;
       default:
         if (App.net) App.net.action(a, b);
     }
@@ -6349,7 +6816,7 @@
     Game.act(App.G, act);
   }
 
-  RB.Main = { store, startOnlineGame: null, quitToMenu, buildView, viewPlayer };
+  RB.Main = { store, startOnlineGame: null, quitToMenu, buildView, viewPlayer, devFor };
 
   const boot = () => {
     if (window.claude?.hot?.ready) window.claude.hot.ready(start);

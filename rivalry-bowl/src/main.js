@@ -22,7 +22,7 @@
 
   const App = {
     screen: 'title', back: 'title',
-    settings: Object.assign({ qlen: 240, diff: 1, even: false, sound: true, assist: true }, store.get('settings', {})),
+    settings: Object.assign({ qlen: 240, diff: 1, even: false, sound: true, assist: true, growth: true, hand: 0, buzz: true }, store.get('settings', {})),
     picks: [null, null],
     names: store.get('names', ['PLAYER 1', 'PLAYER 2']),
     step: 0,
@@ -41,6 +41,8 @@
     Render.init(canvas);
     UI.init();
     RB.Audio.setOn(App.settings.sound);
+    if (RB.Audio.setBuzz) RB.Audio.setBuzz(App.settings.buzz);
+    applyHand();
     const app = document.getElementById('app');
     const doResize = () => Render.resize(app.clientWidth, app.clientHeight);
     doResize();
@@ -137,6 +139,7 @@
     App.G = Game.create({
       mode: 'local', home: App.picks[0], away: App.picks[1], names: App.names.slice(),
       settings: { qlen: App.settings.qlen, diff: App.settings.diff, even: App.settings.even, assist: App.settings.assist },
+      devs: [devFor(App.picks[0]), devFor(App.picks[1])],
     });
     App.mode = 'local';
     App.screen = 'game';
@@ -154,6 +157,70 @@
     Input.reset();
     UI.invalidate();
     if (!App.demo) newDemo();
+  }
+
+  // --- Programs and the series (kept on this phone) ----------------------------------------
+  // Each school's growth from earlier games, as RB.buildRoster takes it.
+  function programs() { return store.get('programs', {}); }
+  function devFor(teamId) {
+    if (!App.settings.growth || App.settings.even) return null;
+    const p = programs()[teamId];
+    return p && p.dev ? p.dev : null;
+  }
+  function programOf(teamId) {
+    return programs()[teamId] || { dev: {}, gp: 0, w: 0, l: 0 };
+  }
+  // At the final whistle: grow the schools this phone plays for and add the
+  // result to the head-to-head series. Runs once per game.
+  function recordFinal(G) {
+    const g = G.g, rt = G.rt;
+    if (rt.recorded) return;
+    rt.recorded = true;
+    const seats = App.net ? [App.net.seat] : [0, 1];
+    const all = programs();
+    rt.growth = [];
+    const rng = RB.makeRng((g.seed ^ 0x5eed) >>> 0);
+    for (const seat of seats) {
+      const id = g.teams[seat], won = g.score[seat] > g.score[1 - seat];
+      const prog = all[id] || { dev: {}, gp: 0, w: 0, l: 0 };
+      prog.gp++;
+      if (won) prog.w++; else prog.l++;
+      if (App.settings.growth && !g.settings.even) {
+        const mine = {};
+        for (const [k, v] of Object.entries(g.ps || {})) if (+k[0] === seat) mine[k.slice(1)] = v;
+        const grew = RB.Growth.apply(prog.dev, RB.Growth.from(mine, won, rng));
+        const R = rt.rosters[seat];
+        rt.growth.push({ seat, lines: grew.map((b) => {
+          const p = b.slot === 'k' ? R.k : R[b.slot[0] === 'o' ? 'off' : 'def'][+b.slot.slice(1)];
+          return `${p.pos} #${p.num} ${p.name} ${b.rating} +1 (${b.why})`;
+        }) });
+      }
+      all[id] = prog;
+    }
+    store.set('programs', all);
+    // Head-to-head series between these two names.
+    const names = g.names.slice();
+    const key = names.slice().sort().join('|');
+    const series = store.get('series', {});
+    const sr = series[key] || { names: names.slice().sort(), w: {}, games: [] };
+    const winner = names[g.score[0] > g.score[1] ? 0 : 1];
+    sr.w[winner] = (sr.w[winner] || 0) + 1;
+    sr.games.unshift({ n: names, t: g.teams.slice(), s: g.score.slice(), d: Date.now() });
+    sr.games = sr.games.slice(0, 10);
+    series[key] = sr;
+    store.set('series', series);
+    store.set('lastSeries', key);
+    rt.series = sr;
+  }
+  function lastSeries() {
+    const key = store.get('lastSeries', null);
+    return key ? store.get('series', {})[key] || null : null;
+  }
+  function applyHand() {
+    const right = App.settings.hand === 1;
+    if (Input.setHand) Input.setHand(right ? 'R' : 'L');
+    const pad = document.getElementById('pad');
+    if (pad) pad.classList.toggle('left', right);
   }
 
   // --- Input context ---------------------------------------------------------------------
@@ -253,7 +320,7 @@
   function viewPlayer(p, a) {
     return {
       i: p.i, x: mix(p.px, p.x, a), y: mix(p.py, p.y, a), vx: p.vx, vy: p.vy, side: p.side, face: p.face,
-      down: p.down > 0.35, lunge: (p.lunge || 0) > 0 || (p.dive || 0) > 0, eng: p.eng >= 0, skin: p.skin,
+      down: p.down > 0.35, lunge: (p.lunge || 0) > 0 || (p.dive || 0) > 0, eng: p.eng >= 0, skin: p.skin, hot: p.hot || 0,
     };
   }
 
@@ -302,12 +369,12 @@
 
   // Before the snap: who runs each colored route, and how good he is.
   const LEGEND_ORDER = [0, 8, 9, 10, 7, 1];
-  function legendView(roster) {
+  function legendView(roster, heat, seat) {
     return LEGEND_ORDER.map((i) => {
-      const p = roster.off[i];
+      const p = roster.off[i], h = heat && heat[`${seat}o${i}`];
       const keys = RB.SHOWN[p.pos].slice(0, 2);
       const who = i === 0 ? 'QB' : `#${p.num}`;
-      return { color: ROUTE_COLORS[i] || '#ffffff', text: `${who} ${keys.map((k) => `${k} ${p.rt[k]}`).join(' ')}${p.star ? ' *' : ''}` };
+      return { color: ROUTE_COLORS[i] || '#ffffff', text: `${who} ${keys.map((k) => `${k} ${p.rt[k]}`).join(' ')}${p.star ? ' *' : ''}${h > 0 ? ' ~'.repeat(h) : h < 0 ? ' -' : ''}` };
     });
   }
 
@@ -353,7 +420,7 @@
       if (App.net) V.netInfo = App.net.netInfo();
       if (V.routes && play.phase === 'pre') {
         V.routeColors = ROUTE_COLORS;
-        V.legend = legendView(rt.rosters[g.poss]);
+        V.legend = legendView(rt.rosters[g.poss], g.heat, g.poss);
       }
     }
     return V;
@@ -370,7 +437,7 @@
     if (!mine) return null;
     if (g.phase === 'presnap') {
       const opts = Game.presnapOptions(g);
-      const cls = { pass: '', run: 'alt', punt: 'ghost', fg: 'ghost' };
+      const cls = { pass: '', run: 'alt', punt: 'ghost', fg: 'ghost', spike: 'ghost', kneel: 'ghost' };
       const who = `${team(G, g.poss).name} BALL · ${g.names[g.poss]}`;
       const main = opts.map((o) => `<button class="btn ${cls[o.id]}" type="button" data-action="call" data-kind="${o.id}">${esc(o.label)}</button>`).join('');
       const seats = App.net ? [App.net.seat] : [0, 1];
@@ -400,15 +467,18 @@
     const s = App.screen;
     if (s !== 'game' || !App.G) UI.pad(null);
     if (s === 'title') {
-      UI.show('title', UI.title(App.settings));
+      const sr = lastSeries();
+      UI.show('title|' + (sr ? JSON.stringify(sr.w) : '') + '|' + JSON.stringify(App.settings), UI.title(App.settings, sr));
       UI.controls('', null);
       UI.hint('');
       UI.showPause(false);
       return;
     }
     if (s === 'howto') { UI.show('howto', UI.howto()); return; }
+    if (s === 'options') { UI.show(`options|${JSON.stringify(App.settings)}|${!!App.resetArmed}`, UI.options(App.settings, App.resetArmed)); return; }
     if (s === 'teams') {
-      if (UI.show(`teams|${App.step}|${App.picks.join()}|${App.settings.even}|${App.mode}`, UI.teams(App.step, App.picks, App.names, App.settings.even, App.mode === 'online'))) drawHelmet();
+      const cur = App.picks[App.step];
+      if (UI.show(`teams|${App.step}|${App.picks.join()}|${App.settings.even}|${App.mode}`, UI.teams(App.step, App.picks, App.names, App.settings.even, App.mode === 'online', cur ? programOf(cur) : null, cur ? devFor(cur) : null))) drawHelmet();
       UI.controls('', null);
       UI.showPause(false);
       return;
@@ -426,7 +496,7 @@
     if (App.paused) UI.show('pause', UI.pause(online));
     else if (g.phase === 'handoff' && !online) UI.show(`handoff|${g.ctl}|${g.playNo}|${g.afterHandoff}`, UI.handoff(G));
     else if (g.phase === 'half') UI.show(`half|${online && App.net.seat === 0}`, UI.halftime(G, !online || App.net.seat === 0));
-    else if (g.phase === 'final' && g.phaseT > 2.4) UI.show('final', UI.final(G, online));
+    else if (g.phase === 'final' && g.phaseT > 2.4) { recordFinal(G); UI.show('final', UI.final(G, online)); }
     else if (online && App.net.overlay()) UI.show('net|' + App.net.overlay().key, App.net.overlay().html);
     else UI.show('', null);
     UI.showPause(!App.paused && g.phase !== 'final');
@@ -490,8 +560,13 @@
         App.back = App.screen;
         App.screen = 'howto';
         break;
+      case 'options':
+        App.screen = 'options';
+        App.resetArmed = false;
+        break;
       case 'back':
-        if (App.screen === 'howto') App.screen = App.back || 'title';
+        if (App.screen === 'options') App.screen = 'title';
+        else if (App.screen === 'howto') App.screen = App.back || 'title';
         else if (App.screen === 'teams') {
           readName();
           if (App.step === 1) App.step = 0;
@@ -503,8 +578,10 @@
         break;
       case 'set': {
         const k = b.dataset.key, v = +b.dataset.val;
-        App.settings[k] = k === 'even' || k === 'sound' || k === 'assist' ? !!v : v;
+        App.settings[k] = k === 'even' || k === 'sound' || k === 'assist' || k === 'growth' || k === 'buzz' ? !!v : v;
         if (k === 'sound') RB.Audio.setOn(!!v);
+        if (k === 'buzz' && RB.Audio.setBuzz) RB.Audio.setBuzz(!!v);
+        if (k === 'hand') applyHand();
         store.set('settings', App.settings);
         UI.invalidate();
         break;
@@ -534,6 +611,11 @@
       case 'resume': App.paused = false; App.acc = 0; break;
       case 'quit': case 'menu': quitToMenu(); break;
       case 'rematch': startLocal(); break;
+      case 'resetgrowth':
+        // Two taps: the first arms it, the second wipes every school's growth.
+        if (b.dataset.armed) { store.set('programs', {}); App.resetArmed = false; }
+        else { App.resetArmed = true; }
+        break;
       default:
         if (App.net) App.net.action(a, b);
     }
@@ -569,7 +651,7 @@
     Game.act(App.G, act);
   }
 
-  RB.Main = { store, startOnlineGame: null, quitToMenu, buildView, viewPlayer };
+  RB.Main = { store, startOnlineGame: null, quitToMenu, buildView, viewPlayer, devFor };
 
   const boot = () => {
     if (window.claude?.hot?.ready) window.claude.hot.ready(start);

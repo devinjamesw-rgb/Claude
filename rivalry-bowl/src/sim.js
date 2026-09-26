@@ -87,7 +87,7 @@
       ctrl: QB, // offense player the user steers
       thrown: false, scramble: false, handedOff: false, turnover: false, manual: false,
       events: [], result: null,
-      stats: { passAtt: 0, comp: 0, passYds: 0, rushAtt: 0, rushYds: 0, sack: 0, int: 0, fum: 0, receiver: -1, rusher: -1 },
+      stats: { passAtt: 0, comp: 0, passYds: 0, rushAtt: 0, rushYds: 0, sack: 0, int: 0, fum: 0, receiver: -1, rusher: -1, tackler: -1, picker: -1 },
       aimTarget: null,
       landing: null,
     };
@@ -998,7 +998,7 @@
         event(play, 'hit', '');
         return tackled(play, p, d);
       }
-      d.down = 0.35;
+      knock(play, d, 0.35);
     }
   }
 
@@ -1008,6 +1008,7 @@
     play.carrier = d.i;
     play.turnover = true;
     play.stats.int = 1;
+    play.stats.picker = d.i;
     d.role = 'returner';
     d.eng = -1;
     for (const q of play.players) {
@@ -1051,7 +1052,7 @@
             tackled(play, car, d);
             return;
           }
-          d.down = 1.0;
+          knock(play, d, 0.5);
           event(play, 'broken', '');
           continue;
         }
@@ -1059,7 +1060,7 @@
       const r = d.eng >= 0 ? 0.62 : owned ? 1.05 : 0.88;
       if (dd <= r) {
         if (car.juke > 0 && d.eng < 0) {
-          d.down = 0.9;
+          knock(play, d, owned ? 0.6 : 0.9);
           d.tackleCd = 0.9;
           event(play, 'juke', '');
           continue;
@@ -1069,7 +1070,7 @@
         if (car.i === QB && !play.scramble && play.ball.holder === QB) p += 0.12;
         if (rng.chance(clamp(p, 0.3, 0.97))) { tackled(play, car, d); return; }
         d.tackleCd = 0.6;
-        if (d.eng < 0) d.down = 0.4;
+        if (d.eng < 0) knock(play, d, 0.4);
         car.slow = 0.35;
         event(play, 'broken', '');
         continue;
@@ -1098,6 +1099,7 @@
   }
 
   function tackled(play, car, d) {
+    play.stats.tackler = d.i;
     car.down = 99;
     d.down = 99;
     d.vx = car.vx * 0.5; d.vy = car.vy * 0.5;
@@ -1305,8 +1307,9 @@
     play.ownIdx = i;
     if (p.eng >= 0) { play.players[p.eng].eng = -1; p.eng = -1; }
     p.own = o;
-    if (o.dive && p.down <= 0 && p.tackleCd <= 0) { p.lunge = 0.34; p.ownLunge = true; }
-    if (p.down > 0) return false; // he stays where he fell
+    if (o.dive && p.down <= 0) { p.lunge = 0.34; p.ownLunge = true; p.tackleCd = 0; }
+    // Always follow his phone, even while he's down: that phone plays the fall
+    // where he really is, so freezing him here would pull him back later.
     const ahead = Math.min(0.25, o.age || 0);
     const tx = o.x + o.vx * ahead, ty = o.y + o.vy * ahead;
     if (hyp(tx - p.x, ty - p.y) > 5) { p.x = tx; p.y = ty; }
@@ -1318,6 +1321,13 @@
     p.vx = o.vx; p.vy = o.vy; p.dvx = o.vx; p.dvy = o.vy;
     if (Math.abs(o.vx) > 0.3) p.face = o.vx > 0 ? 1 : -1;
     return true;
+  }
+
+  // Knocks a defender off his feet. For the one the defense player steers,
+  // the count tells his phone to play the stumble there, where he really is.
+  function knock(play, d, dur) {
+    d.down = dur;
+    if (d.i === play.ownIdx) play.ownKnock = (play.ownKnock || 0) + 1;
   }
 
   // Where the ball carrier was `lag` seconds ago.
@@ -1352,7 +1362,8 @@
       if (p.lunge) {
         p.lunge = Math.max(0, p.lunge - dt);
         // A diving defender who comes up empty ends up on the turf.
-        if (!p.lunge && p.ownLunge) { p.ownLunge = false; if (play.phase === 'live' && p.down <= 0) { p.down = 0.8; p.tackleCd = 0.8; } }
+        // A diving defender who comes up empty stumbles (his phone plays it too).
+        if (!p.lunge && p.ownLunge) { p.ownLunge = false; if (play.phase === 'live' && p.down <= 0) { p.down = 0.3; p.tackleCd = 0.35; } }
       }
       if (p.down > 0 && p.down < 50) p.down = Math.max(0, p.down - dt);
     }
@@ -1445,6 +1456,6 @@
     IDX: { QB, RBK, OC, LG, RG, LT, RT, TE, WR1, WR2, WR3, DE1, DT1, DT2, DE2, LB1, LB2, LB3, CB1, CB2, S1, S2 },
     OL, ELIGIBLE, DIFF, DEF_CALLS, ROUTES,
     createPlay, setDefense, snap, step, canThrow, throwBall, clampAim, flightTime, maxRange, aiDefCall, predictRoute, assistAim,
-    driveOwned, effSpeed,
+    driveOwned, effSpeed, pursuitPoint,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

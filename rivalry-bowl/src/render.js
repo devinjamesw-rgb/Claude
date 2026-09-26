@@ -382,6 +382,21 @@
     }
   }
 
+  // The halo around a bank of stadium lights, drawn once and reused.
+  let GLOW = null;
+  function glowSprite() {
+    if (GLOW) return GLOW;
+    GLOW = document.createElement('canvas');
+    GLOW.width = 54; GLOW.height = 52;
+    const x = GLOW.getContext('2d');
+    const g = x.createRadialGradient(27, 26, 1, 27, 26, 26);
+    g.addColorStop(0, 'rgba(255,246,208,0.55)');
+    g.addColorStop(1, 'rgba(255,246,208,0)');
+    x.fillStyle = g;
+    x.fillRect(0, 0, 54, 52);
+    return GLOW;
+  }
+
   // Light towers along the rim for dusk and night games.
   function lightTowers(ctx, env, rim) {
     if (env.time === 'day') return;
@@ -390,11 +405,7 @@
       if (x0 < -20 || x0 > R.W + 20) continue;
       ctx.fillStyle = '#3a3f4f';
       ctx.fillRect(x0, rim - 26, 2, 26);
-      const glow = ctx.createRadialGradient(x0 + 1, rim - 30, 1, x0 + 1, rim - 30, 26);
-      glow.addColorStop(0, 'rgba(255,246,208,0.55)');
-      glow.addColorStop(1, 'rgba(255,246,208,0)');
-      ctx.fillStyle = glow;
-      ctx.fillRect(x0 - 26, rim - 56, 54, 52);
+      ctx.drawImage(glowSprite(), x0 - 26, rim - 56);
       ctx.fillStyle = '#fff6d0';
       ctx.fillRect(x0 - 6, rim - 33, 14, 6);
       ctx.fillStyle = '#c9c2a0';
@@ -717,6 +728,20 @@
       if (p.i === V.ctrl && V.live && !p.down) {
         ctx.fillStyle = 'rgba(255,210,63,0.95)';
         ring(ctx, px, py, 6 * SPR, 2.5 * SPR);
+      }
+      if (p.hot && !st.down) {
+        // Hot streak: a flickering flame over his head (a cold QB gets a blue drip).
+        const hy = py - spr.height * SPR - 3 * SPR, f = Math.floor(R.t * 10 + p.i) % 2;
+        if (p.hot > 0) {
+          ctx.fillStyle = p.hot > 1 ? '#ff4a1c' : '#ff8a1c';
+          ctx.fillRect(px - SPR, hy - (f ? 2 : 1.5) * SPR, 2 * SPR, 2.5 * SPR);
+          ctx.fillStyle = '#ffd23f';
+          ctx.fillRect(px - 0.5 * SPR, hy - (f ? 1 : 0.5) * SPR, SPR, 1.5 * SPR);
+          if (p.hot > 1) { ctx.fillStyle = '#ff4a1c'; ctx.fillRect(px + (f ? 1 : -2) * SPR, hy - 3 * SPR, SPR, SPR); }
+        } else {
+          ctx.fillStyle = '#5ab4ff';
+          ctx.fillRect(px - 0.5 * SPR, hy - SPR, SPR, 2 * SPR);
+        }
       }
       if (p.i === V.defCtrl && !p.down) {
         ctx.fillStyle = 'rgba(90,230,255,0.95)';

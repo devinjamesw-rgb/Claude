@@ -22,6 +22,7 @@
     lastCtx: 'none',
   };
   const J = { id: null, x: 0, y: 0 }; // the joystick finger
+  let hand = 'L'; // which corner the stick sits in
 
   function attach(el, ctxFn) {
     S.el = el;
@@ -40,8 +41,8 @@
 
   const moves = (c) => c === 'qb' || c === 'run' || c === 'def';
   function joyCenter() {
-    const h = S.el ? S.el.getBoundingClientRect().height : 390;
-    return { x: JOY_M + JOY_R, y: h - JOY_M - JOY_R };
+    const r = S.el ? S.el.getBoundingClientRect() : { width: 844, height: 390 };
+    return { x: hand === 'R' ? r.width - JOY_M - JOY_R : JOY_M + JOY_R, y: r.height - JOY_M - JOY_R };
   }
   // Runners and defenders grab the stick anywhere near it; the QB only on the
   // stick itself, so pulling back to aim never moves him by accident.
@@ -194,5 +195,5 @@
     return S.id !== null || J.id !== null;
   }
 
-  RB.Input = { attach, poll, active, reset, AIM_GAIN, JOY_R, JOY_M };
+  RB.Input = { attach, poll, active, reset, AIM_GAIN, JOY_R, JOY_M, joyCenter, setHand: (h) => { hand = h === 'R' ? 'R' : 'L'; reset(); } };
 })(typeof window !== 'undefined' ? window : globalThis);

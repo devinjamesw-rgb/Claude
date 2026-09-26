@@ -190,6 +190,21 @@
   .keys i { font-style: normal; font-family: var(--display); font-size: 7px; color: var(--ink); background: var(--amber); padding: 2px 4px; vertical-align: 2px; }
   .keys span { color: var(--muted); }
   .panel a { color: var(--amber); word-break: break-all; }
+  .settings.opts { padding: 0; }
+  .series { margin: 4px 0 10px; font-size: 22px; display: flex; flex-direction: column; gap: 2px; }
+  .series b { font-weight: normal; color: var(--amber); }
+  .prog { font-size: 18px; color: var(--muted); margin: 8px 0 0; }
+  .prog b, .keys em { font-weight: normal; font-style: normal; color: var(--good); }
+  .panel.wide { max-width: 860px; }
+  .cols { display: grid; grid-template-columns: 1fr; gap: 4px 20px; }
+  @media (min-width: 640px) { .cols { grid-template-columns: 1fr 1fr; align-items: start; } .cols table.box { margin-top: 0; } }
+  .series span b { font-weight: normal; color: var(--amber); }
+  .standouts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; margin: 4px 0 8px; }
+  .leaders { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: 17px; line-height: 1.05; }
+  .leaders span { display: block; color: var(--muted); }
+  .leaders.grow li { color: var(--good); }
+  .hot { font-size: 13px; }
+  #pad.left { right: auto; left: 16px; flex-direction: row-reverse; }
 
   /* In-game controls */
   #controls {
@@ -257,9 +272,10 @@
     .title { max-width: 920px; display: grid; grid-template-columns: 0.9fr 1.3fr; gap: 12px 26px; align-items: start; }
     .title .logo { grid-column: 1; grid-row: 1; font-size: clamp(26px, 5vw, 40px); }
     .title .tag { grid-column: 1; grid-row: 2; font-size: 20px; }
-    .title > .row { grid-column: 1; grid-row: 3; }
+    .title .series { grid-column: 1; grid-row: 3; margin: 0; }
+    .title > .row { grid-column: 1; grid-row: 4; }
     .title .menu { grid-column: 2; grid-row: 1 / span 2; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .title .settings { grid-column: 2; grid-row: 3; grid-template-columns: 1fr 1fr; padding: 10px; gap: 8px 12px; }
+    .title .settings { grid-column: 2; grid-row: 3 / span 2; grid-template-columns: 1fr 1fr; padding: 10px; gap: 8px 12px; }
     .btn.big { font-size: 12px; padding: 12px 14px; }
     .btn.big small { font-size: 17px; }
     .panel { padding: 14px; }

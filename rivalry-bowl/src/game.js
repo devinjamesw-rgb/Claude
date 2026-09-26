@@ -42,6 +42,11 @@
       banner: null, bannerId: 0,
       defCall: 'zone', playNo: 0, lastPlay: '',
       kick: null,
+      // Player stats by "<seat><o|d><slot>" (only what happened), hot streaks
+      // by the same key, the QBs' completion streaks, and each school's
+      // growth from earlier games (see RB.buildRoster).
+      ps: {}, heat: {}, form: {},
+      devs: (opts.devs || [null, null]).map((d) => (typeof d === 'string' ? d : RB.Growth.encode(d))),
       seed,
     };
     g.clock = g.settings.qlen;
@@ -61,7 +66,7 @@
     const home = RB.TEAM_BY_ID[g.teams[0]], away = RB.TEAM_BY_ID[g.teams[1]];
     G.rt = {
       rng: rng || RB.makeRng((g.seed ^ (g.ver * 2654435761)) >>> 0),
-      rosters: [RB.buildRoster(home, g.settings.even), RB.buildRoster(away, g.settings.even)],
+      rosters: [0, 1].map((s) => RB.buildRoster(s ? away : home, g.settings.even, g.devs ? RB.Growth.decode(g.devs[s]) : null)),
       uniforms: RB.uniforms(home, away),
       play: null, kick: null,
       bannerQ: [], bannerT: 0,
@@ -163,7 +168,7 @@
       secsLeft, q: g.ot ? 5 : g.q,
     });
     rt.play = Sim.createPlay({
-      offRoster: rt.rosters[o], defRoster: rt.rosters[d],
+      offRoster: heated(g, rt.rosters[o], o), defRoster: heated(g, rt.rosters[d], d),
       ballOn: g.ballOn, ballY: g.ballY, fdX: C.GOAL_L + Math.min(100, g.ballOn + g.toGo),
       defCall: g.defCall, diff: g.settings.diff, rng: rt.rng, wx: g.wx, assist: g.settings.assist !== false,
       humanDefIdx: g.mode === 'online' ? rt.humanDefIdx == null ? Sim.IDX.S1 : rt.humanDefIdx : -1,
@@ -182,10 +187,22 @@
   function canPunt(g) {
     return !g.twoPt && !g.ot && g.down === 4;
   }
+  // Clock tools for the end of a half: spike to stop the clock, kneel to run it out.
+  function lateHalf(g) {
+    return !g.ot && !g.twoPt && (g.q === 2 || g.q === 4) && g.clock <= 120;
+  }
+  function canSpike(g) {
+    return lateHalf(g) && g.clockRunning && g.down < 4;
+  }
+  function canKneel(g) {
+    return lateHalf(g) && g.down < 4 && g.score[g.poss] >= g.score[1 - g.poss] && g.ballOn > 2;
+  }
   function presnapOptions(g) {
     const o = [{ id: 'pass', label: 'PASS' }, { id: 'run', label: 'RUN' }];
     if (canPunt(g)) o.push({ id: 'punt', label: 'PUNT' });
     if (canFG(g)) o.push({ id: 'fg', label: `FG ${100 - g.ballOn + 17}` });
+    if (canSpike(g)) o.push({ id: 'spike', label: 'SPIKE' });
+    if (canKneel(g)) o.push({ id: 'kneel', label: 'KNEEL' });
     return o;
   }
   function canTimeout(g, seat) {
@@ -206,6 +223,8 @@
         if (a.kind === 'pass' || a.kind === 'run') snapBall(G, a.kind);
         else if (a.kind === 'punt' && canPunt(g)) punt(G);
         else if (a.kind === 'fg' && canFG(g)) startKick(G, 'fg', 100 - g.ballOn + 17);
+        else if (a.kind === 'spike' && canSpike(g)) spike(G);
+        else if (a.kind === 'kneel' && canKneel(g)) kneel(G);
         break;
       case 'shuffle':
         // A different formation and set of routes; the play clock keeps running.
@@ -253,6 +272,34 @@
         if (g.phase === 'half') startSecondHalf(G);
         break;
     }
+  }
+
+  // Spike: an intentional incompletion that stops the clock (it costs a down
+  // and the second or so the snap takes).
+  function spike(G) {
+    const g = G.g;
+    g.playNo++;
+    g.clock = Math.max(0, g.clock - 1);
+    g.clockRunning = false;
+    g.stats[g.poss].pa++;
+    sfx(G, 'whistle');
+    banner(G, 'SPIKE', 'CLOCK STOPPED', 1.1);
+    g.lastPlay = 'SPIKE';
+    after(G, 0.2, () => advanceDowns(G, g.ballOn, g.ballY));
+  }
+
+  // Kneel: lose a yard, keep the clock running.
+  function kneel(G) {
+    const g = G.g;
+    g.playNo++;
+    g.clock = Math.max(0, g.clock - 2);
+    g.clockRunning = true;
+    g.stats[g.poss].ra++;
+    g.stats[g.poss].ry--;
+    sfx(G, 'whistle');
+    banner(G, 'KNEEL DOWN', 'CLOCK RUNNING', 1.1);
+    g.lastPlay = 'KNEEL -1';
+    after(G, 0.2, () => advanceDowns(G, Math.max(1, g.ballOn - 1), g.ballY));
   }
 
   function snapBall(G, kind) {
@@ -362,6 +409,113 @@
     }
   }
 
+  // --- Player stats and hot streaks -------------------------------------------------
+  const pkey = (seat, i) => `${seat}${i < 11 ? 'o' : 'd'}${i % 11}`;
+  function add(g, key, field, n) {
+    const r = g.ps[key] || (g.ps[key] = {});
+    r[field] = (r[field] || 0) + n;
+  }
+
+  // Who did what on this play. Keys are "<seat><o|d><slot>"; fields:
+  // passing c/a/y/t/i, rushing r/ry/rt, receiving rc/rcy/rct, defense tk/sk/pi.
+  function playerStats(G, res) {
+    const g = G.g, o = g.poss, d = 1 - o, st = res.stats;
+    const td = res.kind === 'td';
+    if (st.passAtt) {
+      const q = pkey(o, 0);
+      add(g, q, 'a', 1);
+      if (st.comp) { add(g, q, 'c', 1); add(g, q, 'y', st.passYds); if (td) add(g, q, 't', 1); }
+      if (st.int) add(g, q, 'i', 1);
+    }
+    if (st.comp && st.receiver >= 0) {
+      const k = pkey(o, st.receiver);
+      add(g, k, 'rc', 1); add(g, k, 'rcy', st.passYds);
+      if (td) add(g, k, 'rct', 1);
+    }
+    if (st.rushAtt && st.rusher >= 0) {
+      const k = pkey(o, st.rusher);
+      add(g, k, 'r', 1); add(g, k, 'ry', st.rushYds);
+      if (td && !st.comp) add(g, k, 'rt', 1);
+    }
+    if (st.tackler >= 11 && !G.rt.play.turnover) {
+      add(g, pkey(d, st.tackler), 'tk', 1);
+      if (st.sack) add(g, pkey(d, st.tackler), 'sk', 1);
+    }
+    if (st.int && st.picker >= 11) add(g, pkey(d, st.picker), 'pi', 1);
+    updateForm(G, res);
+    updateHeat(G);
+  }
+
+  // Recent form: every play it fades a little, and whoever made the play
+  // gains (or loses) some. Hot streaks come from form, so they come and go.
+  function updateForm(G, res) {
+    const g = G.g, o = g.poss, d = 1 - o, st = res.stats, f = g.form || (g.form = {});
+    for (const k of Object.keys(f)) { f[k] = Math.round(f[k] * 0.88 * 100) / 100; if (Math.abs(f[k]) < 0.2) delete f[k]; }
+    const bump = (k, v) => { f[k] = Math.round(((f[k] || 0) + v) * 100) / 100; };
+    const td = res.kind === 'td';
+    if (st.passAtt) {
+      const q = pkey(o, 0);
+      if (st.int) bump(q, -2.5);
+      else if (st.comp) bump(q, 0.5 + Math.max(0, st.passYds) / 40 + (td ? 1 : 0));
+      else bump(q, -0.3);
+    }
+    if (st.comp && st.receiver >= 0) bump(pkey(o, st.receiver), 1 + Math.max(0, st.passYds) / 25 + (td ? 1.5 : 0));
+    if (st.rushAtt && st.rusher >= 0) bump(pkey(o, st.rusher), st.rushYds >= 4 ? st.rushYds / 15 + (td ? 1.5 : 0) : -0.3);
+    if (st.tackler >= 11 && !G.rt.play.turnover) bump(pkey(d, st.tackler), st.sack ? 2 : res.yds <= 0 ? 1 : 0.5);
+    if (st.int && st.picker >= 11) bump(pkey(d, st.picker), 3);
+  }
+
+  // Hot streaks: production heats players up (1 = hot, 2 = on fire), which
+  // shows on the field and nudges their ratings for the rest of the game.
+  function heatFor(g, key) {
+    const v = (g.form && g.form[key]) || 0;
+    if (key.slice(1) === 'o0' && v <= -2) return -1; // a rattled QB
+    return v >= 5 ? 2 : v >= 2.5 ? 1 : 0;
+  }
+  function updateHeat(G) {
+    const g = G.g;
+    const keys = new Set(Object.keys(g.form || {}).concat(Object.keys(g.heat)));
+    let news = null; // at most one banner per play: the biggest change
+    for (const key of keys) {
+      const was = g.heat[key] || 0, now = heatFor(g, key);
+      if (now === was) continue;
+      if (now) g.heat[key] = now; else delete g.heat[key];
+      if ((now > was && now > 0) || now < 0) {
+        const rank = now < 0 ? 0.5 : now;
+        if (!news || rank > news.rank) news = { key, now, rank };
+      }
+    }
+    if (!news) return;
+    const seat = +news.key[0], side = news.key[1] === 'o' ? 'off' : 'def', p = G.rt.rosters[seat][side][+news.key.slice(2)];
+    if (!p) return;
+    if (news.now > 0) banner(G, news.now === 2 ? 'ON FIRE' : 'HEATING UP', `${team(G, seat).id} ${p.pos} #${p.num} ${p.name}`, 1.2, 'good');
+    else banner(G, 'RATTLED', `${team(G, seat).id} QB #${p.num} ${p.name}`, 1.1, 'bad');
+  }
+  // A team's players with their streaks applied, for building the next play.
+  function heated(g, roster, seat) {
+    const boost = (p, key) => {
+      const h = g.heat && g.heat[key];
+      if (!h) return p;
+      const q = Object.assign({}, p, { hot: h });
+      if (h < 0) { q.acc = p.acc - 0.05; return q; } // rattled QB: shakier throws
+      const k = h;
+      q.spd = p.spd + 0.12 * k;
+      if (p.hands != null) q.hands = Math.min(0.995, p.hands + 0.03 * k);
+      if (p.elus != null) q.elus = p.elus + 0.05 * k;
+      if (p.acc != null) q.acc = Math.min(0.99, p.acc + 0.045 * k);
+      if (p.arm != null) q.arm = p.arm + 0.02 * k;
+      if (p.tackle != null) q.tackle = p.tackle + 0.04 * k;
+      if (p.cover != null) q.cover = p.cover + 0.05 * k;
+      if (p.rush != null) q.rush = p.rush + 0.06 * k;
+      return q;
+    };
+    return {
+      off: roster.off.map((p, i) => boost(p, `${seat}o${i}`)),
+      def: roster.def.map((p, i) => boost(p, `${seat}d${i}`)),
+      k: roster.k,
+    };
+  }
+
   // --- Applying a play result -------------------------------------------------------
   function finishPlay(G, res) {
     const g = G.g, rt = G.rt, play = rt.play;
@@ -375,6 +529,7 @@
     if (st.sack) S.sk++;
     if (st.fum) { S.fum++; S.to++; }
     rt.lastResult = res;
+    playerStats(G, res);
 
     if (g.twoPt) return finishTwoPoint(G, res);
 
@@ -747,6 +902,6 @@
   RB.Game = {
     create, initRuntime, update, act, team, resume, takeover,
     fmtClock, spotText, downText, periodText,
-    presnapOptions, canTimeout, mustGoForTwo,
+    presnapOptions, canTimeout, mustGoForTwo, heatFor,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

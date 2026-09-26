@@ -51,8 +51,8 @@ screen says so.
   long enough; letting go before then cancels the throw. With **aim assist** on (title
   screen), a reticle near where a receiver will be locks onto his catch point and turns
   green, with a ring on that receiver.
-- **Move**: the joystick is fixed in the bottom-left corner and has its own finger, so the
-  other thumb stays free for the buttons. The QB moves with it in the pocket; once he
+- **Move**: the joystick is fixed in the bottom-left corner (bottom-right with Settings →
+  Stick side) and has its own finger, so the other thumb stays free for the buttons. The QB moves with it in the pocket; once he
   crosses the line he can't throw. After a catch or handoff the runner keeps going
   upfield until you steer him. **JUKE** and **DIVE** are buttons on the right. A
   steered runner turns a 90 degree cut in about 83 ms.
@@ -62,8 +62,11 @@ screen says so.
   plays until you change it. Tap any defender to take control of him (before or during
   the play). He is run by the computer until you touch the stick; from then on he runs
   on your phone with no network delay and stops when you let go. **SWITCH** jumps to the
-  free defender nearest the ball and **DIVE** lays out for a tackle, or, with the ball in
-  the air, stretches for it (a longer reach to break it up or pick it off). Tackles are judged
+  free defender nearest the ball and **DIVE** lays out for a tackle (with the stick idle it
+  aims at where the runner is going), or, with the ball in the air, stretches for it. Point
+  the stick roughly at a ball carrier and your defender takes the pursuit angle that cuts
+  him off, at full pursuit speed. A missed dive or tackle is a short stumble played on your
+  own phone where your defender is, so he never jumps back. Tackles are judged
   against where the ball carrier was on your screen, so the lag doesn't cost you
   tackles. The HUD shows the link type and the measured round trip.
 
@@ -87,6 +90,29 @@ faster than they cover. A defender who misses a tackle is back up in about 0.4 s
 bot quarterbacks (`node tools/passdiag.js`), throws to open men complete about 87% and
 throws forced into coverage about 75% with 7-8% intercepted; full games average about
 18 points a team (`node tools/gametest.js`).
+
+## Streaks, growth and the series
+
+- **Player stats** are kept for every player (passing, rushing, receiving, tackles, sacks,
+  picks) and the halftime and final screens show each side's standouts.
+- **Hot streaks**: each play, every player's recent form fades a little and whoever made
+  the play gains (a pick, an incompletion or a stuffed run cost some). Hot players (a flame
+  over them, `~` in the play key) run a bit faster, catch, throw and tackle a bit better;
+  on fire doubles it. A QB who throws a pick is rattled (worse accuracy) until his next
+  completion. It cools off when they go quiet, so about two players are hot at a time.
+- **Growth**: after each game a school's players improve from what they did in it (150
+  passing yards, two TD passes, 50 receiving yards, a TD catch, 40 rushing yards, three
+  tackles, a sack, a pick, a win...), one point per milestone, up to +12 per rating. It's
+  saved per school on the phone that played it; online, each phone brings its own
+  school's growth to the game (packed into a short string such as `o8:SPD3HND4`, since
+  the live room allows 4 KiB of presence per phone). Team select shows a program's record and total growth,
+  with a ▲ on improved players. Settings can turn it off or reset it; even ratings ignore it.
+- **Series**: the head-to-head record between the two names is kept and shown on the title
+  and final screens.
+- **Clock tools**: in the last two minutes of a half, SPIKE stops the clock at the cost of
+  a down; with the lead, KNEEL loses a yard and keeps it running.
+- **Settings**: stick side (left or right), vibration on big moments (Android; iOS doesn't
+  allow it), sound, growth.
 
 ## Stadiums
 
@@ -157,4 +183,5 @@ node tools/response.js           # how fast a joystick cut changes the runner's 
 node tools/owntest.js            # online defense tackles judged against the defense's screen
 node tools/passdiag.js           # where passing yards come from: separation, air yards, YAC, INT%
 MOCK=1 ISOLATED=1 DB=1 node tools/onlinelag.js  # how far behind the defense phone's picture is
+MOCK=1 ISOLATED=1 DB=1 node tools/onlinechase.js  # chase and dive: the defender never jumps
 ```

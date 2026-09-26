@@ -231,7 +231,7 @@
       s,
       b: [r2(b.x), r2(b.y), r2(b.z), st, play.carrier],
       m: [r2(play.los), r2(play.fdX), r2(play.ballY), play.phase === 'live' ? 1 : play.phase === 'pre' ? 0 : 2, play.turnover ? 1 : 0, play.humanDefIdx,
-        play.humanDefIdx >= 11 && play.players[play.humanDefIdx].down > 0 ? 1 : 0],
+        play.ownKnock || 0],
       l: play.landing && b.st === 'air' ? [r2(play.landing.x), r2(play.landing.y)] : null,
       // The throw itself, so the other phone can draw the ball's exact flight.
       f: b.st === 'air' ? [r2(b.fx), r2(b.fy), r2(b.tx), r2(b.ty), r2(b.T), r2(b.z0), r2(b.vz0), Math.round(b.bt * 1000) / 1000] : null,
@@ -249,7 +249,7 @@
       players,
       ball: { x: o.b[0], y: o.b[1], z: o.b[2], st: ['snap', 'held', 'air', 'dead', 'down'][o.b[3]] || 'held', visible: true },
       carrier: o.b[4], los: o.m[0], fdX: o.m[1], ballY: o.m[2], live: o.m[3] === 1, pre: o.m[3] === 0,
-      turnover: !!o.m[4], humanDefIdx: o.m[5], ownDown: o.m[6] === 1, landing: o.l ? { x: o.l[0], y: o.l[1] } : null,
+      turnover: !!o.m[4], humanDefIdx: o.m[5], ownKnock: num(o.m[6]) ? o.m[6] : 0, landing: o.l ? { x: o.l[0], y: o.l[1] } : null,
       flight: Array.isArray(o.f) && o.f.length === 8 && o.f.every(num) ? { fx: o.f[0], fy: o.f[1], tx: o.f[2], ty: o.f[3], T: o.f[4], z0: o.f[5], vz0: o.f[6], bt: o.f[7] } : null,
     };
   }
@@ -417,7 +417,8 @@
       if (!this.t) return;
       const s = this.App.settings;
       this.lastLobbyPub = Date.now();
-      this.t.setPresence(Object.assign(this.base(), { role: 'seek', tgt: this.tgt || '', q: s.qlen, d: s.diff, e: s.even ? 1 : 0 }));
+      const dv = RB.Main && RB.Main.devFor ? RB.Main.devFor(this.App.picks[0]) : null;
+      this.t.setPresence(Object.assign(this.base(), { role: 'seek', tgt: this.tgt || '', q: s.qlen, d: s.diff, e: s.even ? 1 : 0, dv: RB.Growth.encode(dv) }));
     },
 
     others() {
@@ -475,6 +476,7 @@
         this.seat = 1;
         this.partner = host.peer;
         const G = { g: JSON.parse(JSON.stringify(host.presence.g)), rt: null };
+        G.g.devs = Array.isArray(G.g.devs) ? G.g.devs.map((d) => RB.Growth.encode(RB.Growth.decode(d))) : ['', ''];
         Game.initRuntime(G);
         this.startGame(G);
         return;
@@ -494,6 +496,8 @@
           mode: 'online', home: A.picks[0], away: RB.TEAM_BY_ID[pick.presence.tm] ? pick.presence.tm : 'UGA',
           names: [A.names[0], String(pick.presence.nm || 'GUEST').replace(/[^A-Z0-9 .'-]/gi, '').slice(0, 10) || 'GUEST'],
           settings: { qlen: s.qlen, diff: s.diff, even: s.even, assist: s.assist !== false },
+          // Each school's growth: mine from this phone, theirs from their lobby entry.
+          devs: s.growth === false || s.even ? ['', ''] : [RB.Main.devFor(A.picks[0]), RB.Growth.decode(pick.presence.dv)],
         });
         this.startGame(G);
       }
@@ -538,7 +542,13 @@
       const G = this.G;
       const wasAuth = this.isAuthority();
       const prevPhase = G.g.phase;
+      const devs = G.g.devs, prevPs = G.g.ps;
       G.g = JSON.parse(JSON.stringify(pp.g));
+      // Growth is sent now and then (it never changes mid-game); keep ours.
+      G.g.devs = Array.isArray(G.g.devs) ? G.g.devs.map((d) => RB.Growth.encode(RB.Growth.decode(d))) : devs;
+      // Stats may be left out of an update that would be too big; keep ours then.
+      if (!G.g.ps || typeof G.g.ps !== 'object') G.g.ps = prevPs || {};
+      if (!G.g.heat || typeof G.g.heat !== 'object') G.g.heat = {};
       this.lastAdoptVer = G.g.ver;
       if (!wasAuth && this.isAuthority()) {
         // Possession came to us: build fresh runtime and carry on.
@@ -618,6 +628,10 @@
       p.role = this.role;
       p.gp = this.partner;
       p.g = compactG(G.g);
+      // Growth doesn't change during a game: send it early on and every ~2 s
+      // (for a phone that reconnects), not in every update.
+      this.pubN = (this.pubN || 0) + 1;
+      if (G.g.phase !== 'coin' && this.pubN % 36 !== 0) delete p.g.devs;
       if (this.isAuthority()) {
         const play = G.rt.play;
         p.p = ['presnap', 'play', 'after'].includes(G.g.phase) && play ? encodePlay(play) : null;
@@ -628,8 +642,10 @@
       } else {
         Object.assign(p, { dc: this.dc || '', dcn: this.dcN, dcp: this.dcP == null ? -1 : this.dcP, di: this.defIdx, dv: this.dvN, ek: this.lastTs >= 0 ? this.lastTs : null, act: this.pending });
         const o = this.own;
-        if (o && !o.down) Object.assign(p, { dp: [r2(o.x), r2(o.y), r2(o.vx), r2(o.vy)], dq: ++this.dq, vt: this.viewTs != null ? Math.round(this.viewTs) : null });
+        if (o) Object.assign(p, { dp: [r2(o.x), r2(o.y), r2(o.vx), r2(o.vy)], dq: ++this.dq, vt: this.viewTs != null ? Math.round(this.viewTs) : null });
       }
+      // The live room takes at most 4 KiB per phone: drop what can wait.
+      if (JSON.stringify(p).length > 3600 && p.g) { delete p.g.devs; if (JSON.stringify(p).length > 3600) delete p.g.ps; }
       this.t.setPresence(p);
     },
 
@@ -733,6 +749,9 @@
     // The defender you steer, moved on this phone every frame. The computer
     // plays him until you touch the stick; from then on he's yours until the
     // play ends or you switch (let go and he stops, like any stick game).
+    // Everything that happens to him (dives, stumbles, missed tackles) plays
+    // out here, where he is, so he never jumps back to where the other phone
+    // last saw him.
     ownStep(inp, s) {
       const g = this.G.g, latest = this.snap;
       const live = g.phase === 'play' && s && latest && latest.live && !latest.turnover;
@@ -742,20 +761,17 @@
       const joy = inp && inp.joy;
       if (!o) {
         const p = s.players[this.defIdx];
-        if ((!joy && !this.diveWant) || !p || p.down || latest.ownDown) { this.diveWant = false; return; }
-        o = this.own = { idx: this.defIdx, x: p.x, y: p.y, vx: p.vx || 0, vy: p.vy || 0, dvx: 0, dvy: 0, face: p.face, down: false, lunge: 0, fall: 0 };
+        if ((!joy && !this.diveWant) || !p || p.down) { this.diveWant = false; return; }
+        o = this.own = { idx: this.defIdx, x: p.x, y: p.y, vx: p.vx || 0, vy: p.vy || 0, dvx: 0, dvy: 0, face: p.face, lunge: 0, fall: 0, knock: latest.ownKnock };
       }
       const dt = Math.min(0.05, this.frameDt || 1 / 60);
-      // Knocked down on the other phone (a missed tackle, a juke): stay down where he fell.
-      if (latest.ownDown && o.lunge <= 0) {
-        if (!o.down) {
-          const lp = latest.players[o.idx];
-          Object.assign(o, { down: true, x: lp.x, y: lp.y, vx: 0, vy: 0, fall: 0 });
-        }
-        this.diveWant = false;
-        return;
+      // The other phone says he missed a tackle or got juked: stumble right here.
+      if (latest.ownKnock !== o.knock) {
+        o.knock = latest.ownKnock;
+        o.lunge = 0;
+        o.fall = 0.45;
+        o.vx *= 0.3; o.vy *= 0.3;
       }
-      o.down = false;
       if (o.fall > 0) {
         o.fall -= dt;
         o.vx *= 0.85; o.vy *= 0.85;
@@ -763,25 +779,31 @@
         this.diveWant = false;
         return;
       }
-      const spd = this.ownSpeed(o.idx);
+      const car = s.carrier >= 0 ? s.players[s.carrier] : null;
+      // Chasing a runner (anyone but the QB in his pocket): full pursuit speed.
+      const chasing = !!car && car.side === 0 && (car.i !== 0 || car.x > s.los + 0.5);
+      const spd = this.ownSpeed(o.idx) * (chasing ? 1.08 : 1);
       if (o.lunge > 0) {
         o.lunge -= dt;
         o.x += o.vx * dt; o.y += o.vy * dt;
-        if (o.lunge <= 0) o.fall = 0.8;
+        if (o.lunge <= 0) { o.fall = 0.35; o.vx *= 0.4; o.vy *= 0.4; }
         return;
       }
       if (this.diveWant) {
-        // Dive the way the stick points, or at the ball carrier if he's close.
+        // Dive the way the stick points; with the stick idle, at where the
+        // ball carrier is going to be.
         this.diveWant = false;
-        const car = s.carrier >= 0 ? s.players[s.carrier] : null;
         let dx = joy ? joy.x : 0, dy = joy ? joy.y : 0;
-        if (Math.hypot(dx, dy) < 0.1 && car && Math.hypot(car.x - o.x, car.y - o.y) < 5) { dx = car.x - o.x; dy = car.y - o.y; }
+        if (Math.hypot(dx, dy) < 0.2 && car && Math.hypot(car.x - o.x, car.y - o.y) < 7) {
+          dx = car.x + (car.vx || 0) * 0.25 - o.x;
+          dy = car.y + (car.vy || 0) * 0.25 - o.y;
+        }
         if (Math.hypot(dx, dy) < 0.1) { dx = o.vx; dy = o.vy; }
         if (Math.hypot(dx, dy) < 0.1) { dx = -1; dy = 0; }
-        const d = Math.hypot(dx, dy);
-        o.vx = (dx / d) * spd * 1.4;
-        o.vy = (dy / d) * spd * 1.4;
-        o.lunge = 0.34;
+        const d = Math.hypot(dx, dy), sp = Math.max(spd * 1.5, Math.hypot(o.vx, o.vy) + 2.5);
+        o.vx = (dx / d) * sp;
+        o.vy = (dy / d) * sp;
+        o.lunge = 0.32;
         this.dvN++;
         return;
       }
@@ -790,7 +812,18 @@
       for (const q of s.players) {
         if (q.side === 0 && q.i !== s.carrier && !q.down && Math.hypot(q.x - o.x, q.y - o.y) < 0.95) { slow = 0.45; break; }
       }
-      Sim.driveOwned(o, joy, spd * slow, dt);
+      // Pursuit angle: point the stick roughly at the runner and he takes the
+      // angle that cuts him off instead of chasing his heels.
+      let j = joy;
+      if (joy && chasing) {
+        const dx = car.x - o.x, dy = car.y - o.y, dd = Math.hypot(dx, dy), jl = Math.hypot(joy.x, joy.y);
+        if (dd > 0.5 && dd < 20 && jl > 0 && (joy.x * dx + joy.y * dy) / (jl * dd) > 0.77) {
+          const t = Sim.pursuitPoint(o, { x: car.x, y: car.y, vx: car.vx || 0, vy: car.vy || 0 }, spd * slow);
+          const px = t.x - o.x, py = t.y - o.y, pl = Math.hypot(px, py);
+          if (pl > 0.1) j = { x: (px / pl) * jl, y: (py / pl) * jl };
+        }
+      }
+      Sim.driveOwned(o, j, spd * slow, dt);
       o.y = Math.max(-1.5, Math.min(C.FIELD_W + 1.5, o.y));
       if (Math.abs(o.vx) > 0.3) o.face = o.vx > 0 ? 1 : -1;
     },
@@ -823,11 +856,15 @@
       const s = this.displaySnap();
       if (s && ['presnap', 'play', 'after'].includes(g.phase)) {
         const rosters = rt.rosters;
-        V.players = s.players.map((p) => Object.assign({}, p, { skin: rosters[p.i < 11 ? g.poss : 1 - g.poss][p.i < 11 ? 'off' : 'def'][p.i % 11].skin }));
+        const heat = g.heat || {};
+        V.players = s.players.map((p) => {
+          const seat = p.i < 11 ? g.poss : 1 - g.poss;
+          return Object.assign({}, p, { skin: rosters[seat][p.i < 11 ? 'off' : 'def'][p.i % 11].skin, hot: heat[`${seat}${p.i < 11 ? 'o' : 'd'}${p.i % 11}`] || 0 });
+        });
         this.ownStep(inp, s);
         const o = this.own;
         if (o && V.players[o.idx]) {
-          Object.assign(V.players[o.idx], { x: o.x, y: o.y, vx: o.vx, vy: o.vy, face: o.face, down: o.down || o.fall > 0.15, lunge: o.lunge > 0, eng: false });
+          Object.assign(V.players[o.idx], { x: o.x, y: o.y, vx: o.vx, vy: o.vy, face: o.face, down: o.fall > 0.12, lunge: o.lunge > 0, eng: false });
         }
         V.defOwn = !!o;
         V.ball = s.ball;

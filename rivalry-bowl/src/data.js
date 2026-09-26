@@ -183,7 +183,7 @@
   // per rating, and the school's stars on top. The sim reads them as
   // attributes; the shown SPD comes from his real speed, so an SPD 90
   // corner runs exactly as fast as an SPD 90 receiver.
-  function buildRoster(team, even) {
+  function buildRoster(team, even, dev) {
     const r = even ? evenRatings() : team.r;
     const rng = makeRng(hashStr(team.id + (even ? ':even' : '')));
     const spread = even ? 0 : 1;
@@ -207,10 +207,14 @@
         skin: rng.pick(SKIN),
       };
     }
+    // Growth from earlier games (per player, per rating), unless ratings are even.
+    const grown = (!even && dev && typeof dev === 'object') ? dev : null;
     function rate(base, side, slot) {
       const form = rng.gauss() * 3 * spread;
       const v = {};
       for (const [k, x] of Object.entries(base)) v[k] = x + form + rng.gauss() * 2.5 * spread;
+      const gk = side === 'off' ? 'o' + slot : side === 'def' ? 'd' + slot : 'k';
+      const gd = grown && grown[gk];
       let star = null;
       for (const t of traits) {
         const S = STAR[t];
@@ -218,8 +222,10 @@
         star = S.tag;
         for (const [k, x] of Object.entries(S.boost)) v[k] += x;
       }
+      let up = 0;
+      if (gd) for (const k of Object.keys(v)) if (typeof gd[k] === 'number') { const n = Math.max(0, Math.min(GROW_CAP, gd[k])); v[k] += n; up += n; }
       for (const k of Object.keys(v)) v[k] = Math.round(Math.max(45, Math.min(99, v[k])));
-      return { v, star };
+      return { v, star, up };
     }
     const depth = [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, -3]; // WR1 a touch better, WR3 a step down
     const off = OFF_POS.map((pos, i) => {
@@ -246,7 +252,7 @@
         const v = q.v;
         Object.assign(p, { spd: 7.55 + f(v.SPD) * 0.8, hands: 0.84 + f(v.HND) * 0.12, str: 0.4, elus: 0.5 + f(v.ELU) * 0.4, block: 0.3 });
       }
-      return Object.assign(p, { rt: Object.assign(q.v, { SPD: speedRating(p.spd) }), star: q.star });
+      return Object.assign(p, { rt: Object.assign(q.v, { SPD: speedRating(p.spd) }), star: q.star, up: q.up, slot: 'o' + i });
     });
     const def = DEF_POS.map((pos, i) => {
       const p = person(pos);
@@ -268,11 +274,69 @@
         const v = q.v;
         Object.assign(p, { spd: 7.3 + f(v.SPD) * 0.6, tackle: 0.7 + f(v.TKL) * 0.2, cover: 0.45 + f(v.COV) * 0.45, hands: 0.45 + f(v.HND) * 0.2, rush: 0.35 });
       }
-      return Object.assign(p, { rt: Object.assign(q.v, { SPD: speedRating(p.spd) }), star: q.star });
+      return Object.assign(p, { rt: Object.assign(q.v, { SPD: speedRating(p.spd) }), star: q.star, up: q.up, slot: 'd' + i });
     });
     const kq = rate({ PWR: lvl(r.k), ACC: lvl(r.k) }, 'k', undefined);
-    const k = { power: 49 + f(kq.v.PWR) * 11, acc: Math.min(0.99, 0.7 + f(kq.v.ACC) * 0.28), name: rng.pick(FIRST.split('')) + '. ' + rng.pick(LAST), num: number('K'), pos: 'K', rt: kq.v, star: kq.star };
+    const k = { power: 49 + f(kq.v.PWR) * 11, acc: Math.min(0.99, 0.7 + f(kq.v.ACC) * 0.28), name: rng.pick(FIRST.split('')) + '. ' + rng.pick(LAST), num: number('K'), pos: 'K', rt: kq.v, star: kq.star, up: kq.up, slot: 'k' };
     return { off, def, k };
+  }
+
+  // --- Growth between games ------------------------------------------------------
+  // After each game a school's players grow from what they did in it (one
+  // point per milestone, at most GROW_CAP per rating over a career). `ps` is
+  // the game's player stats for this seat (keys "o8", "d7"...; see game.js).
+  const GROW_CAP = 12;
+  function growthFrom(ps, won, rng) {
+    const out = [];
+    const bump = (slot, rating, why) => out.push({ slot, rating, why });
+    for (const [slot, r] of Object.entries(ps)) {
+      if (slot === 'o0') {
+        if ((r.y || 0) >= 150) bump(slot, 'ACC', `${r.y} PASS YDS`);
+        if ((r.t || 0) >= 2) bump(slot, 'ARM', `${r.t} TD PASSES`);
+        else if ((r.a || 0) >= 10 && !(r.i || 0)) bump(slot, 'ACC', 'NO PICKS');
+      } else if (slot[0] === 'o') {
+        const ry = r.rcy || 0, rt = (r.rct || 0) + (r.rt || 0);
+        if (ry >= 50) bump(slot, 'HND', `${ry} REC YDS`);
+        if (ry >= 100 || (r.rct || 0) >= 1) bump(slot, 'SPD', (r.rct || 0) ? `${r.rct} TD CATCH${r.rct > 1 ? 'ES' : ''}` : `${ry} REC YDS`);
+        if ((r.ry || 0) >= 40) bump(slot, 'ELU', `${r.ry} RUSH YDS`);
+        if ((r.ry || 0) >= 90 || (r.rt || 0) >= 1) bump(slot, 'STR', (r.rt || 0) ? `${r.rt} RUSH TD` : `${r.ry} RUSH YDS`);
+        void rt;
+      } else {
+        if ((r.tk || 0) >= 3) bump(slot, 'TKL', `${r.tk} TACKLES`);
+        if ((r.sk || 0) >= 1) bump(slot, 'RSH', `${r.sk} SACK${r.sk > 1 ? 'S' : ''}`);
+        if ((r.pi || 0) >= 1) bump(slot, 'COV', `${r.pi} INT`);
+      }
+    }
+    if (won) {
+      // A win lifts somebody who didn't make the box score.
+      const slot = rng.pick(['o2', 'o3', 'o4', 'o5', 'o6', 'd0', 'd1', 'd2', 'd3']);
+      bump(slot, slot[0] === 'o' ? 'BLK' : 'RSH', 'WIN');
+    }
+    return out;
+  }
+  // Applies a game's growth to a stored program; returns what actually grew.
+  function applyGrowth(dev, list) {
+    const done = [];
+    for (const b of list) {
+      const d = dev[b.slot] || (dev[b.slot] = {});
+      if ((d[b.rating] || 0) >= GROW_CAP) continue;
+      d[b.rating] = (d[b.rating] || 0) + 1;
+      done.push(b);
+    }
+    return done;
+  }
+  // Only well-formed growth from another phone: known slots, small numbers.
+  function cleanDev(dev) {
+    if (!dev || typeof dev !== 'object') return null;
+    const out = {};
+    for (const [slot, r] of Object.entries(dev)) {
+      if (!/^(o([0-9]|10)|d([0-9]|10)|k)$/.test(slot) || !r || typeof r !== 'object') continue;
+      for (const [k, v] of Object.entries(r)) {
+        if (!/^[A-Z]{3}$/.test(k) || typeof v !== 'number' || !isFinite(v)) continue;
+        (out[slot] || (out[slot] = {}))[k] = Math.max(0, Math.min(GROW_CAP, Math.round(v)));
+      }
+    }
+    return out;
   }
 
   // The players worth knowing about: the stars, then the QB and top receiver.
@@ -280,7 +344,7 @@
     const all = roster.off.concat(roster.def, [roster.k]);
     const list = all.filter((p) => p.star);
     for (const p of [roster.off[0], roster.off[8]]) if (list.length < 3 && !list.includes(p)) list.push(p);
-    return list.map((p) => ({ pos: p.pos, num: p.num, name: p.name, star: p.star, show: (SHOWN[p.pos] || Object.keys(p.rt)).map((k) => [k, p.rt[k]]) }));
+    return list.map((p) => ({ pos: p.pos, num: p.num, name: p.name, star: p.star, up: p.up || 0, show: (SHOWN[p.pos] || Object.keys(p.rt)).map((k) => [k, p.rt[k]]) }));
   }
 
   // --- Home stadiums -----------------------------------------------------------
@@ -354,6 +418,24 @@
   RB.ENV = ENV;
   RB.buildRoster = buildRoster;
   RB.keyPlayers = keyPlayers;
+  // Growth travels between phones as a short string ("o8:SPD3HND4;d7:COV1")
+  // to stay well inside the live room's 4 KiB presence limit.
+  function encodeDev(dev) {
+    const d = cleanDev(dev);
+    if (!d) return '';
+    return Object.entries(d).map(([slot, r]) => slot + ':' + Object.entries(r).filter(([, v]) => v > 0).map(([k, v]) => k + v).join('')).filter((x) => !/:$/.test(x)).join(';').slice(0, 1000);
+  }
+  function decodeDev(str) {
+    if (typeof str !== 'string' || !str) return null;
+    const out = {};
+    for (const part of str.split(';')) {
+      const m = /^(o(?:[0-9]|10)|d(?:[0-9]|10)|k):((?:[A-Z]{3}\d{1,2})+)$/.exec(part);
+      if (!m) continue;
+      for (const [, k, v] of m[2].matchAll(/([A-Z]{3})(\d{1,2})/g)) (out[m[1]] || (out[m[1]] = {}))[k] = Math.min(GROW_CAP, +v);
+    }
+    return Object.keys(out).length ? out : null;
+  }
+  RB.Growth = { from: growthFrom, apply: applyGrowth, clean: cleanDev, encode: encodeDev, decode: decodeDev, CAP: GROW_CAP };
   RB.SHOWN = SHOWN;
   RB.uniforms = uniforms;
 })(typeof window !== 'undefined' ? window : globalThis);
