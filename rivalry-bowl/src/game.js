@@ -48,7 +48,9 @@
     const G = { g, rt: null };
     initRuntime(G, rng);
     const winner = g.openRecv;
-    banner(G, 'COIN TOSS', `${team(G, winner).name} WILL RECEIVE`, 2.6);
+    const env = RB.ENV && RB.ENV[g.teams[0]];
+    if (env && g.mode !== 'demo') banner(G, env.name, `${env.town} · ${team(G, 0).name} HOSTS ${team(G, 1).name}`, 2.2);
+    banner(G, 'COIN TOSS', `${team(G, winner).name} WILL RECEIVE`, 2.2);
     g.ctl = winner;
     return G;
   }
@@ -270,7 +272,8 @@
     tickBanner(G, dt);
     switch (g.phase) {
       case 'coin':
-        if (g.phaseT > 2.6) kickoffStart(G, 1 - g.openRecv);
+        // Kick off once the welcome and the toss have been shown.
+        if (g.phaseT > 2.6 && !g.banner && !rt.bannerQ.length) kickoffStart(G, 1 - g.openRecv);
         break;
       case 'presnap':
         if (g.clockRunning && !g.ot && g.drained < C.PLAY_CLOCK_RUNOFF) {

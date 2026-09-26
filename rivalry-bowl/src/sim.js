@@ -231,7 +231,7 @@
     }
     for (const idx of [DE1, DT1, DT2, DE2, LB1, LB2, LB3, CB1, CB2, S1, S2]) {
       const p = P[idx];
-      p.react = (0.42 - p.cover * 0.26) * play.diff.react + rng.range(0, 0.08);
+      p.react = (0.32 - p.cover * 0.2) * play.diff.react + rng.range(0, 0.06);
     }
   }
 
@@ -327,7 +327,7 @@
     if (play.wx.type === 'snow') s *= 0.95;
     if (play.wx.type === 'rain') s *= 0.98;
     if (p.slow > 0) s *= 0.62;
-    if (play.carrier === p.i) s *= 0.95;
+    if (play.carrier === p.i) s *= 0.93;
     return s;
   }
   // Where a receiver was `lag` seconds ago, projected forward by lead seconds.
@@ -490,6 +490,40 @@
   }
 
   // --- AI: defense ---------------------------------------------------------------
+  // Zone defenders split the receivers between them each step: cheapest
+  // pairs first (close to the defender, inside his zone, deep threats to deep
+  // zones), one receiver per defender, so nobody runs free while two
+  // defenders chase the same man.
+  function matchZones(play) {
+    const P = play.players, pairs = [];
+    const zs = [], rs = ELIGIBLE.map((i) => P[i]).filter((r) => r.role === 'route');
+    for (let j = 11; j < 22; j++) {
+      const d = P[j];
+      d.zprev = d.zmatch == null ? -1 : d.zmatch;
+      d.zmatch = -1;
+      if (d.role === 'zone' && d.eng < 0 && d.i !== play.ownIdx) zs.push(d);
+    }
+    for (const d of zs) {
+      const z = d.zone, zx = Math.min(play.los + z.dx, 118.5), zy = z.y;
+      for (const r of rs) {
+        const dzc = hyp(r.x - zx, r.y - zy);
+        if (dzc > z.r + 7) continue;
+        const depth = r.x - play.los;
+        let cost = hyp(r.x - d.x, r.y - d.y) + dzc * 0.5 - (d.zprev === r.i ? 3 : 0);
+        if (z.deep) cost += depth < 8 ? 8 : -depth * 0.25;
+        else if (depth > 16) cost += 6;
+        pairs.push({ d, r, cost });
+      }
+    }
+    pairs.sort((a, b) => a.cost - b.cost);
+    const takenR = new Set();
+    for (const { d, r } of pairs) {
+      if (d.zmatch >= 0 || takenR.has(r.i)) continue;
+      d.zmatch = r.i;
+      takenR.add(r.i);
+    }
+  }
+
   function aiDefense(play, p) {
     const P = play.players, b = play.ball, spd = effSpeed(play, p);
     const car = carrierP(play);
@@ -516,6 +550,8 @@
     } else if (car && car.i === QB && play.scramble && !reading) role = 'pursue';
     else if (b.st === 'air' && !reading && role !== 'rush') role = 'ball';
     else if (b.st === 'air' && role === 'rush') role = 'drift';
+    // Reacting to the ball (in the air or caught): plant and drive.
+    p.hustle = role === 'ball' || role === 'pursue';
 
     switch (role) {
       case 'rush': {
@@ -530,8 +566,9 @@
       }
       case 'pursue': {
         if (!car) break;
-        const t = pursuitPoint(p, car, spd);
-        steerTo(p, t.x, t.y, spd * sMul);
+        // Everyone runs flat out to the ball: a little faster than in coverage.
+        const t = pursuitPoint(p, car, spd * 1.08);
+        steerTo(p, t.x, t.y, spd * 1.08 * sMul);
         break;
       }
       case 'ball': {
@@ -540,7 +577,11 @@
         const tRem = Math.max(0.05, b.T - b.bt);
         const d = dist(p, { x: b.tx, y: b.ty });
         const r = b.target >= 0 ? P[b.target] : null;
-        if (d < spd * tRem + 1.2 || !r) steerTo(p, b.tx, b.ty, spd, true);
+        // Break on the ball flat out; only ease up in the last half yard.
+        if (d < spd * tRem + 1.2 || !r) {
+          if (d < 0.5) { p.dvx *= 0.5; p.dvy *= 0.5; }
+          else steerTo(p, b.tx, b.ty, spd * 1.05);
+        }
         else {
           const ghost = { x: b.tx, y: b.ty, vx: r.vx, vy: r.vy };
           const t = pursuitPoint(p, ghost, spd);
@@ -552,7 +593,7 @@
         const r = P[p.man];
         const e = lagged(play, r.i, p.react, 0.15);
         const run = Math.max(0, r.x - r.x0);
-        const cush = Math.max(0.7, p.cush0 - run * 0.62);
+        const cush = Math.max(0.45, p.cush0 - run * 0.8);
         const inside = r.y < C.MID_Y ? 0.5 : -0.5;
         let tx = e.x + cush, ty = e.y + inside;
         if (r.role === 'pass_pro') { tx = play.los + 3; ty = r.y; }
@@ -561,29 +602,28 @@
         break;
       }
       case 'zone': {
+        // Pattern-matching zone: carry the receiver matched to you (see
+        // matchZones) out of your area if you must; with nobody to cover,
+        // sit in the middle of your zone (deep zones stay over the deepest man).
         const z = p.zone;
         const zx = Math.min(play.los + z.dx, 118.5), zy = z.y;
-        let best = null, bs = 1e9;
-        let deepest = -1e9;
-        for (const i of ELIGIBLE) {
-          const r = P[i];
-          if (r.role !== 'route') continue;
-          if (r.x > deepest && Math.abs(r.y - zy) < z.r + 6) deepest = r.x;
-          const dz = hyp(r.x - zx, r.y - zy);
-          if (dz < z.r + 1.5) {
-            const sc = dz - (z.deep ? (r.x - play.los) * 0.35 : 0);
-            if (sc < bs) { bs = sc; best = r; }
-          }
-        }
         let tx = zx, ty = zy;
-        if (best) {
-          const e = lagged(play, best.i, p.react, 0.2);
-          tx = e.x + (z.deep ? 2.6 : 1.0);
-          ty = e.y;
-          const dx = tx - zx, dy = ty - zy, dd = hyp(dx, dy), leash = z.r + 2.5;
+        const r = p.zmatch >= 0 ? P[p.zmatch] : null;
+        if (r) {
+          const e = lagged(play, r.i, p.react, 0.2);
+          tx = e.x + (z.deep ? 1.8 : 0.6);
+          ty = e.y + (z.deep ? 0 : (r.y < C.MID_Y ? 0.5 : -0.5));
+          const dx = tx - zx, dy = ty - zy, dd = hyp(dx, dy), leash = z.r + 10;
           if (dd > leash) { tx = zx + (dx / dd) * leash; ty = zy + (dy / dd) * leash; }
         }
-        if (z.deep) tx = Math.max(tx, Math.min(deepest + 3, 118.5), zx - 3);
+        if (z.deep) {
+          let deepest = -1e9;
+          for (const i of ELIGIBLE) {
+            const q = P[i];
+            if (q.role === 'route' && Math.abs(q.y - zy) < z.r + 6 && q.x > deepest) deepest = q.x;
+          }
+          tx = Math.max(tx, Math.min(deepest + 2.5, 118.5), zx - 3);
+        }
         steerTo(p, tx, ty, spd, true);
         break;
       }
@@ -886,9 +926,19 @@
     for (const p of P) {
       if (p.i === QB || p.down > 0 || p.eng >= 0) continue;
       if (p.side === 0 && (OL.includes(p.i) || p.role === 'pass_pro')) continue;
-      const reach = p.side === 0 ? 1.35 : 1.0;
-      const d = hyp(p.x - bx, p.y - by);
-      if (d <= reach) cands.push({ p, d: d - (p.side === 0 && p.track ? 0.55 : 0), raw: d, reach });
+      // Defenders get a hand in from a little farther than they could catch it;
+      // the one the defense player steers gets a bit more (he's making a play).
+      const own = p.i === play.ownIdx;
+      // Diving at the ball (DIVE while it's in the air) stretches his reach further.
+      const reach = p.side === 0 ? 1.35 : own ? 1.7 + (p.lunge > 0 ? 0.7 : 0) : 1.3;
+      let d = hyp(p.x - bx, p.y - by);
+      if (own && p.own) {
+        // He was reacting to a picture that is `lag` behind: judge him where
+        // he'll be when his screen shows the ball arrive.
+        const la = Math.min(p.own.lag || 0, 0.5);
+        d = Math.min(d, hyp(p.x + p.vx * la - bx, p.y + p.vy * la - by));
+      }
+      if (d <= reach) cands.push({ p, d: d - (p.side === 0 && p.track ? 0.3 : 0), raw: d, reach, own });
     }
     if (!cands.length) return;
     cands.sort((a, c) => a.d - c.d);
@@ -899,7 +949,7 @@
     const oob = (p) => p.y <= 0 || p.y >= W || p.x >= C.FIELD_LEN;
     const catchChance = (c) => {
       let pc = c.p.hands + 0.1 - 0.06 * (c.raw / c.reach);
-      for (const k of contest) pc -= 0.08 + k.p.cover * 0.14;
+      for (const k of contest) pc -= (0.16 + k.p.cover * 0.2) * (1.2 - 0.4 * (k.raw / k.reach));
       if (play.wx.type === 'rain') pc -= 0.04;
       if (play.wx.type === 'snow') pc -= 0.02;
       return clamp(pc, 0.15, 0.985);
@@ -907,11 +957,14 @@
     if (first.side === 0) {
       if (oob(first)) return incomplete(play, 'OUT OF BOUNDS');
       if (rng.chance(catchChance(cands[0]))) return catchBall(play, first);
-      if (contest.length && rng.chance(0.1 * play.diff.ints)) return intercept(play, contest[0].p);
+      if (contest.length) {
+        const k = contest[0];
+        if (rng.chance((0.16 + k.p.hands * 0.25 + (k.own ? 0.12 : 0)) * play.diff.ints)) return intercept(play, k.p);
+      }
       return incomplete(play, contest.length ? 'BROKEN UP' : 'DROPPED');
     }
-    let pi = (0.1 + first.hands * 0.3) * play.diff.ints;
-    if (rec) pi *= 0.6;
+    let pi = (0.16 + first.hands * 0.35 + first.cover * 0.1 + (cands[0].own ? 0.15 : 0)) * play.diff.ints;
+    if (rec) pi *= 0.7;
     if (oob(first)) return incomplete(play, 'INCOMPLETE');
     if (rng.chance(pi)) return intercept(play, first);
     if (rec && !oob(rec.p) && rng.chance(catchChance(rec) * 0.75)) return catchBall(play, rec.p);
@@ -928,7 +981,7 @@
     play.stats.receiver = p.i;
     p.track = null;
     p.role = 'carrier';
-    p.slow = 0.12;
+    p.slow = 0.3; // securing the ball before turning upfield
     for (const q of play.players) if (q.side === 0 && q.i !== p.i) { q.role = 'escort'; q.track = null; }
     // Defenders read the catch faster the closer they are to it.
     for (const q of play.players) {
@@ -941,11 +994,11 @@
     for (const d of play.players) {
       if (d.side !== 1 || d.eng >= 0 || d.down > 0 || dist(d, p) > 1.5) continue;
       d.tackleCd = 0.6;
-      if (play.rng.chance(clamp(tackleOdds(play, d, p) - 0.12, 0.2, 0.9))) {
+      if (play.rng.chance(clamp(tackleOdds(play, d, p) - 0.04, 0.3, 0.92))) {
         event(play, 'hit', '');
         return tackled(play, p, d);
       }
-      d.down = 0.5;
+      d.down = 0.35;
     }
   }
 
@@ -1015,14 +1068,14 @@
         if (d.eng >= 0) p *= 0.4;
         if (car.i === QB && !play.scramble && play.ball.holder === QB) p += 0.12;
         if (rng.chance(clamp(p, 0.3, 0.97))) { tackled(play, car, d); return; }
-        d.tackleCd = 0.7;
-        if (d.eng < 0) d.down = 0.55;
-        car.slow = 0.3;
+        d.tackleCd = 0.6;
+        if (d.eng < 0) d.down = 0.4;
+        car.slow = 0.35;
         event(play, 'broken', '');
         continue;
       }
       // Diving tackle from just out of reach, mostly on chases from behind.
-      if (dd <= 2.3 && d.eng < 0 && d.i !== play.humanDefIdx && rng.chance(dt * 2.4)) {
+      if (dd <= 2.5 && d.eng < 0 && d.i !== play.humanDefIdx && rng.chance(dt * 3.2)) {
         d.tackleCd = 1.2;
         d.lunge = 0.3;
         const ux = (car.x - d.x) / dd, uy = (car.y - d.y) / dd;
@@ -1333,6 +1386,7 @@
     const defMoved = applyDefenderInput(play, input, dt);
     if (play.phase !== 'live') return;
     const car = carrierP(play);
+    if (!play.thrown) matchZones(play);
     for (const p of P) {
       if (p.down > 0) { p.dvx = 0; p.dvy = 0; continue; }
       if (userMoved && car && p === car && !play.turnover) continue;
@@ -1353,7 +1407,7 @@
         // for hard cuts with a little speed, like an arcade runner.
         integrateSteered(p, 34, dt);
       } else {
-        const acc = p.i === play.carrier ? 18 : p.side === 0 ? 11 : 10.5;
+        const acc = p.i === play.carrier ? 18 : p.side === 0 ? 11 : p.hustle ? 17 : 10.5;
         integrate(p, acc, dt);
       }
       if (Math.abs(p.vx) > 0.3) p.face = p.vx > 0 ? 1 : -1;

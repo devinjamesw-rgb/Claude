@@ -233,6 +233,8 @@
       m: [r2(play.los), r2(play.fdX), r2(play.ballY), play.phase === 'live' ? 1 : play.phase === 'pre' ? 0 : 2, play.turnover ? 1 : 0, play.humanDefIdx,
         play.humanDefIdx >= 11 && play.players[play.humanDefIdx].down > 0 ? 1 : 0],
       l: play.landing && b.st === 'air' ? [r2(play.landing.x), r2(play.landing.y)] : null,
+      // The throw itself, so the other phone can draw the ball's exact flight.
+      f: b.st === 'air' ? [r2(b.fx), r2(b.fy), r2(b.tx), r2(b.ty), r2(b.T), r2(b.z0), r2(b.vz0), Math.round(b.bt * 1000) / 1000] : null,
     };
   }
 
@@ -248,6 +250,7 @@
       ball: { x: o.b[0], y: o.b[1], z: o.b[2], st: ['snap', 'held', 'air', 'dead', 'down'][o.b[3]] || 'held', visible: true },
       carrier: o.b[4], los: o.m[0], fdX: o.m[1], ballY: o.m[2], live: o.m[3] === 1, pre: o.m[3] === 0,
       turnover: !!o.m[4], humanDefIdx: o.m[5], ownDown: o.m[6] === 1, landing: o.l ? { x: o.l[0], y: o.l[1] } : null,
+      flight: Array.isArray(o.f) && o.f.length === 8 && o.f.every(num) ? { fx: o.f[0], fy: o.f[1], tx: o.f[2], ty: o.f[3], T: o.f[4], z0: o.f[5], vz0: o.f[6], bt: o.f[7] } : null,
     };
   }
 
@@ -817,7 +820,7 @@
       V.los = C.GOAL_L + g.ballOn;
       V.ballY = g.ballY;
       V.fdX = g.twoPt ? null : C.GOAL_L + Math.min(100, g.ballOn + g.toGo);
-      const s = this.interpSnap();
+      const s = this.displaySnap();
       if (s && ['presnap', 'play', 'after'].includes(g.phase)) {
         const rosters = rt.rosters;
         V.players = s.players.map((p) => Object.assign({}, p, { skin: rosters[p.i < 11 ? g.poss : 1 - g.poss][p.i < 11 ? 'off' : 'def'][p.i % 11].skin }));
@@ -841,36 +844,80 @@
       return V;
     },
 
-    // The play as it looked ~110 ms ago on the other phone, blended between the
-    // two snapshots around that moment. Velocities come from the same pair.
+    // How far behind the newest update to draw. Only a short cushion for
+    // normal arrival jitter: longer gaps are covered by carrying each player's
+    // motion forward (up to 0.35 s), and view() smooths the small corrections
+    // when the next update lands. Waiting for a full buffer made the defense
+    // see everything a quarter second later on the backup link.
     renderDelay() {
-      const g = this.gaps;
-      if (g.length < 4) return this.t && this.t.kind === 'db' ? 350 : 100;
+      const g = this.gaps, db = this.t && this.t.kind === 'db';
+      if (g.length < 4) return db ? 120 : 50;
       const sorted = g.slice().sort((x, y) => x - y);
-      return Math.max(60, Math.min(650, sorted[Math.floor(sorted.length * 0.8)] + 35));
+      const med = sorted[Math.floor(sorted.length * 0.5)];
+      return Math.max(30, Math.min(db ? 160 : 90, med * 0.4 + 20));
     },
 
     interpSnap() {
       const buf = this.buf;
       if (!buf.length || this.offset == null) return this.snap;
-      const t = performance.now() - this.offset - this.renderDelay();
+      // Also look a little past the newest update, by part of the one-way trip
+      // time, so what you react to is closer to what's really happening.
+      const lead = this.rtt != null ? Math.min(90, this.rtt * 0.25) : 0;
+      const t = performance.now() - this.offset - this.renderDelay() + lead;
       this.viewTs = t; // the other phone's clock at the moment on screen
-      let a = buf[0], b = buf[buf.length - 1];
+      let a = buf[0], b = buf[buf.length - 1], out;
       if (t >= b.ts) {
-        // Newer than anything received: carry the last motion forward briefly.
-        if (buf.length < 2) return withVel(b.snap, null, 1);
-        a = buf[buf.length - 2];
-        const span = (b.ts - a.ts) / 1000;
-        if (span <= 0) return withVel(b.snap, null, 1);
-        return withVel(b.snap, a.snap, 1 + Math.min(0.2, (t - b.ts) / 1000) / span, span);
+        // Newer than anything received: carry the last motion forward.
+        if (buf.length < 2) out = withVel(b.snap, null, 1);
+        else {
+          a = buf[buf.length - 2];
+          const span = (b.ts - a.ts) / 1000;
+          out = span <= 0 ? withVel(b.snap, null, 1) : withVel(b.snap, a.snap, 1 + Math.min(0.35, (t - b.ts) / 1000) / span, span);
+        }
       } else {
         for (let i = buf.length - 1; i > 0; i--) {
           if (buf[i - 1].ts <= t) { a = buf[i - 1]; b = buf[i]; break; }
         }
+        if (a === b || b.ts <= a.ts) out = withVel(b.snap, null, 1);
+        else out = withVel(b.snap, a.snap, Math.max(0, Math.min(1, (t - a.ts) / (b.ts - a.ts))), (b.ts - a.ts) / 1000);
       }
-      if (a === b || b.ts <= a.ts) return withVel(b.snap, null, 1);
-      const u = Math.max(0, Math.min(1, (t - a.ts) / (b.ts - a.ts)));
-      return withVel(b.snap, a.snap, u, (b.ts - a.ts) / 1000);
+      // A ball in the air follows its throw exactly: no guessing needed.
+      const last = buf[buf.length - 1];
+      const f = last.snap.flight;
+      if (f && out.ball.st === 'air') {
+        const bt = Math.max(0, Math.min(f.T, f.bt + (t - last.ts) / 1000)), u = f.T > 0 ? bt / f.T : 1;
+        out.ball = Object.assign({}, out.ball, { x: f.fx + (f.tx - f.fx) * u, y: f.fy + (f.ty - f.fy) * u, z: Math.max(0, f.z0 + f.vz0 * bt - 0.5 * C.GRAVITY * bt * bt) });
+      }
+      return out;
+    },
+
+    // What the defense phone draws: the predicted play, with each player's
+    // on-screen position eased toward it so corrections don't pop. Motion is
+    // carried forward first, so the easing adds no delay to steady running.
+    displaySnap() {
+      const s = this.interpSnap();
+      if (!s || !s.players) return s;
+      const now = performance.now();
+      const dt = Math.min(0.1, Math.max(0, (now - (this.smT || now)) / 1000));
+      this.smT = now;
+      const k = 1 - Math.exp(-dt / 0.09);
+      const sm = this.sm || (this.sm = []);
+      const players = s.players.map((p, i) => {
+        let m = sm[i];
+        if (!m || Math.hypot(p.x - m.x, p.y - m.y) > 4 || p.down !== m.down) m = sm[i] = { x: p.x, y: p.y, down: p.down };
+        else {
+          m.x += (p.vx || 0) * dt; m.y += (p.vy || 0) * dt;
+          m.x += (p.x - m.x) * k; m.y += (p.y - m.y) * k;
+        }
+        return Object.assign({}, p, { x: m.x, y: m.y });
+      });
+      // A carried ball stays in the (eased) carrier's hands.
+      let ball = s.ball;
+      if (ball && ball.st !== 'air' && s.carrier >= 0 && players[s.carrier]) {
+        const c = players[s.carrier], r = s.players[s.carrier];
+        ball = Object.assign({}, ball, { x: ball.x + c.x - r.x, y: ball.y + c.y - r.y });
+      }
+      return Object.assign({}, s, { players, ball });
     },
 
     controls() {

@@ -26,7 +26,10 @@ shown alone in the live room, although both connected and every update was confi
 The page can also sync through the artifact's shared database: if the live room shows
 nobody else for 8 seconds, both phones switch to it and match there. Its round trip is
 about a third of a second. The defender you steer runs on your own phone, so that delay
-shows only in how late you see the offense, not in how he answers the stick.
+shows only in how late you see the offense, not in how he answers the stick. The defense
+phone draws the play by carrying the latest update forward instead of buffering (the
+ball in flight follows its exact throw), which in the mock cut how far behind it runs
+from about 350 ms to 100-150 ms on the backup and from 133 ms to about 66 ms on the room.
 A page that declares the database is private to the owner's organization, so
 this version is published separately (`dist/artifact-online.html`, capabilities
 `room` + `db`) from the public one (`dist/artifact.html`, `room` only). The public page
@@ -59,7 +62,8 @@ screen says so.
   plays until you change it. Tap any defender to take control of him (before or during
   the play). He is run by the computer until you touch the stick; from then on he runs
   on your phone with no network delay and stops when you let go. **SWITCH** jumps to the
-  free defender nearest the ball and **DIVE** lays out for a tackle. Tackles are judged
+  free defender nearest the ball and **DIVE** lays out for a tackle, or, with the ball in
+  the air, stretches for it (a longer reach to break it up or pick it off). Tackles are judged
   against where the ball carrier was on your screen, so the lag doesn't cost you
   tackles. The HUD shows the link type and the measured round trip.
 
@@ -73,6 +77,28 @@ Navy, and so on. Team select lists each school's key players. Names are made up:
 rosters change every season and the game makes no claim to match them. Displayed SPD
 comes straight from a player's speed in yards per second, so equal SPD means equal speed
 at any position.
+
+## Defense
+
+The computer defenders play pattern-matching zone (each zone defender takes a different
+receiver instead of two chasing one), break on the ball at full speed when it's thrown,
+contest catches from a little farther than they can catch, and pursue a ball carrier
+faster than they cover. A defender who misses a tackle is back up in about 0.4 s. With
+bot quarterbacks (`node tools/passdiag.js`), throws to open men complete about 87% and
+throws forced into coverage about 75% with 7-8% intercepted; full games average about
+18 points a team (`node tools/gametest.js`).
+
+## Stadiums
+
+Every school plays at home in its own stadium (`RB.ENV` in `src/data.js`): the stadium's
+name on the stand facing, the usual kickoff light (day, dusk or night with light towers),
+and pixel-art scenery past the stands: mountains in Boulder, Salt Lake and Seattle
+(with the lake and sailboats), the Coliseum's arches and torch, the Texas tower lit
+orange, the golden dome in South Bend, the bay at Annapolis, fall trees in the Big Ten.
+Signatures on the field: Boise State's blue turf, Tennessee's checkerboard end zones,
+Georgia's hedges, Penn State's white-out crowd. Each game opens on the home stadium
+while the welcome and coin toss play; the kick view shows the same scenery behind the
+posts. No logos.
 
 ## Rules
 
@@ -129,4 +155,6 @@ node tools/onlinejitter.js       # smoothness on the defending (streamed) side
 MOCK=1 node tools/onlinedef.js   # defense: tap to switch, joystick steering, sticky call
 node tools/response.js           # how fast a joystick cut changes the runner's direction
 node tools/owntest.js            # online defense tackles judged against the defense's screen
+node tools/passdiag.js           # where passing yards come from: separation, air yards, YAC, INT%
+MOCK=1 ISOLATED=1 DB=1 node tools/onlinelag.js  # how far behind the defense phone's picture is
 ```

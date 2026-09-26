@@ -283,6 +283,52 @@
     return list.map((p) => ({ pos: p.pos, num: p.num, name: p.name, star: p.star, show: (SHOWN[p.pos] || Object.keys(p.rt)).map((k) => [k, p.rt[k]]) }));
   }
 
+  // --- Home stadiums -----------------------------------------------------------
+  // What each school's home game looks like: the stadium's name and town, the
+  // usual kickoff light, the scenery past the stands, and a few signatures
+  // (Boise State's blue turf, Tennessee's checkerboard end zones, the hedges
+  // at Georgia, Penn State's white-out). Drawn as pixel art, no logos.
+  //   time: day | dusk | night
+  //   scene: layers behind the stands, far to near
+  //   facade: stand facing (concrete, brick, stone)
+  //   tiers: decks of seating; home: share of the crowd in home colors
+  const ENV_ROWS = {
+    ALA: ['BRYANT-DENNY STADIUM', 'TUSCALOOSA', 'dusk', ['hills', 'trees'], { tiers: 2 }],
+    UGA: ['SANFORD STADIUM', 'ATHENS', 'day', ['hills', 'trees'], { hedges: true }],
+    OSU: ['OHIO STADIUM', 'COLUMBUS', 'day', ['skyline'], { tiers: 2, home: 0.8 }],
+    MICH: ['MICHIGAN STADIUM', 'ANN ARBOR', 'day', ['fall'], { tiers: 1, home: 0.75 }],
+    TEX: ['DKR-TEXAS MEMORIAL STADIUM', 'AUSTIN', 'dusk', ['skyline', 'tower'], { tiers: 2 }],
+    LSU: ['TIGER STADIUM', 'BATON ROUGE', 'night', ['oaks'], { tiers: 2, home: 0.8 }],
+    CLEM: ['MEMORIAL STADIUM', 'CLEMSON', 'day', ['lake', 'trees'], { home: 0.8 }],
+    ORE: ['AUTZEN STADIUM', 'EUGENE', 'day', ['mountains', 'pines'], { rainy: true }],
+    USC: ['LA MEMORIAL COLISEUM', 'LOS ANGELES', 'dusk', ['skyline', 'arches', 'palms'], { facade: 'stone' }],
+    ND: ['NOTRE DAME STADIUM', 'SOUTH BEND', 'day', ['fall', 'dome'], { facade: 'brick' }],
+    FSU: ['DOAK CAMPBELL STADIUM', 'TALLAHASSEE', 'night', ['oaks'], { facade: 'brick', tiers: 2 }],
+    PSU: ['BEAVER STADIUM', 'STATE COLLEGE', 'night', ['mountains', 'fall'], { tiers: 2, whiteout: true }],
+    OU: ['OWEN FIELD', 'NORMAN', 'day', ['plains'], { facade: 'brick', tiers: 2 }],
+    TENN: ['NEYLAND STADIUM', 'KNOXVILLE', 'day', ['hills', 'river'], { checker: true, tiers: 2, home: 0.8 }],
+    UF: ['THE SWAMP', 'GAINESVILLE', 'day', ['palms'], { facade: 'brick', tiers: 2 }],
+    MIA: ['HARD ROCK STADIUM', 'MIAMI GARDENS', 'night', ['palms'], { canopy: true, tiers: 2 }],
+    TAMU: ['KYLE FIELD', 'COLLEGE STATION', 'day', ['plains'], { tiers: 3, home: 0.8 }],
+    AUB: ['JORDAN-HARE STADIUM', 'AUBURN', 'dusk', ['trees'], { tiers: 2 }],
+    WIS: ['CAMP RANDALL STADIUM', 'MADISON', 'night', ['lake', 'capitol'], { facade: 'brick' }],
+    UW: ['HUSKY STADIUM', 'SEATTLE', 'day', ['mountains', 'lake', 'boats'], { canopy: true, tiers: 2 }],
+    NEB: ['MEMORIAL STADIUM', 'LINCOLN', 'day', ['plains'], { home: 0.9 }],
+    IOWA: ['KINNICK STADIUM', 'IOWA CITY', 'day', ['fall', 'hospital'], { facade: 'brick' }],
+    COLO: ['FOLSOM FIELD', 'BOULDER', 'day', ['flatirons', 'pines'], {}],
+    BSU: ['ALBERTSONS STADIUM', 'BOISE', 'night', ['mountains'], { turf: 'blue' }],
+    UTAH: ['RICE-ECCLES STADIUM', 'SALT LAKE CITY', 'night', ['mountains'], {}],
+    MISS: ['VAUGHT-HEMINGWAY STADIUM', 'OXFORD', 'day', ['oaks'], {}],
+    OKST: ['BOONE PICKENS STADIUM', 'STILLWATER', 'day', ['plains'], { facade: 'brick' }],
+    VT: ['LANE STADIUM', 'BLACKSBURG', 'night', ['mountains', 'fall'], { facade: 'stone' }],
+    ARMY: ['MICHIE STADIUM', 'WEST POINT', 'day', ['hills', 'river', 'fall'], { facade: 'stone' }],
+    NAVY: ['NAVY-MARINE CORPS STADIUM', 'ANNAPOLIS', 'day', ['bay', 'boats'], {}],
+  };
+  const ENV = {};
+  for (const [id, [name, town, time, scene, o]] of Object.entries(ENV_ROWS)) {
+    ENV[id] = Object.assign({ id, name, town, time, scene, facade: 'concrete', tiers: 1, home: 0.65, turf: 'green' }, o);
+  }
+
   // Swap the away side to white jerseys when both teams' jerseys look alike.
   function colorDist(a, b) {
     const p = (h) => [1, 3, 5].map((i) => parseInt(h.substr(i, 2), 16));
@@ -305,6 +351,7 @@
   RB.TEAMS = TEAMS;
   RB.TEAM_BY_ID = TEAM_BY_ID;
   RB.teamStars = teamStars;
+  RB.ENV = ENV;
   RB.buildRoster = buildRoster;
   RB.keyPlayers = keyPlayers;
   RB.SHOWN = SHOWN;

@@ -95,11 +95,15 @@
   function updateCamera(V, dt) {
     let fx = R.cam.x, fy = R.cam.y, lead = 0;
     R.chase = false;
+    // Opening shot: while the welcome and coin toss play, look up at the
+    // home stadium, then settle onto the field.
+    const establish = V.mode === 'field' && V.phase === 'coin';
     const baseLead = R.portrait ? 6 : 9;
     if (V.mode === 'field') {
       const car = V.players && V.carrier >= 0 ? V.players[V.carrier] : null;
       const b = V.ball;
-      if (!V.players) { fx = V.los; fy = V.ballY; lead = baseLead; }
+      if (establish) { fx = 60; fy = -19; lead = 0; }
+      else if (!V.players) { fx = V.los; fy = V.ballY; lead = baseLead; }
       else if (V.phase === 'presnap') { fx = V.los; fy = FW / 2; lead = (R.W / 2 / R.SX) * 0.45; }
       else if (b && b.st === 'air') {
         const L = V.landing || b;
@@ -115,7 +119,7 @@
     R.lead += (lead - R.lead) * (1 - Math.exp(-dt * 2.5));
     let tx = fx + R.lead, ty = fy;
     const halfH = (R.H - R.hudH - R.bottom - R.reserve) / 2 / R.SY;
-    const minY = -6 + halfH, maxY = FW + 5 - halfH;
+    const minY = (establish ? -36 : -14) + halfH, maxY = FW + 5 - halfH; // show some of the far stands
     ty = minY > maxY ? FW / 2 : clamp(ty, minY, maxY);
     const halfW = R.W / 2 / R.SX;
     tx = clamp(tx, halfW - 4, 124 - halfW);
@@ -135,26 +139,47 @@
   }
 
   // --- Stadium ------------------------------------------------------------------
-  function buildCrowd(uniforms) {
-    const key = R.SX0 + '|' + uniforms.map((u) => u.jersey).join();
+  // The home school's stadium: sky for the kickoff time, the scenery past the
+  // stands (RB.ENV), decks of fans in both schools' colors, light towers for
+  // evening games. Built once per school and screen size, then scrolled.
+  const DEFAULT_ENV = { id: '', name: '', town: '', time: 'day', scene: ['hills'], facade: 'concrete', tiers: 1, home: 0.65, turf: 'green' };
+  const SKY = {
+    day: { top: '#4f9de0', bot: '#bfe0f7', stands: ['#2d3344', '#282d3d'] },
+    dusk: { top: '#26295e', bot: '#f08c55', stands: ['#22263a', '#1d2133'] },
+    night: { top: '#03060f', bot: '#17224a', stands: ['#161d33', '#131a2e'] },
+  };
+  const FACADE = { concrete: '#8d919b', brick: '#8b3d2c', stone: '#a7a091' };
+  const TURF = { green: ['#3f8f3b', '#398437', '#2e6e2d'], blue: ['#2f63c4', '#2a58b0', '#22468c'] };
+  function envOf(V) {
+    const id = V.teams && V.teams[0] && V.teams[0].id;
+    return (RB.ENV && RB.ENV[id]) || DEFAULT_ENV;
+  }
+
+  function buildCrowd(uniforms, env) {
+    const key = R.SX0 + '|' + uniforms.map((u) => u.jersey).join() + '|' + env.id;
     if (key === R.crowdKey) return;
     R.crowdKey = key;
+    R.scene = null;
     const w = Math.ceil(140 * R.SX0), h = 60;
     const c = document.createElement('canvas');
     c.width = w;
     c.height = h;
     const x = c.getContext('2d');
-    x.fillStyle = PAL.stands;
+    const rows = SKY[env.time].stands;
+    x.fillStyle = rows[0];
     x.fillRect(0, 0, w, h);
-    const rng = RB.makeRng(7);
+    const rng = RB.makeRng(7 + RB.hashStr(env.id || 'x') % 1000);
     const skins = ['#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#ffdbac'];
+    const homeShirt = uniforms[0].jersey, awayShirt = uniforms[1].jersey === '#f4f4f4' ? uniforms[1].trim : uniforms[1].jersey;
     for (let row = 0; row < 12; row++) {
-      x.fillStyle = row % 2 ? '#161d33' : '#131a2e';
+      x.fillStyle = rows[row % 2];
       x.fillRect(0, row * 5, w, 5);
       for (let col = 0; col < w; col += 3) {
-        if (rng.chance(0.12)) continue;
+        if (rng.chance(0.08)) continue;
         const r = rng.next();
-        const shirt = r < 0.5 ? uniforms[0].jersey : r < 0.82 ? uniforms[1].jersey : rng.pick(['#e8e8e8', '#6b7a8f', '#d9c27a', '#3a4a6b']);
+        let shirt;
+        if (env.whiteout) shirt = r < 0.82 ? '#f4f4f4' : r < 0.9 ? homeShirt : awayShirt;
+        else shirt = r < env.home ? homeShirt : r < env.home + (1 - env.home) * 0.6 ? awayShirt : rng.pick(['#e8e8e8', '#6b7a8f', '#d9c27a', '#3a4a6b']);
         x.fillStyle = rng.pick(skins);
         x.fillRect(col, row * 5 + 1, 2, 1);
         x.fillStyle = shirt;
@@ -164,33 +189,282 @@
     R.crowd = c;
   }
 
+  // The scenery strip past the stadium rim: sky, then each layer of
+  // env.scene from far to near, standing on the strip's bottom edge.
+  const SCENE_H = 72;
+  function buildScene(env) {
+    const W = Math.ceil(R.W * 1.5) + 64, H = SCENE_H;
+    const key = env.id + '|' + W;
+    if (R.scene && R.sceneKey === key) return R.scene;
+    const c = document.createElement('canvas');
+    c.width = W;
+    c.height = H;
+    const x = c.getContext('2d');
+    const sky = SKY[env.time], night = env.time === 'night', dusk = env.time === 'dusk';
+    const g = x.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, sky.top);
+    g.addColorStop(1, sky.bot);
+    x.fillStyle = g;
+    x.fillRect(0, 0, W, H);
+    const rng = RB.makeRng(RB.hashStr('scene' + env.id));
+    const px = (cx, cy, w, h, col) => { x.fillStyle = col; x.fillRect(Math.round(cx), Math.round(cy), w, h); };
+    if (night) for (let i = 0; i < W / 9; i++) px(rng.int(0, W), rng.int(0, H * 0.6), 1, 1, rng.chance(0.3) ? '#ffffff' : '#8fa0d0');
+    if (night) { px(W * 0.72, 8, 6, 6, '#e8ecf5'); px(W * 0.72 + 1, 7, 4, 8, '#e8ecf5'); px(W * 0.72 + 3, 9, 3, 3, '#c9d0e0'); }
+    if (dusk) { x.fillStyle = 'rgba(255,190,110,0.55)'; x.beginPath(); x.arc(W * 0.3, H - 6, 16, 0, Math.PI * 2); x.fill(); }
+    if (env.time === 'day') { x.fillStyle = 'rgba(255,255,255,0.8)'; for (let i = 0; i < W / 120; i++) { const cx = rng.int(0, W), cy = rng.int(6, 24); x.fillRect(cx, cy, 18, 3); x.fillRect(cx + 4, cy - 2, 9, 2); } }
+    const tone = (day, duskC, nightC) => (night ? nightC : dusk ? duskC : day);
+    const ridge = (base, amp, step, col, cap) => {
+      x.fillStyle = col;
+      x.beginPath();
+      x.moveTo(0, H);
+      let yy = H - base;
+      const peaks = [];
+      for (let xx = 0; xx <= W + step; xx += step) {
+        yy = H - base - rng.range(0, amp);
+        x.lineTo(xx, yy);
+        peaks.push([xx, yy]);
+      }
+      x.lineTo(W, H);
+      x.closePath();
+      x.fill();
+      if (cap) for (const [xx, yy] of peaks) if (H - yy > base + amp * 0.6) { px(xx - 3, yy, 7, 2, cap); px(xx - 1, yy - 1, 3, 1, cap); }
+    };
+    const trees = (colors, hMin, hMax, kind) => {
+      for (let xx = -4; xx < W + 8; xx += rng.int(5, 9)) {
+        const h = rng.int(hMin, hMax), col = rng.pick(colors);
+        if (kind === 'pine') {
+          for (let k = 0; k < h; k++) px(xx - Math.floor((k * 0.45)), H - h + k, 1 + Math.floor(k * 0.9), 1, col);
+        } else {
+          const r = Math.round(h * 0.45);
+          x.fillStyle = col;
+          x.beginPath();
+          x.ellipse(xx, H - h + r, r + (kind === 'oak' ? 3 : 1), r, 0, 0, Math.PI * 2);
+          x.fill();
+          px(xx - r * 0.4, H - h + r * 0.4, 2, 1, shade(col, 0.25));
+        }
+      }
+    };
+    const water = (h, col, glint) => {
+      px(0, H - h, W, h, col);
+      for (let i = 0; i < W / 10; i++) px(rng.int(0, W), H - h + rng.int(1, h - 1), rng.int(2, 6), 1, glint);
+    };
+    for (const layer of env.scene) {
+      switch (layer) {
+        case 'mountains': ridge(22, 26, 22, tone('#71819e', '#4b416e', '#1a2142'), night ? null : '#eef2f8'); ridge(10, 10, 14, tone('#58698a', '#3a3358', '#131a33')); break;
+        case 'flatirons':
+          ridge(20, 20, 26, tone('#6d7c98', '#4b416e', '#1a2142'), night ? null : '#eef2f8');
+          for (let xx = 10; xx < W; xx += 90) for (let k = 0; k < 3; k++) {
+            x.fillStyle = tone('#a0694e', '#6d4a4a', '#2a2030');
+            x.beginPath(); x.moveTo(xx + k * 16, H - 8); x.lineTo(xx + k * 16 + 10, H - 40 + k * 6); x.lineTo(xx + k * 16 + 18, H - 8); x.closePath(); x.fill();
+          }
+          break;
+        case 'hills': ridge(12, 10, 30, tone('#5b8a52', '#3b4a4c', '#121a28')); break;
+        case 'plains': px(0, H - 5, W, 5, tone('#8aa35a', '#4d4a3c', '#141a24')); trees([tone('#4c7a3a', '#2f3a30', '#0e141c')], 4, 7); break;
+        case 'trees': trees([tone('#3f7a38', '#2c3b31', '#0e161c'), tone('#4d8a40', '#334235', '#111a20')], 9, 15); break;
+        case 'oaks': trees([tone('#35683a', '#26352d', '#0b1318'), tone('#2e5c33', '#223028', '#0a1116')], 12, 18, 'oak'); break;
+        case 'pines': trees([tone('#2d5a3a', '#223428', '#0a1418'), tone('#27503a', '#1e3026', '#09121a')], 12, 20, 'pine'); break;
+        case 'fall': trees(night ? ['#1a1512', '#20150f', '#141612'] : dusk ? ['#7a3b24', '#8a5a26', '#4a3a2a'] : ['#d9642b', '#e8a33a', '#b8412c', '#7a9a3c', '#c9502a'], 9, 15); break;
+        case 'palms':
+          for (let xx = 8; xx < W; xx += rng.int(26, 44)) {
+            const h = rng.int(24, 34), lean = rng.pick([-1, 1]);
+            for (let k = 0; k < h; k++) px(xx + Math.round((k / h) * 3 * lean), H - k, 2, 1, tone('#7a5a3a', '#3a2c26', '#120e10'));
+            const fx = xx + 3 * lean, fy = H - h, leaf = tone('#3f8a3a', '#26402c', '#0b1414');
+            for (const [dx, dy] of [[-7, 2], [-5, -1], [0, -3], [5, -1], [7, 2], [-3, 3], [3, 3]]) px(fx + Math.min(0, dx), fy + Math.min(0, dy), Math.abs(dx) + 2, 2, leaf);
+          }
+          break;
+        case 'skyline':
+          for (let xx = 0; xx < W; xx += rng.int(8, 16)) {
+            const bw = rng.int(7, 14), bh = rng.int(14, 44);
+            px(xx, H - bh, bw, bh, tone('#8f9fb6', '#3a3c5c', '#10152a'));
+            if (night || dusk) for (let wy = H - bh + 3; wy < H - 2; wy += 3) for (let wx = xx + 2; wx < xx + bw - 1; wx += 3) if (rng.chance(0.45)) px(wx, wy, 1, 1, '#ffd98a');
+            else if (!night && !dusk) px(xx + 1, H - bh + 1, 1, bh - 2, '#b7c4d6');
+          }
+          break;
+        case 'tower': {
+          const tx = Math.round(W * 0.42);
+          px(tx, H - 58, 9, 58, tone('#d8cdb0', '#b7a07a', '#3a3428'));
+          px(tx - 1, H - 62, 11, 5, tone('#c9bd9c', '#a88f6a', '#302a22'));
+          px(tx + 3, H - 68, 3, 6, tone('#c9bd9c', '#a88f6a', '#302a22'));
+          if (night || dusk) { px(tx, H - 58, 9, 10, '#ff8a1c'); px(tx - 1, H - 62, 11, 5, '#ff9d3c'); }
+          break;
+        }
+        case 'dome': {
+          const dx = Math.round(W * 0.55);
+          px(dx - 16, H - 20, 32, 20, tone('#e3dccb', '#9d8f7a', '#2a2622'));
+          px(dx - 6, H - 30, 12, 10, tone('#e3dccb', '#9d8f7a', '#2a2622'));
+          x.fillStyle = '#d9b233';
+          x.beginPath(); x.ellipse(dx, H - 30, 7, 9, 0, Math.PI, 0); x.fill();
+          px(dx - 1, H - 44, 2, 6, '#d9b233');
+          break;
+        }
+        case 'capitol': {
+          const dx = Math.round(W * 0.6);
+          px(dx - 18, H - 16, 36, 16, tone('#e8e6e0', '#a09aa0', '#262630'));
+          px(dx - 7, H - 26, 14, 10, tone('#e8e6e0', '#a09aa0', '#262630'));
+          x.fillStyle = tone('#f2f0ea', '#b8b0b0', night ? '#3a3a48' : '#2a2a34');
+          x.beginPath(); x.ellipse(dx, H - 26, 8, 10, 0, Math.PI, 0); x.fill();
+          px(dx - 1, H - 40, 2, 5, '#d9b233');
+          break;
+        }
+        case 'hospital': {
+          const hx = Math.round(W * 0.36);
+          px(hx, H - 46, 40, 46, tone('#c9ccd4', '#7a7a90', '#1c2030'));
+          for (let wy = H - 43; wy < H - 2; wy += 4) for (let wx = hx + 3; wx < hx + 38; wx += 4) px(wx, wy, 2, 2, night || dusk ? (rng.chance(0.6) ? '#ffe7a8' : '#2a3048') : '#7f95b3');
+          break;
+        }
+        case 'arches': {
+          const ax = Math.round(W * 0.38), n = 7;
+          px(ax, H - 30, n * 9 + 3, 30, tone('#d9c9a8', '#a8876a', '#2c261f'));
+          for (let k = 0; k < n; k++) { px(ax + 3 + k * 9, H - 22, 6, 22, tone('#6d86a8', '#3a2f55', '#0d1122')); x.fillStyle = tone('#6d86a8', '#3a2f55', '#0d1122'); x.beginPath(); x.arc(ax + 6 + k * 9, H - 22, 3, Math.PI, 0); x.fill(); }
+          px(ax + Math.round(n * 4.5) - 1, H - 38, 4, 8, tone('#c9b894', '#8d7458', '#2a241e'));
+          px(ax + Math.round(n * 4.5) - 1, H - 43, 4, 5, '#ff9a2a');
+          px(ax + Math.round(n * 4.5), H - 46, 2, 3, '#ffd23f');
+          break;
+        }
+        case 'lake': water(9, tone('#3a78b4', '#3b3f6e', '#0e1732'), tone('#a6d0f2', '#f2a877', '#3b4c7a')); break;
+        case 'bay': water(12, tone('#2f6ea8', '#34396a', '#0c152e'), tone('#9cc8ee', '#f2a877', '#34467a')); break;
+        case 'river': water(6, tone('#3a78b4', '#3b3f6e', '#0e1732'), tone('#a6d0f2', '#f2a877', '#3b4c7a')); break;
+        case 'boats':
+          for (let xx = 20; xx < W; xx += rng.int(40, 70)) {
+            const by = H - rng.int(3, 7);
+            px(xx, by, 8, 2, tone('#f4f4f4', '#d9cbbd', '#5a5f70'));
+            x.fillStyle = tone('#ffffff', '#f0dcc8', '#6a7088');
+            x.beginPath(); x.moveTo(xx + 4, by - 9); x.lineTo(xx + 4, by - 1); x.lineTo(xx + 9, by - 1); x.closePath(); x.fill();
+          }
+          break;
+      }
+    }
+    R.scene = c;
+    R.sceneKey = key;
+    return c;
+  }
+
+  // Draws the scenery strip with its bottom at y, scrolled a little with the
+  // camera (it's far away), and fills any sky above it.
+  function drawScene(ctx, env, bottom, drift) {
+    const c = buildScene(env);
+    const top = bottom - c.height;
+    if (top > 0) {
+      ctx.fillStyle = SKY[env.time].top;
+      ctx.fillRect(0, 0, R.W, top);
+    }
+    const off = -((((drift || 0) % c.width) + c.width) % c.width);
+    for (let xx = off; xx < R.W; xx += c.width) ctx.drawImage(c, Math.round(xx), top);
+  }
+
+  // A stretch of crowd rows (h px tall, cut from the crowd tile) with its
+  // bottom at y, lined up with the field at world x = -10.
+  function crowdBand(ctx, y, h, bounce) {
+    if (!R.crowd || h <= 0) return;
+    const cx = sx(-10);
+    let yy = y;
+    while (yy > y - h) {
+      const hh = Math.min(R.crowd.height, yy - (y - h));
+      ctx.drawImage(R.crowd, 0, R.crowd.height - hh, R.crowd.width, hh, cx, yy - hh + bounce, R.crowd.width, hh);
+      yy -= hh;
+    }
+  }
+
+  // Name band on the stand facing: the stadium's name, repeated along it.
+  function facadeBand(ctx, env, V, y, h) {
+    const col = FACADE[env.facade] || FACADE.concrete;
+    ctx.fillStyle = env.time === 'night' ? shade(col, -0.45) : env.time === 'dusk' ? shade(col, -0.25) : col;
+    ctx.fillRect(0, y, R.W, h);
+    const u = V.uni ? V.uni[0] : null;
+    if (u) {
+      ctx.fillStyle = u.jersey === '#f4f4f4' ? u.trim : u.jersey;
+      ctx.fillRect(0, y + h - 2, R.W, 2);
+    }
+    if (env.name && h >= 9) {
+      const step = F.width(env.name, 1) + 60;
+      const base = sx(-10);
+      for (let xx = base + 20; xx < R.W + step; xx += step) if (xx + step > 0) F.draw(ctx, env.name, xx, y + 1, 1, '#ffffff');
+    }
+  }
+
+  // Light towers along the rim for dusk and night games.
+  function lightTowers(ctx, env, rim) {
+    if (env.time === 'day') return;
+    for (const wx of [8, 38, 82, 112]) {
+      const x0 = sx(wx);
+      if (x0 < -20 || x0 > R.W + 20) continue;
+      ctx.fillStyle = '#3a3f4f';
+      ctx.fillRect(x0, rim - 26, 2, 26);
+      const glow = ctx.createRadialGradient(x0 + 1, rim - 30, 1, x0 + 1, rim - 30, 26);
+      glow.addColorStop(0, 'rgba(255,246,208,0.55)');
+      glow.addColorStop(1, 'rgba(255,246,208,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(x0 - 26, rim - 56, 54, 52);
+      ctx.fillStyle = '#fff6d0';
+      ctx.fillRect(x0 - 6, rim - 33, 14, 6);
+      ctx.fillStyle = '#c9c2a0';
+      for (let k = 0; k < 4; k++) ctx.fillRect(x0 - 5 + k * 3.5, rim - 30, 1, 1);
+    }
+  }
+
   function drawStadium(ctx, V) {
-    ctx.fillStyle = PAL.night;
+    const env = envOf(V);
+    const night = env.time === 'night';
+    ctx.fillStyle = SKY[env.time].top;
     ctx.fillRect(0, 0, R.W, R.H);
-    // Stands above the far sideline.
+    // Far side, bottom up: wall, lower bowl, name band, upper decks, rim,
+    // roof canopy, then the scenery past the stadium.
     const top = sy(-4);
     if (top > 0 && R.crowd) {
       const bounce = V.cheer > 0 ? Math.round(Math.sin(R.t * 30) * 1) : 0;
-      const cx = sx(-10);
-      for (let yy = top - R.crowd.height; yy > -R.crowd.height; yy -= R.crowd.height) {
-        ctx.drawImage(R.crowd, cx, yy + bounce);
+      let y = top - 4;
+      const lower = env.tiers === 1 ? 44 : 30;
+      crowdBand(ctx, y, lower, bounce);
+      y -= lower;
+      facadeBand(ctx, env, V, y - 10, 10);
+      y -= 10;
+      for (let t = 1; t < env.tiers; t++) {
+        crowdBand(ctx, y, 22, bounce);
+        y -= 22;
+        ctx.fillStyle = shade(FACADE[env.facade] || FACADE.concrete, night ? -0.5 : -0.2);
+        ctx.fillRect(0, y - 3, R.W, 3);
+        y -= 3;
       }
+      if (env.canopy) {
+        ctx.fillStyle = night ? '#0e1220' : '#3a3f4c';
+        ctx.fillRect(0, y - 6, R.W, 6);
+        ctx.fillStyle = night ? '#1a2033' : '#5a606e';
+        for (let xx = (sx(0) % 14 + 14) % 14; xx < R.W; xx += 14) ctx.fillRect(xx, y - 6, 1, 6);
+        y -= 6;
+      }
+      // Landmarks sit mid-strip; scroll so they're centered at midfield.
+      if (y > 0) drawScene(ctx, env, y, (R.cam.x - 60) * R.SX * 0.3 + (buildScene(env).width * 0.47 - R.W / 2));
+      lightTowers(ctx, env, y);
       ctx.fillStyle = PAL.wall;
       ctx.fillRect(0, top - 4, R.W, 4);
       ctx.fillStyle = V.uni ? V.uni[0].jersey : '#333';
       ctx.fillRect(0, top - 4, R.W, 1);
     }
     // Apron around the field.
-    ctx.fillStyle = PAL.apron;
+    ctx.fillStyle = (TURF[env.turf] || TURF.green)[2];
     const ax0 = sx(-4), ax1 = sx(124), ay0 = sy(-4), ay1 = sy(FW + 4);
     ctx.fillRect(ax0, ay0, ax1 - ax0, ay1 - ay0);
+    if (env.hedges) {
+      // "Between the hedges": privet hedges ring the field.
+      const hh = Math.max(5, Math.round(1.3 * R.SY));
+      for (const hy of [sy(-3.6), sy(FW + 2.3)]) {
+        ctx.fillStyle = '#1c4523';
+        ctx.fillRect(ax0, hy, ax1 - ax0, hh);
+        ctx.fillStyle = '#2c6a33';
+        for (let xx = ax0; xx < ax1; xx += 5) { ctx.fillRect(xx, hy - 2, 4, 3); ctx.fillRect(xx + 2, hy + 2, 2, 2); }
+        ctx.fillStyle = '#3f8a44';
+        for (let xx = ax0 + 1; xx < ax1; xx += 5) ctx.fillRect(xx, hy - 2, 2, 1);
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.fillRect(ax0, hy + hh, ax1 - ax0, 1);
+      }
+    }
     // Near-side wall and the lower bowl behind it.
     ctx.fillStyle = PAL.wall;
     ctx.fillRect(0, ay1, R.W, 4);
     if (R.crowd && ay1 + 4 < R.H) {
       const cx = sx(-10);
       for (let yy = ay1 + 4; yy < R.H; yy += R.crowd.height) ctx.drawImage(R.crowd, cx, yy);
-      ctx.fillStyle = 'rgba(11,15,28,0.7)';
+      ctx.fillStyle = night ? 'rgba(8,11,22,0.72)' : 'rgba(11,15,28,0.55)';
       ctx.fillRect(0, ay1 + 4, R.W, R.H - ay1 - 4);
     }
   }
@@ -199,10 +473,11 @@
     const y0 = sy(0), y1 = sy(FW);
     const xMin = Math.max(0, Math.floor(R.cam.x - R.W / 2 / R.SX) - 1);
     const xMax = Math.min(120, Math.ceil(R.cam.x + R.W / 2 / R.SX) + 1);
+    const env = envOf(V), turf = TURF[env.turf] || TURF.green;
     // Turf stripes every 5 yards.
     for (let x = 10; x < 110; x += 5) {
       if (x + 5 < xMin || x > xMax) continue;
-      ctx.fillStyle = (x / 5) % 2 ? PAL.turfA : PAL.turfB;
+      ctx.fillStyle = (x / 5) % 2 ? turf[0] : turf[1];
       ctx.fillRect(sx(x), y0, sx(x + 5) - sx(x), y1 - y0);
     }
     // End zones in each defending team's colors.
@@ -215,6 +490,18 @@
       const u = V.uni[e.seat];
       ctx.fillStyle = shade(u.jersey === '#f4f4f4' ? u.trim : u.jersey, -0.15);
       ctx.fillRect(sx(e.x), y0, sx(e.x + 10) - sx(e.x), y1 - y0);
+      if (env.checker) {
+        // Checkerboard end zones: orange-and-white bands at the back and the
+        // goal line, the school's name in the solid middle.
+        const hu = V.uni[0], a = hu.jersey === '#f4f4f4' ? hu.trim : hu.jersey, sq = 2.5;
+        for (const bx of [e.x, e.x + 7.5]) for (let j = 0; j * sq < FW; j++) {
+          for (let c = 0; c < 2; c++) {
+            ctx.fillStyle = (j + c) % 2 ? a : '#f4f4f4';
+            const xa = sx(bx + c * 1.25), xb = sx(bx + (c + 1) * 1.25);
+            ctx.fillRect(xa, sy(j * sq), xb - xa, sy(Math.min(FW, (j + 1) * sq)) - sy(j * sq));
+          }
+        }
+      }
       const name = V.teams[e.seat].name;
       const scale = R.portrait ? 2 : 3;
       ctx.save();
@@ -652,7 +939,8 @@
     let scale = R.W >= 420 ? 3 : 2;
     while (scale > 1 && F.width(b.text, scale) > R.W - 16) scale--;
     const color = b.color === 'good' ? PAL.good : b.color === 'bad' ? PAL.bad : '#ffffff';
-    const y = Math.round(R.hudH + (R.H - R.hudH - R.bottom) * 0.3);
+    // During the opening stadium shot the banner sits low, clear of the scenery.
+    const y = Math.round(R.hudH + (R.H - R.hudH - R.bottom) * (V.phase === 'coin' && V.mode === 'field' ? 0.74 : 0.3));
     const bandH = 7 * scale + (b.sub ? 14 : 0) + 12;
     ctx.fillStyle = 'rgba(8,10,18,0.72)';
     ctx.fillRect(0, y - 6, R.W, bandH);
@@ -701,29 +989,36 @@
   function drawKick(ctx, V) {
     const k = V.kick;
     const W = R.W, H = R.H - R.bottom;
-    const horizon = Math.round(R.hudH + (H - R.hudH) * 0.28);
+    const horizon = Math.round(R.hudH + (H - R.hudH) * 0.34);
     const camBack = 9, camH = 2.1, f = (H - R.hudH) * 0.95;
     const P = (x, d, h) => {
       const z = Math.max(0.5, d + camBack);
       return { x: Math.round(W / 2 + (x * f) / z), y: Math.round(horizon + ((camH - h) * f) / z), s: f / z };
     };
-    ctx.fillStyle = PAL.night;
+    // Behind the posts: the end-zone stands and the scenery past them.
+    const env = envOf(V);
+    ctx.fillStyle = SKY[env.time].top;
     ctx.fillRect(0, 0, W, R.H);
+    const standsTop = horizon - 6 - 28 - 9;
+    drawScene(ctx, env, standsTop, buildScene(env).width * 0.47 - W / 2);
     if (R.crowd) {
-      for (let yy = horizon - 6 - R.crowd.height; yy > -R.crowd.height; yy -= R.crowd.height) ctx.drawImage(R.crowd, 0, yy);
-      ctx.fillStyle = 'rgba(11,15,28,0.55)';
-      ctx.fillRect(0, 0, W, horizon - 6);
+      for (let yy = horizon - 6; yy > standsTop + 9; yy -= R.crowd.height) {
+        const hh = Math.min(R.crowd.height, yy - standsTop - 9);
+        ctx.drawImage(R.crowd, 0, R.crowd.height - hh, R.crowd.width, hh, 0, yy - hh, R.crowd.width, hh);
+      }
     }
+    facadeBand(ctx, env, V, standsTop, 9);
+    lightTowers(ctx, env, standsTop);
     ctx.fillStyle = PAL.wall;
     ctx.fillRect(0, horizon - 6, W, 6);
     // Turf with 5-yard bands.
-    const far = k.dist + 14;
+    const far = k.dist + 14, kturf = TURF[env.turf] || TURF.green;
     for (let d = -camBack + 1; d < far; d += 5) {
       const a = P(0, d, 0), b = P(0, Math.min(far, d + 5), 0);
-      ctx.fillStyle = Math.floor((d + 100) / 5) % 2 ? PAL.turfA : PAL.turfB;
+      ctx.fillStyle = Math.floor((d + 100) / 5) % 2 ? kturf[0] : kturf[1];
       ctx.fillRect(0, b.y, W, a.y - b.y + 1);
     }
-    ctx.fillStyle = PAL.turfB;
+    ctx.fillStyle = kturf[1];
     ctx.fillRect(0, horizon, W, P(0, far, 0).y - horizon);
     // Yard lines.
     ctx.fillStyle = PAL.chalk;
@@ -790,7 +1085,7 @@
     F.draw(ctx, 'PWR', mx + 3, my + mh + 5, 1, '#ffffff', 'center');
     drawWind(ctx, V.wx, 10, R.hudH + 30);
     const title = `${k.type === 'xp' ? 'EXTRA POINT' : 'FIELD GOAL'} · ${k.dist} YDS`;
-    plate(ctx, title, W / 2, R.hudH + 6, PAL.amber);
+    plate(ctx, title, W / 2, H - 34, PAL.amber);
     if (k.phase === 'aim' && V.kickHint) plate(ctx, V.kickHint, W / 2, H - 18, '#ffffff');
   }
   function C_HALF() {
@@ -857,7 +1152,7 @@
     R.t += dt;
     ctx.setTransform(R.S, 0, 0, R.S, 0, 0);
     ctx.imageSmoothingEnabled = false;
-    if (V.uni) buildCrowd(V.uni);
+    if (V.uni) buildCrowd(V.uni, envOf(V));
     if (V.mode === 'kick' && V.kick) {
       drawKick(ctx, V);
       drawHUD(ctx, V);
