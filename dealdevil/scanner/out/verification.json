@@ -1,51 +1,132 @@
 {
- "generatedAt": "2026-11-04 17:59 UTC",
+ "generatedAt": "2026-11-04 18:24 UTC",
  "results": {
   "roccos-huntington-aycet": {
    "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "All-You-Can-Eat Taco Tuesday · Pricing $34.99 All-You-Can-Eat Tacos $7 Rocco's House Margaritas $5 Cervezas $27 Rocco's House Pitchers $70 Bottles of Traditional Silver Tequila",
+   "snippetHash": "90fa5b9b82db0af8",
    "url": "https://www.roccostacos.com/event/taco-tuesday-huntington/",
    "tokens": [
     "34.99",
     "Tuesday"
    ],
-   "checkedAt": "2026-11-04T17:58:45+00:00"
+   "checkedAt": "2026-11-04T18:23:59+00:00"
   },
   "roccos-huntington-margs": {
    "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "All-You-Can-Eat Taco Tuesday · Every Tuesday at Rocco's Tacos Huntington Station, open to close. Join us for an all-you-can-eat fiesta featuring unlimited De Casa tacos made fresh to order, $7 margaritas, and unbeatable drink specials at th…",
+   "snippetHash": "6b07274112730fd6",
    "url": "https://www.roccostacos.com/event/taco-tuesday-huntington/",
    "tokens": [
     "$7",
     "margarita",
     "Tuesday"
    ],
-   "checkedAt": "2026-11-04T17:58:45+00:00"
+   "checkedAt": "2026-11-04T18:23:59+00:00"
   },
   "luckystrike-commack-family": {
    "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Family Unlimited · Enjoy unlimited bowling, shoes included, for only $15.99. Plus, enjoy specially priced select appetizers, Craft Lemonades and Dirty Sodas while you bowl.",
+   "snippetHash": "bbd176d3445789da",
    "url": "https://www.luckystrikeent.com/location/lucky-strike-commack",
    "tokens": [
     "15.99",
     "Family"
    ],
-   "checkedAt": "2026-11-04T17:58:48+00:00"
+   "checkedAt": "2026-11-04T18:24:03+00:00"
+  },
+  "lucky-strike-commack-night-strike-sun": {
+   "status": "verified",
+   "matchScope": "window",
+   "matchedSnippet": "…bowling, shoes included, for only $19.99, plus delicious food & drink specials. · Night Strike · Wednesday starting at 7pm · Night Strike · Thursday starting at 7pm · Night Strike · Sunday starting at 6pm · Night Strike · Monday starting a…",
+   "snippetHash": "1d760a39482ca1b1",
+   "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+   "tokens": [
+    "Night Strike",
+    "$19.99",
+    "Sunday starting at 6PM"
+   ],
+   "checkedAt": "2026-11-04T18:24:06+00:00"
+  },
+  "lucky-strike-commack-night-strike-monthu": {
+   "status": "verified",
+   "matchScope": "window",
+   "matchedSnippet": "…uded, for only $19.99, plus delicious food & drink specials. · Night Strike · Wednesday starting at 7pm · Night Strike · Thursday starting at 7pm · Night Strike · Sunday starting at 6pm · Night Strike · Monday starting at 7pm · Night Strike…",
+   "snippetHash": "9c0f93022002617b",
+   "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+   "tokens": [
+    "Night Strike",
+    "$19.99",
+    "Monday starting at 7PM",
+    "Thursday starting at 7PM"
+   ],
+   "checkedAt": "2026-11-04T18:24:06+00:00"
+  },
+  "lucky-strike-commack-arcade-wed": {
+   "status": "verified",
+   "matchScope": "window",
+   "matchedSnippet": "…e rental not included. Terms & conditions apply. · Half-Price Arcade Play · Every Wednesday | Open - Close · Every Wednesday | Open - Close · Get your game on and enjoy 50% off arcade play all day long. Play more of your favorites for less,…",
+   "snippetHash": "0e45c0472e671af7",
+   "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+   "tokens": [
+    "Half-Price Arcade Play",
+    "Every Wednesday",
+    "50% off arcade play"
+   ],
+   "checkedAt": "2026-11-04T18:24:06+00:00"
+  },
+  "lucky-strike-commack-after-party": {
+   "status": "verified",
+   "matchScope": "window",
+   "matchedSnippet": "…ght alive with After Party, our special that gives you unlimited bowling for only $28.99. Perfect for friends, fun, and unforgettable nights out. · After Party · Friday starting at 8pm · After Party · Saturday starting at 8pm · After Party…",
+   "snippetHash": "92c292f98d9d01a2",
+   "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+   "tokens": [
+    "After Party",
+    "unlimited bowling for only $28.99",
+    "Friday starting at 8PM"
+   ],
+   "checkedAt": "2026-11-04T18:24:06+00:00"
+  },
+  "lucky-strike-commack-the-special": {
+   "status": "verified",
+   "matchScope": "window",
+   "matchedSnippet": "…& conditions apply. · The Special · Daily | Open - Close · Daily | Open - Close · Buy two games, get the third 50% off! · Daily | Open - Close · The Special makes every game more fun (and more affordable). Gather your crew, hit the lanes,…",
+   "snippetHash": "faa3c1e91555c4c4",
+   "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+   "tokens": [
+    "The Special",
+    "Daily",
+    "Buy two games, get the third 50% off"
+   ],
+   "checkedAt": "2026-11-04T18:24:06+00:00"
   },
   "uncleg-northbabylon-pizza": {
    "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "…ery aisle. · Hand-stretched dough, house-made tomato sauce, fresh mozzarella from our bar. Two 20″ pizzas for $22 every Wednesday & Friday.",
+   "snippetHash": "744065474ce8de65",
    "url": "https://uncleg.com/stores/north-babylon/",
    "tokens": [
     "$22",
     "Wednesday"
    ],
-   "checkedAt": "2026-11-04T17:58:52+00:00"
+   "checkedAt": "2026-11-04T18:24:09+00:00"
   },
-  "luckystrike-commack-nightstrike": {
+  "saltbarrel-oysters": {
    "status": "verified",
-   "url": "https://www.luckystrikeent.com/location/lucky-strike-commack",
+   "matchScope": "block",
+   "matchedSnippet": "HAPPY HOUR 3pm to 6pm EVERYDAY! · Buck A Shuck Local Oysters",
+   "snippetHash": "08d859abebb51ddb",
+   "url": "https://saltandbarrel.com/happy-hours/",
    "tokens": [
-    "19.99",
-    "Night Strike"
+    "HAPPY HOUR 3 PM to 6 PM EVERYDAY",
+    "Buck A Shuck Local Oysters"
    ],
-   "checkedAt": "2026-11-04T17:58:52+00:00"
+   "checkedAt": "2026-11-04T18:24:13+00:00"
   },
   "amc-tickets-tue-wed": {
    "status": "unreachable",
@@ -56,7 +137,7 @@
     "Tuesday",
     "Wednesday"
    ],
-   "checkedAt": "2026-11-04T17:58:55+00:00"
+   "checkedAt": "2026-11-04T18:24:16+00:00"
   },
   "amc-combo-tue-wed": {
    "status": "unreachable",
@@ -66,7 +147,7 @@
     "popcorn",
     "50%"
    ],
-   "checkedAt": "2026-11-04T17:58:55+00:00"
+   "checkedAt": "2026-11-04T18:24:16+00:00"
   },
   "regal-popcorn-tue": {
    "status": "unreachable",
@@ -77,7 +158,7 @@
     "popcorn",
     "Tuesday"
    ],
-   "checkedAt": "2026-11-04T17:58:55+00:00"
+   "checkedAt": "2026-11-04T18:24:16+00:00"
   },
   "regal-candy-mon": {
    "status": "unreachable",
@@ -88,53 +169,81 @@
     "candy",
     "Monday"
    ],
-   "checkedAt": "2026-11-04T17:58:55+00:00"
+   "checkedAt": "2026-11-04T18:24:16+00:00"
   },
   "cinemark-tickets-tue": {
    "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Are movie tickets 50% off on Discount Tuesdays?",
+   "snippetHash": "7c90cfa8a894fc3e",
    "url": "https://www.cinemark.com/discounts/discount-tuesdays",
    "tokens": [
     "Discount Tuesdays",
     "50%"
    ],
-   "checkedAt": "2026-11-04T17:59:01+00:00"
+   "checkedAt": "2026-11-04T18:24:20+00:00"
   },
   "dnb-games-wed": {
    "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "PLAN YOUR DAY OF GAMING · Half-Price Wednesdays: Maximize your chip count by visiting on any given Wednesday to enjoy 50% off all standard arcade titles all day long.",
+   "snippetHash": "06578347eed7400e",
    "url": "https://www.daveandbusters.com/us/en/play",
    "tokens": [
     "Half",
     "Wednesday"
    ],
-   "checkedAt": "2026-11-04T17:59:04+00:00"
+   "checkedAt": "2026-11-04T18:24:23+00:00"
   },
   "bww-boneless-thu": {
    "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Free Wings Every Thursday​ · Enjoy BOGO free boneless wings Thursdays with takeout and delivery from Buffalo Wild Wings GO​.",
+   "snippetHash": "4f2a6529b6db34c8",
    "url": "https://www.buffalowildwings.com/bogo-days/",
    "tokens": [
     "BOGO",
     "Boneless",
     "Thursday"
    ],
-   "checkedAt": "2026-11-04T17:59:07+00:00"
+   "checkedAt": "2026-11-04T18:24:26+00:00"
   },
-  "bww-traditional-tue": {
+  "bww-traditional-tue-50": {
    "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Free Wings Every Thursday​ · Get BOGO 50% off Traditional Wings on TuesdaysView Details",
+   "snippetHash": "fefe38fe23518132",
    "url": "https://www.buffalowildwings.com/bogo-days/",
    "tokens": [
-    "Tuesday",
-    "Traditional"
+    "BOGO 50% off Traditional Wings",
+    "Tuesdays"
    ],
-   "checkedAt": "2026-11-04T17:59:07+00:00"
+   "checkedAt": "2026-11-04T18:24:31+00:00"
+  },
+  "bww-traditional-tue-bogo-free": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "BOGO Days FAQs · Every Tuesday when you buy one 6-, 10- or 15-count traditional wings with a valid Buffalo Wild Wings Rewards account you get one of equal value free. Dine-in only. Not a member, get your free Buffalo Wild Wings Rewards acco…",
+   "snippetHash": "215c7c6aa8dd73e8",
+   "url": "https://www.buffalowildwings.com/bogo-days/",
+   "tokens": [
+    "15-count traditional wings",
+    "Rewards account",
+    "Dine-in only"
+   ],
+   "checkedAt": "2026-11-04T18:24:31+00:00"
   },
   "wholefoods-oysters-fri": {
    "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "12 for $12 All Live Oysters",
+   "snippetHash": "e53f7977c4058e89",
    "url": "https://www.wholefoodsmarket.com/days-of-deals",
    "tokens": [
-    "oysters",
-    "$1"
+    "12 for $12",
+    "live oysters"
    ],
-   "checkedAt": "2026-11-04T17:59:10+00:00"
+   "checkedAt": "2026-11-04T18:24:34+00:00"
   }
  }
 }
