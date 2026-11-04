@@ -1,0 +1,834 @@
+<title>DealDevil</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,800;1,800&display=swap">
+<style>
+/* Layout: one thumb-first column. Brand row and search scroll away; time + category controls stay pinned; deals read like shelf price tags in grouped lists; every edit happens in a bottom sheet. */
+:root{
+  --paper:#F5F3F1; --card:#FFFFFF; --ink:#1B1314; --muted:#6C6163; --line:#E4DEDB; --sunk:#ECE7E4;
+  --devil:#CF1528; --on-devil:#FFFFFF; --tag:#FFD43B; --on-tag:#1B1314; --ok:#15724A; --warn:#975400;
+  --scrim:rgba(24,10,12,.42); --shadow:rgba(27,19,20,.18);
+  --display:"Barlow Condensed","Arial Narrow","Roboto Condensed",system-ui,sans-serif;
+  --body:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --r:16px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#121012; --card:#1C191B; --ink:#F3EEEE; --muted:#A3999B; --line:#2F2A2C; --sunk:#262224;
+  --devil:#FF4A5B; --on-devil:#1F0306; --tag:#FFD43B; --on-tag:#1B1314; --ok:#45D190; --warn:#F2A541;
+  --scrim:rgba(0,0,0,.62); --shadow:rgba(0,0,0,.5); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#121012; --card:#1C191B; --ink:#F3EEEE; --muted:#A3999B; --line:#2F2A2C; --sunk:#262224;
+  --devil:#FF4A5B; --on-devil:#1F0306; --tag:#FFD43B; --on-tag:#1B1314; --ok:#45D190; --warn:#F2A541;
+  --scrim:rgba(0,0,0,.62); --shadow:rgba(0,0,0,.5); color-scheme:dark}
+
+*{box-sizing:border-box}
+html.locked{overflow:hidden}
+body{background:var(--paper);color:var(--ink);font:15px/1.4 var(--body);-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--paper)}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--devil);outline-offset:2px}
+.wrap{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.i-s{width:15px;height:15px}
+.i-fill{fill:currentColor;stroke:none}
+.num{font-variant-numeric:tabular-nums}
+
+/* Top */
+.top-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:14px 10px}
+.brand{display:flex;align-items:center;gap:8px;min-width:0}
+.brand svg{width:34px;height:34px;flex:none}
+.word{display:flex;flex-direction:column;line-height:.9}
+.word b{font:italic 800 29px/0.9 var(--display);letter-spacing:-.01em;text-transform:uppercase}
+.word b span{color:var(--devil)}
+.word small{font:600 11px/1.2 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.top-actions{display:flex;align-items:center;gap:6px;flex:none}
+.chip-btn{display:inline-flex;align-items:center;gap:6px;height:40px;max-width:46vw;padding:0 12px 0 10px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-weight:600;font-size:14px}
+.chip-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icon-btn{position:relative;display:inline-grid;place-items:center;width:40px;height:40px;border-radius:999px;border:1px solid var(--line);background:var(--card)}
+.icon-btn[aria-pressed="true"]{background:var(--devil);border-color:var(--devil);color:var(--on-devil)}
+.icon-btn[aria-pressed="true"] .i{fill:currentColor}
+.badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--ink);color:var(--paper);font:700 11px/18px var(--body);text-align:center}
+.search{display:flex;align-items:center;gap:8px;height:46px;padding:0 14px;margin-bottom:10px;border-radius:12px;background:var(--sunk);color:var(--muted)}
+.search input{flex:1;min-width:0;height:100%;border:0;background:transparent;color:var(--ink);font-size:16px;outline:none;-webkit-appearance:none;appearance:none}
+.search input::placeholder{color:var(--muted)}
+
+/* Pinned controls */
+.controls{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--paper);border-bottom:1px solid var(--line)}
+.seg{display:grid;grid-template-columns:1fr 1.35fr 1fr;gap:3px;padding:3px;border-radius:12px;background:var(--sunk);margin-top:6px}
+.seg button{height:36px;border:0;border-radius:9px;background:transparent;font-weight:650;font-size:14px;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.seg button[aria-selected="true"]{background:var(--card);color:var(--ink);box-shadow:0 1px 3px var(--shadow)}
+.seg b{font-variant-numeric:tabular-nums;color:var(--devil)}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--devil);flex:none}
+.rail{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-block:10px 12px;scroll-padding-inline:16px}
+.rail::-webkit-scrollbar{display:none}
+.cat{flex:none;display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px 0 10px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-weight:600;font-size:14px;white-space:nowrap}
+.cat em{font-style:normal;color:var(--muted);font-variant-numeric:tabular-nums;font-weight:600}
+.cat[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.cat[aria-pressed="true"] em{color:inherit;opacity:.7}
+
+/* Feed */
+main{padding-bottom:8px}
+.note{display:flex;gap:10px;align-items:flex-start;margin-top:14px;padding:12px 14px;border-radius:12px;background:var(--sunk);color:var(--ink);font-size:14px}
+.note .i{color:var(--warn);margin-top:1px}
+button.note{width:100%;border:0;text-align:left;align-items:center}
+button.note span{flex:1}
+.note.inbox .i{color:var(--devil);margin-top:0}
+.inbox-row{display:grid;grid-template-columns:62px minmax(0,1fr);gap:12px;padding:12px}
+.inbox-row + .inbox-row{border-top:1px solid var(--line)}
+.inbox-row .actions{margin-top:8px}
+.inbox-row .actions .btn{min-height:42px;flex:1 1 90px}
+.src-link{font-size:13.5px;font-weight:600;color:var(--ink)}
+.sec-h{display:flex;align-items:center;gap:8px;margin:22px 2px 8px;font:700 12.5px/1 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.sec-h .n{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600}
+.sec-h.live{color:var(--devil)}
+.list{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.deal{display:grid;grid-template-columns:62px minmax(0,1fr) 22px;gap:12px;align-items:center;width:100%;padding:12px 12px 12px 10px;border:0;background:transparent;text-align:left}
+.deal + .deal{border-top:1px solid var(--line)}
+.deal:active{background:var(--sunk)}
+.deal.dim{opacity:.55}
+.tag{position:relative;display:grid;place-items:center;width:62px;height:50px;padding-left:9px;background:var(--tag);color:var(--on-tag);clip-path:polygon(11px 0,100% 0,100% 100%,11px 100%,0 50%);font:800 25px/1 var(--display);letter-spacing:-.01em;text-transform:uppercase;white-space:nowrap}
+.tag::before{content:"";position:absolute;left:9px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--card)}
+.tag.m{font-size:20px}.tag.s{font-size:15px}.tag.xs{font-size:12.5px}
+.tag.empty{color:var(--on-tag);opacity:.9}
+.d-main{display:flex;flex-direction:column;gap:3px;min-width:0}
+.d-title{font-weight:650;font-size:16px;line-height:1.25;overflow-wrap:anywhere}
+.d-meta{display:block;color:var(--muted);font-size:13.5px;line-height:1.4}
+.d-meta .i,.dt-sub .i{display:inline-block;vertical-align:-2px;margin-right:5px;color:var(--muted)}
+.d-meta .sep,.dt-sub .sep{padding:0 4px}
+.d-flags{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.d-saved{color:var(--devil);display:grid;place-items:center}
+.pill{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:6px;font:700 12px/1 var(--body);letter-spacing:.02em;white-space:nowrap}
+.p-live{background:var(--devil);color:var(--on-devil)}
+.p-live::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulse 1.6s ease-in-out infinite}
+.p-later{border:1.5px solid var(--ink);color:var(--ink)}
+.p-next{background:var(--sunk);color:var(--muted)}
+.p-unv{border:1.5px dashed var(--warn);color:var(--warn);font-weight:650}
+.p-ok{color:var(--ok);font-weight:650;padding:0 2px}
+.p-stale{color:var(--warn);font-weight:650;padding:0 2px}
+.empty-state{margin-top:28px;padding:28px 20px;text-align:center;border:1.5px dashed var(--line);border-radius:var(--r);color:var(--muted)}
+.empty-state h3{margin:0 0 6px;font:800 24px/1.05 var(--display);text-transform:uppercase;color:var(--ink);text-wrap:balance}
+.empty-state p{margin:0 auto;max-width:34ch}
+.empty-state .btn{margin-top:14px}
+.skel{height:74px;border-top:1px solid var(--line);background:linear-gradient(90deg,transparent,var(--sunk),transparent) 0 0/200% 100%;animation:sheen 1.2s linear infinite}
+.skel:first-child{border-top:0}
+.foot{padding-top:14px;padding-bottom:calc(110px + env(safe-area-inset-bottom,0px));color:var(--muted);font-size:13px;display:flex;flex-direction:column;gap:6px}
+.linkish{border:0;background:none;padding:0;color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+
+/* FAB */
+.fab{position:fixed;z-index:25;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:6px;height:56px;padding:0 22px 0 16px;border:0;border-radius:999px;background:var(--devil);color:var(--on-devil);font:800 19px/1 var(--display);letter-spacing:.05em;text-transform:uppercase;box-shadow:0 10px 26px var(--shadow)}
+.fab .i{width:22px;height:22px;stroke-width:2.6}
+
+/* Sheet */
+.scrim{position:fixed;inset:0;z-index:40;background:var(--scrim)}
+.sheet{position:fixed;z-index:50;left:0;right:0;bottom:0;max-height:calc(100% - 36px - env(safe-area-inset-top,0px));overflow-y:auto;overscroll-behavior:contain;background:var(--card);border-radius:22px 22px 0 0;padding-top:8px;padding-bottom:calc(22px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));box-shadow:0 -12px 40px var(--shadow);animation:up .2s ease-out}
+.sheet-in{max-width:600px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 2px}
+.sheet h2{margin:0;font:800 30px/1 var(--display);text-transform:uppercase;letter-spacing:-.005em;text-wrap:balance;overflow-wrap:anywhere}
+.dt-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center}
+.tag.big{width:96px;height:76px;padding-left:14px;font-size:36px;clip-path:polygon(16px 0,100% 0,100% 100%,16px 100%,0 50%)}
+.tag.big::before{left:13px;width:9px;height:9px;margin-top:-4.5px}
+.tag.big.m{font-size:29px}.tag.big.s{font-size:22px}.tag.big.xs{font-size:17px}
+.dt-sub{margin:6px 0 0;color:var(--muted);font-size:15px;line-height:1.4}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.week span{height:34px;display:grid;place-items:center;border-radius:8px;background:var(--sunk);color:var(--muted);font:700 13px/1 var(--body)}
+.week span.on{background:var(--ink);color:var(--paper)}
+.week span.today{box-shadow:inset 0 0 0 2px var(--devil)}
+.hours{display:flex;justify-content:space-between;gap:10px;font-weight:650;font-size:15px}
+.hours span:last-child{color:var(--muted);font-weight:500;text-align:right}
+.details{margin:0;font-size:15px;line-height:1.5;white-space:pre-line;overflow-wrap:anywhere}
+.src{padding:12px 14px;border-radius:12px;background:var(--sunk);font-size:13.5px;color:var(--muted);line-height:1.45;overflow-wrap:anywhere}
+.src strong{color:var(--ink)}
+.src a{color:var(--ink);font-weight:600}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.actions > *{flex:1 1 140px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:48px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-weight:650;font-size:15px;text-decoration:none;color:var(--ink)}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.btn.hot{background:var(--devil);border-color:var(--devil);color:var(--on-devil)}
+.btn.ok{color:var(--ok);border-color:var(--ok)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--devil);border-color:transparent;background:transparent}
+.btn.danger.armed{background:var(--devil);color:var(--on-devil)}
+.btn[aria-pressed="true"] .i{fill:var(--devil);stroke:var(--devil)}
+.minor{display:flex;justify-content:space-between;gap:8px}
+.minor .btn{flex:0 1 auto;min-height:44px}
+
+/* Form */
+form{display:flex;flex-direction:column;gap:14px}
+.f{display:flex;flex-direction:column;gap:6px;font-weight:650;font-size:14px;min-width:0;border:0;margin:0;padding:0}
+.f legend{padding:0;margin-bottom:6px}
+.f input,.f textarea{width:100%;min-height:48px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--paper);font-size:16px;font-weight:500}
+.f textarea{resize:vertical;min-height:72px}
+.f input:focus,.f textarea:focus{border-color:var(--ink);outline:none}
+.row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.days button{height:44px;border-radius:10px;border:1px solid var(--line);background:var(--paper);font-weight:700}
+.days button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.presets{display:flex;gap:14px;margin-top:8px;font-weight:600;font-size:13.5px}
+.hint{margin:-6px 0 0;color:var(--muted);font-size:13px;font-weight:500}
+.err{margin:0;padding:10px 12px;border-radius:10px;background:var(--sunk);color:var(--devil);font-weight:650}
+.town-list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.town-list button{display:flex;justify-content:space-between;align-items:center;min-height:48px;padding:0 14px;border:0;background:transparent;text-align:left;font-weight:600;font-size:15.5px}
+.town-list button + button{border-top:1px solid var(--line)}
+.town-list button[aria-current="true"]{color:var(--devil)}
+
+/* Toast */
+.toast{position:fixed;z-index:60;left:50%;transform:translateX(-50%);bottom:calc(88px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:14px;max-width:calc(100% - 32px);padding:12px 16px;border-radius:12px;background:var(--ink);color:var(--paper);font-weight:600;box-shadow:0 10px 30px var(--shadow)}
+.toast button{border:0;background:none;color:var(--tag);font-weight:800;padding:0}
+
+@keyframes pulse{50%{opacity:.35}}
+@keyframes sheen{to{background-position:-200% 0}}
+@keyframes up{from{translate:0 28px;opacity:0}to{translate:0 0;opacity:1}}
+@media (min-width:720px){.sheet{left:50%;right:auto;width:660px;margin-left:-330px;border-radius:22px;bottom:16px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand">
+      <svg viewBox="0 0 34 34" aria-hidden="true"><path d="M12 14C11 9.5 9 7.2 6.5 4.5M22 14c1-4.5 3-6.8 5.5-9.5" fill="none" stroke="var(--devil)" stroke-width="2.6" stroke-linecap="round"/><path d="M8.5 13.5H29a2 2 0 0 1 2 2V28a2 2 0 0 1-2 2H8.5L2.5 21.75z" fill="var(--devil)"/><circle cx="9.5" cy="21.75" r="2" fill="var(--paper)"/><path d="M16 25.5h9M16 20h11" stroke="var(--on-devil)" stroke-width="2.2" stroke-linecap="round"/></svg>
+      <div class="word"><b>Deal<span>Devil</span></b><small>Suffolk County</small></div>
+    </div>
+    <div class="top-actions">
+      <button id="homeBtn" class="chip-btn" type="button" aria-label="Change home town"></button>
+      <button id="savedBtn" class="icon-btn" type="button" aria-pressed="false" aria-label="Show saved deals only"></button>
+    </div>
+  </div>
+  <div class="wrap">
+    <label class="search" for="q"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="q" type="search" placeholder="Search deals, places, towns" autocomplete="off" enterkeyhint="search"></label>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="wrap">
+    <div class="seg" role="tablist" id="seg" aria-label="When">
+      <button type="button" role="tab" data-time="all" aria-selected="true">All</button>
+      <button type="button" role="tab" data-time="now" aria-selected="false"><span class="live-dot" aria-hidden="true"></span>Live now <b id="liveCount" class="num">0</b></button>
+      <button type="button" role="tab" data-time="today" aria-selected="false">Today</button>
+    </div>
+    <div class="rail" id="rail" aria-label="Categories"></div>
+  </div>
+</div>
+
+<main class="wrap" id="feed" aria-live="polite"></main>
+<footer class="wrap foot" id="foot"></footer>
+
+<button id="fab" class="fab" type="button" hidden><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Add deal</button>
+<div id="scrim" class="scrim" hidden></div>
+<section id="sheet" class="sheet" role="dialog" aria-modal="true" aria-label="Deal" tabindex="-1" hidden></section>
+<div id="toast" class="toast" role="status" hidden></div>
+<datalist id="townList"></datalist>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- Static data ---------- */
+const CATS = [
+  {id:'food',    label:'Food',               icon:'food'},
+  {id:'happy',   label:'Happy Hour',         icon:'glass'},
+  {id:'grocery', label:'Grocery',            icon:'basket'},
+  {id:'coffee',  label:'Coffee & Sweets',    icon:'cup'},
+  {id:'fun',     label:'Fun & Nightlife',    icon:'star'},
+  {id:'gas',     label:'Gas & Car',          icon:'fuel'},
+  {id:'shop',    label:'Shopping & Services',icon:'bag'}
+];
+const CAT = Object.fromEntries(CATS.map(c => [c.id, c]));
+
+const ICON = {
+  all:'<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>',
+  food:'<path d="M7 3v5a2 2 0 0 0 4 0V3M9 3v5M9 10v11M17 21V3c-2 1.4-3 3.8-3 7v3h3"/>',
+  glass:'<path d="M5 4h14l-7 8zM12 12v8M8.5 20h7"/>',
+  basket:'<path d="M3 10h18l-1.6 9.1a1 1 0 0 1-1 .9H5.6a1 1 0 0 1-1-.9zM7.5 10 12 4l4.5 6"/>',
+  cup:'<path d="M4 9h12v4a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM16 10.5h1.5a2.5 2.5 0 0 1 0 5H16M3 21h14M8 3c-.6 1 .6 2 0 3M12 3c-.6 1 .6 2 0 3"/>',
+  star:'<path d="m12 3.5 2.5 5.3 5.8.7-4.3 4 1.1 5.7L12 16.4l-5.1 2.8 1.1-5.7-4.3-4 5.8-.7z"/>',
+  fuel:'<path d="M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M4 21h12M5 10h10M15 8l2.5 2.5V17a1.5 1.5 0 0 0 3 0V9.5L18 7"/>',
+  bag:'<path d="M5 8h14l-1 12.1a1 1 0 0 1-1 .9H7a1 1 0 0 1-1-.9zM9 8V6.5a3 3 0 0 1 6 0V8"/>',
+  pin:'<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
+  heart:'<path d="M12 20.3S3.5 15.4 3.5 9.4A4.4 4.4 0 0 1 12 7.1a4.4 4.4 0 0 1 8.5 2.3c0 6-8.5 10.9-8.5 10.9z"/>',
+  check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  arrow:'<path d="M7 17 17 7M9 7h8v8"/>',
+  edit:'<path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/>',
+  trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+  chev:'<path d="m6 9 6 6 6-6"/>',
+  alert:'<path d="M12 4 2.5 20h19zM12 10v4.5M12 17.5v.01"/>',
+  undo:'<path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/>'
+};
+const icon = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON[n] || ''}</svg>`;
+
+/* Approximate town centers, Suffolk County NY. Distances are labelled "~". */
+const TOWNS = {
+  'Amityville':[40.679,-73.417],'Babylon':[40.696,-73.326],'Bay Shore':[40.725,-73.245],'Bayport':[40.738,-73.051],
+  'Bellport':[40.757,-72.939],'Blue Point':[40.744,-73.034],'Bohemia':[40.769,-73.115],'Brentwood':[40.781,-73.246],
+  'Brookhaven':[40.779,-72.915],'Calverton':[40.916,-72.744],'Center Moriches':[40.800,-72.790],'Centereach':[40.858,-73.100],
+  'Central Islip':[40.791,-73.202],'Commack':[40.843,-73.293],'Copiague':[40.681,-73.400],'Coram':[40.869,-73.002],
+  'Cutchogue':[41.011,-72.485],'Deer Park':[40.762,-73.329],'Dix Hills':[40.805,-73.336],'East Hampton':[40.963,-72.185],
+  'East Islip':[40.732,-73.186],'East Northport':[40.877,-73.325],'East Patchogue':[40.767,-72.996],'East Setauket':[40.941,-73.106],
+  'Farmingville':[40.831,-73.030],'Greenport':[41.103,-72.359],'Hampton Bays':[40.869,-72.518],'Hauppauge':[40.826,-73.203],
+  'Holbrook':[40.812,-73.078],'Holtsville':[40.815,-73.045],'Huntington':[40.868,-73.426],'Huntington Station':[40.853,-73.411],
+  'Islandia':[40.804,-73.169],'Islip':[40.730,-73.210],'Kings Park':[40.886,-73.257],'Lake Grove':[40.853,-73.115],
+  'Lake Ronkonkoma':[40.835,-73.131],'Lindenhurst':[40.687,-73.374],'Mastic':[40.802,-72.841],'Mastic Beach':[40.767,-72.852],
+  'Mattituck':[40.991,-72.534],'Medford':[40.818,-73.000],'Melville':[40.793,-73.415],'Miller Place':[40.960,-72.996],
+  'Montauk':[41.036,-71.954],'Mount Sinai':[40.947,-73.030],'Nesconset':[40.852,-73.154],'North Babylon':[40.716,-73.322],
+  'Northport':[40.901,-73.343],'Oakdale':[40.740,-73.138],'Patchogue':[40.766,-73.015],'Port Jefferson':[40.946,-73.069],
+  'Port Jefferson Station':[40.925,-73.047],'Riverhead':[40.917,-72.662],'Rocky Point':[40.953,-72.925],'Ronkonkoma':[40.815,-73.112],
+  'Sag Harbor':[40.998,-72.293],'Sayville':[40.736,-73.082],'Selden':[40.866,-73.036],'Setauket':[40.946,-73.112],
+  'Shirley':[40.801,-72.868],'Smithtown':[40.856,-73.201],'Sound Beach':[40.956,-72.968],'Southampton':[40.884,-72.390],
+  'Southold':[41.065,-72.426],'St. James':[40.879,-73.157],'Stony Brook':[40.926,-73.141],'Wading River':[40.950,-72.843],
+  'West Babylon':[40.718,-73.354],'West Islip':[40.706,-73.306],'Westhampton Beach':[40.803,-72.614],'Wyandanch':[40.754,-73.360]
+};
+const TOWN_NAMES = Object.keys(TOWNS).sort();
+const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DOW1 = ['S','M','T','W','T','F','S'];
+const ALL_DAYS = [0,1,2,3,4,5,6];
+const DEFAULT_HOME = 'Ronkonkoma';
+
+/* ---------- Helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeUrl = u => (typeof u === 'string' && /^https?:\/\//i.test(u.trim())) ? u.trim() : null;
+const LS = {
+  get(k){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const pad = n => String(n).padStart(2, '0');
+const isoDay = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parseDay = s => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? new Date(+m[1], +m[2]-1, +m[3]) : null; };
+const toMin = t => { const m = /^(\d{1,2}):(\d{2})/.exec(t || ''); return m ? (+m[1])*60 + (+m[2]) : null; };
+function fmtTime(t){
+  const m = toMin(t); if (m == null) return '';
+  const h = Math.floor(m/60) % 24, mm = m % 60, h12 = ((h + 11) % 12) + 1;
+  return h12 + (mm ? ':' + pad(mm) : '') + (h < 12 ? 'a' : 'p');
+}
+function fmtDate(s){
+  const d = parseDay(s); if (!d) return '';
+  return d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
+}
+function ago(s){
+  const d = parseDay(s); if (!d) return '';
+  const t = new Date(); t.setHours(0,0,0,0);
+  const days = Math.round((t - d) / 864e5);
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 30) return days + 'd ago';
+  return Math.floor(days/30) + 'mo ago';
+}
+function daysOf(d){ return Array.isArray(d.days) && d.days.length ? d.days.filter(n => n >= 0 && n <= 6) : ALL_DAYS; }
+function daysText(days){
+  const k = [...days].sort().join('');
+  if (k === '0123456') return 'Every day';
+  if (k === '12345') return 'Weekdays';
+  if (k === '06') return 'Weekends';
+  return [...days].sort((a,b) => ((a+6)%7) - ((b+6)%7)).map(n => DOW[n]).join(', ');
+}
+function hoursText(d){
+  if (d.hoursKnown === false) return 'Hours not confirmed';
+  if (!d.start) return 'All day';
+  if (!d.end) return 'From ' + fmtTime(d.start) + ' til close';
+  return fmtTime(d.start) + ' – ' + fmtTime(d.end);
+}
+function tagClass(t){ const n = (t || '').length; return n <= 3 ? '' : n <= 4 ? 'm' : n <= 6 ? 's' : 'xs'; }
+function tagHTML(t, big){ const v = (t || '').trim(); return `<span class="tag ${big ? 'big ' : ''}${v ? tagClass(v) : 'm empty'}" aria-hidden="true">${esc(v || 'DEAL')}</span>`; }
+
+/* When is this deal on, relative to now? */
+function occurrence(d, now){
+  const today = isoDay(now);
+  if (d.validUntil && today > d.validUntil) return {state:'expired', label:'Ended ' + fmtDate(d.validUntil), key:1e9};
+  if (d.validFrom && today < d.validFrom) return {state:'next', label:'Starts ' + fmtDate(d.validFrom), key:5e8};
+  const days = daysOf(d), dow = now.getDay(), mins = now.getHours()*60 + now.getMinutes();
+  const s = toMin(d.start), eRaw = toMin(d.end), known = d.hoursKnown !== false;
+  const nextLabel = () => {
+    for (let k = 1; k <= 7; k++){
+      const dd = (dow + k) % 7;
+      if (days.includes(dd)) return {state:'next', label:(k === 1 ? 'Tomorrow' : DOW[dd]) + (known && s != null ? ' ' + fmtTime(d.start) : ''), key:k*1440 + (s || 0)};
+    }
+    return {state:'next', label:'Check days', key:9e8};
+  };
+  if (!known) return days.includes(dow) ? {state:'today', label:'Today · check hours', key:1440} : nextLabel();
+  if (s == null) return days.includes(dow) ? {state:'live', label:'All day', key:1440, end:1440} : nextLabel();
+  const e = eRaw == null ? 1440 : eRaw;
+  const overnight = eRaw != null && e <= s;
+  const endLabel = eRaw == null ? 'til close' : ((e - mins + 1440) % 1440 <= 60 ? 'ends ' : 'til ') + fmtTime(d.end);
+  if (days.includes(dow) && (overnight ? mins >= s : (mins >= s && mins < e))) return {state:'live', label:endLabel, key:(e - mins + 1440) % 1440, soon:(e - mins + 1440) % 1440 <= 60};
+  if (overnight && days.includes((dow + 6) % 7) && mins < e) return {state:'live', label:endLabel, key:e - mins, soon:e - mins <= 60};
+  if (days.includes(dow) && mins < s) return {state:'later', label:'Starts ' + fmtTime(d.start), key:s};
+  return nextLabel();
+}
+function distanceMi(d, homeName){
+  const a = (typeof d.lat === 'number' && typeof d.lng === 'number') ? [d.lat, d.lng] : TOWNS[d.town];
+  const b = TOWNS[homeName];
+  if (!a || !b) return null;
+  const R = 3958.8, r = x => x * Math.PI / 180;
+  const dLat = r(b[0]-a[0]), dLng = r(b[1]-a[1]);
+  const h = Math.sin(dLat/2)**2 + Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function distLabel(mi, d){
+  if (mi == null) return '';
+  if (d.town === state.home) return 'In town';
+  if (mi < 1) return '<1 mi';
+  return '~' + (mi < 10 ? mi.toFixed(1) : Math.round(mi)) + ' mi';
+}
+function suggestTag(t){
+  const s = (t || '').toLowerCase();
+  let m = (t || '').match(/\$\s?\d+(?:\.\d{1,2})?/); if (m) return m[0].replace(/\s/g, '');
+  m = s.match(/(\d{1,3})\s?%/); if (m) return m[1] + '%';
+  if (/half[\s-]?(off|price)/.test(s)) return '50%';
+  if (/\bbogo\b|buy one,? get one/.test(s)) return 'BOGO';
+  if (/\b2[\s-]?for[\s-]?1\b|two for one/.test(s)) return '2-FOR-1';
+  if (/\bfree\b/.test(s)) return 'FREE';
+  if (/happy hour/.test(s)) return 'HH';
+  return '';
+}
+
+/* ---------- State ---------- */
+const state = {
+  deals: [], synced: false, conn: 'loading', time: 'all', cat: 'all', q: '',
+  savedOnly: false, showHidden: false, home: DEFAULT_HOME, homeSet: false, saved: {},
+  canEdit: false, uid: null, sheet: null, openId: null
+};
+let db = null, user = null, prefsRef = null;
+
+const cachedDeals = LS.get('dd1:deals');
+if (Array.isArray(cachedDeals)) state.deals = cachedDeals;
+function applyPrefs(p){
+  if (!p || typeof p !== 'object') return;
+  if (typeof p.home === 'string' && TOWNS[p.home]) state.home = p.home;
+  if (p.homeSet) state.homeSet = true;
+  if (p.saved && typeof p.saved === 'object') state.saved = Object.assign({}, p.saved);
+}
+applyPrefs(LS.get('dd1:prefs'));
+try { const t = LS.get('dd1:view'); if (t && ['all','now','today'].includes(t.time)) state.time = t.time; } catch (e) {}
+
+/* ---------- Derivation ---------- */
+function hay(d){ return [d.title, d.venue, d.town, d.details, d.tag, (CAT[d.category] || {}).label].join(' ').toLowerCase(); }
+function derive(){
+  const now = new Date(), q = state.q.trim().toLowerCase();
+  const visible = [], hidden = [], inbox = [];
+  for (const d of state.deals){
+    if (d.status === 'inbox'){ inbox.push(d); continue; }
+    const occ = occurrence(d, now);
+    const it = {d, occ, mi: distanceMi(d, state.home)};
+    if (d.status === 'gone' || occ.state === 'expired'){ hidden.push(it); continue; }
+    if (q && !hay(d).includes(q)) continue;
+    if (state.savedOnly && !state.saved[d.id]) continue;
+    visible.push(it);
+  }
+  const passTime = it => state.time === 'all' || (state.time === 'now' ? it.occ.state === 'live' : ['live','later','today'].includes(it.occ.state));
+  const timed = visible.filter(passTime);
+  const counts = {all: timed.length};
+  for (const c of CATS) counts[c.id] = 0;
+  for (const it of timed) if (counts[it.d.category] != null) counts[it.d.category]++;
+  const inCat = it => state.cat === 'all' || it.d.category === state.cat;
+  const live = visible.filter(it => inCat(it) && it.occ.state === 'live').length;
+  return {now, list: timed.filter(inCat), counts, live, hidden, inbox};
+}
+const byDist = (a, b) => (a.mi == null ? 1e6 : a.mi) - (b.mi == null ? 1e6 : b.mi);
+
+/* ---------- Render ---------- */
+function render(){
+  const v = derive();
+  renderTop();
+  renderControls(v);
+  renderFeed(v);
+  renderFoot(v);
+  $('#fab').hidden = !(state.canEdit && db);
+}
+function renderTop(){
+  $('#homeBtn').innerHTML = icon('pin', 'i-s') + `<span>${esc(state.home)}</span>` + icon('chev', 'i-s');
+  const n = Object.keys(state.saved).filter(id => state.saved[id] && state.deals.some(d => d.id === id)).length;
+  const sb = $('#savedBtn');
+  sb.setAttribute('aria-pressed', String(state.savedOnly));
+  sb.innerHTML = icon('heart') + (n ? `<span class="badge">${n}</span>` : '');
+}
+function renderControls(v){
+  for (const b of document.querySelectorAll('#seg button')) b.setAttribute('aria-selected', String(b.dataset.time === state.time));
+  $('#liveCount').textContent = v.live;
+  const chips = [{id:'all', label:'All', icon:'all'}].concat(CATS);
+  $('#rail').innerHTML = chips.map(c => `<button type="button" class="cat" data-cat="${c.id}" aria-pressed="${state.cat === c.id}">${icon(c.icon, 'i-s')}${esc(c.label)} <em>${v.counts[c.id] || 0}</em></button>`).join('');
+}
+function rowHTML(it, dim){
+  const {d, occ, mi} = it, c = CAT[d.category] || CAT.food;
+  const when = occ.state === 'live' ? `<span class="pill p-live">${occ.soon ? '' : 'LIVE · '}${esc(occ.label)}</span>`
+    : occ.state === 'later' ? `<span class="pill p-later">${esc(occ.label)}</span>`
+    : `<span class="pill p-next">${esc(occ.label)}</span>`;
+  const dist = distLabel(mi, d);
+  return `<button type="button" class="deal${dim ? ' dim' : ''}" data-open="${esc(d.id)}">
+    ${tagHTML(d.tag)}
+    <span class="d-main">
+      <span class="d-title">${esc(d.title || 'Untitled deal')}</span>
+      <span class="d-meta">${icon(c.icon, 'i-s')}${esc(d.venue || '')}${d.town ? `<span class="sep" aria-hidden="true">·</span>${esc(d.town)}` : ''}${dist ? `<span class="sep" aria-hidden="true">·</span><span class="num">${dist}</span>` : ''}</span>
+      <span class="d-flags">${when}${freshPill(d)}</span>
+    </span>
+    <span class="d-saved">${state.saved[d.id] ? icon('heart', 'i-fill i-s') : ''}</span>
+  </button>`;
+}
+function freshPill(d){
+  if (d.status === 'gone') return '<span class="pill p-next">Marked gone</span>';
+  if (d.status === 'confirmed'){
+    const stale = (() => { const x = parseDay(d.checkedAt); return x ? (Date.now() - x) / 864e5 > 45 : false; })();
+    return `<span class="pill ${stale ? 'p-stale' : 'p-ok'}">${icon('check', 'i-s')}Checked ${esc(ago(d.checkedAt))}</span>`;
+  }
+  return '<span class="pill p-unv">Unverified</span>';
+}
+function section(title, items, cls){
+  if (!items.length) return '';
+  return `<h2 class="sec-h ${cls || ''}">${cls === 'live' ? '<span class="live-dot" aria-hidden="true"></span>' : ''}${title} <span class="n">${items.length}</span></h2><div class="list">${items.map(it => rowHTML(it, cls === 'hidden')).join('')}</div>`;
+}
+function connNote(){
+  const cached = state.deals.length > 0;
+  if (state.conn === 'none') return `<div class="note">${icon('alert')}<span>Open DealDevil from claude.ai while signed in to load your deals and add new ones.${cached ? ' Showing the copy saved on this device.' : ''}</span></div>`;
+  if (state.conn === 'slow') return `<div class="note">${icon('alert')}<span>Can't reach your deals yet.${cached ? ' Showing the copy saved on this device, which may be out of date.' : ' Check your connection.'}</span></div>`;
+  if (state.conn === 'error') return `<div class="note">${icon('alert')}<span>Lost the connection to your deals. Reload DealDevil to reconnect.${cached ? ' Showing the copy saved on this device.' : ''}</span></div>`;
+  return '';
+}
+function renderFeed(v){
+  const feed = $('#feed');
+  let html = connNote();
+  if (state.canEdit && db && v.inbox.length) html += `<button type="button" class="note inbox" data-act="inbox">${icon('star')}<span><strong>The scanner found ${v.inbox.length} possible deal${v.inbox.length === 1 ? '' : 's'}.</strong> Review them</span>${icon('chev')}</button>`;
+  if (!state.synced && !state.deals.length && (state.conn === 'loading' || state.conn === 'slow')){
+    html += `<h2 class="sec-h">Loading deals</h2><div class="list">${'<div class="skel"></div>'.repeat(4)}</div>`;
+    feed.innerHTML = html; return;
+  }
+  const live = [], later = [], next = [];
+  for (const it of v.list){
+    if (it.occ.state === 'live') live.push(it);
+    else if (it.occ.state === 'later' || it.occ.state === 'today') later.push(it);
+    else next.push(it);
+  }
+  live.sort((a, b) => byDist(a, b) || a.occ.key - b.occ.key);
+  later.sort((a, b) => a.occ.key - b.occ.key || byDist(a, b));
+  next.sort((a, b) => a.occ.key - b.occ.key || byDist(a, b));
+  if (!v.list.length) html += emptyState(v);
+  html += section('Live now', live, 'live') + section('Later today', later) + section('Coming up', next);
+  if (state.showHidden && v.hidden.length) html += section('Gone or ended', v.hidden.sort(byDist), 'hidden');
+  feed.innerHTML = html;
+}
+function emptyState(v){
+  const catName = state.cat === 'all' ? '' : CAT[state.cat].label + ' ';
+  const add = state.canEdit && db ? `<button type="button" class="btn hot" data-act="add">${icon('arrow', 'i-s')}Add a ${esc(catName)}deal</button>` : '';
+  let h, p;
+  if (!state.deals.length){ h = 'No deals yet'; p = state.canEdit ? 'Seen a good one? Add it in about ten seconds.' : 'Deals will show up here once they are added.'; }
+  else if (state.q){ h = 'Nothing matches'; p = `No deals match “${state.q}”. Try a venue, a town or a drink.`; }
+  else if (state.savedOnly){ h = 'Nothing saved'; p = 'Open any deal and tap Save to keep it here.'; }
+  else if (state.time === 'now'){ h = 'Nothing live right now'; p = `No ${catName.toLowerCase()}deals are running this minute. Switch to Today or All.`; }
+  else if (state.time === 'today'){ h = 'Quiet day'; p = `No ${catName.toLowerCase()}deals today. Switch to All to see the week.`; }
+  else { h = `No ${catName}deals yet`; p = 'This category is empty so far. Spot one in the wild and add it.'; }
+  return `<div class="empty-state"><h3>${esc(h)}</h3><p>${esc(p)}</p>${add}</div>`;
+}
+function renderFoot(v){
+  const total = state.deals.filter(d => d.status !== 'gone' && d.status !== 'inbox').length;
+  const unv = state.deals.filter(d => d.status === 'unverified').length;
+  $('#foot').innerHTML = (state.deals.length ? `<span class="num">${total} active deals · distances from ${esc(state.home)}</span>` : '')
+    + (unv ? `<span>${unv} came from web listings and are marked Unverified until you check them.</span>` : '')
+    + (v.hidden.length ? `<span><button type="button" class="linkish" data-act="toggle-hidden">${state.showHidden ? 'Hide' : 'Show'} ${v.hidden.length} gone or ended</button></span>` : '');
+}
+
+/* ---------- Sheets ---------- */
+const sheet = $('#sheet'), scrim = $('#scrim');
+let lastFocus = null;
+function openSheet(kind, html, label){
+  lastFocus = document.activeElement;
+  sheet.innerHTML = `<div class="sheet-in"><div class="grab" aria-hidden="true"></div>${html}</div>`;
+  sheet.setAttribute('aria-label', label || 'Deal');
+  sheet.hidden = false; scrim.hidden = false; state.sheet = kind;
+  document.documentElement.classList.add('locked');
+  const auto = sheet.querySelector('[data-autofocus]');
+  (auto || sheet).focus({preventScroll: true});
+}
+function closeSheet(){
+  sheet.hidden = true; scrim.hidden = true; sheet.innerHTML = '';
+  state.sheet = null; state.openId = null; form = null;
+  document.documentElement.classList.remove('locked');
+  if (lastFocus && document.contains(lastFocus)) lastFocus.focus({preventScroll: true});
+}
+function detailHTML(d){
+  const now = new Date(), occ = occurrence(d, now), c = CAT[d.category] || CAT.food;
+  const days = daysOf(d), dist = distLabel(distanceMi(d, state.home), d);
+  const src = safeUrl(d.sourceUrl);
+  const when = occ.state === 'live' ? `<span class="pill p-live">${occ.soon ? '' : 'LIVE · '}${esc(occ.label)}</span>`
+    : occ.state === 'later' ? `<span class="pill p-later">${esc(occ.label)}</span>` : `<span class="pill p-next">${esc(occ.label)}</span>`;
+  const maps = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent([d.venue, d.address, d.town ? d.town + ', NY' : ''].filter(Boolean).join(', '));
+  const origin = d.addedBy === 'you' ? 'Added by you.' : d.status === 'unverified' ? 'Found by Claude in a web listing.' : 'Found by Claude in a web listing, then checked.';
+  let host = 'link'; try { host = new URL(src).hostname.replace(/^www\./, ''); } catch (e) {}
+  const srcLine = src ? ` Source: <a href="${esc(src)}" target="_blank" rel="noopener noreferrer">${esc(d.sourceLabel || host)}</a>${d.sourceNote ? ' (' + esc(d.sourceNote) + ')' : ''}.` : (d.sourceNote ? ' ' + esc(d.sourceNote) + '.' : '');
+  const checked = d.status === 'confirmed' && d.checkedAt ? ` You last checked it ${esc(ago(d.checkedAt))}.` : d.status === 'unverified' ? ' Nobody has confirmed it yet.' : d.status === 'gone' ? ' You marked it gone.' : '';
+  const saved = !!state.saved[d.id];
+  const edit = state.canEdit && db;
+  return `
+    <div class="dt-head">${tagHTML(d.tag, true)}<div style="min-width:0"><h2>${esc(d.title || 'Untitled deal')}</h2>
+      <p class="dt-sub">${icon(c.icon, 'i-s')}${esc(d.venue || '')}${d.town ? `<span class="sep" aria-hidden="true">·</span>${esc(d.town)}` : ''}${dist ? `<span class="sep" aria-hidden="true">·</span><span class="num">${dist}</span>` : ''}</p></div></div>
+    <div class="d-flags">${when}${freshPill(d)}</div>
+    <div class="week" aria-label="Days: ${esc(daysText(days))}">${DOW1.map((l, i) => `<span class="${days.includes(i) ? 'on' : ''}${i === now.getDay() ? ' today' : ''}">${l}</span>`).join('')}</div>
+    <div class="hours"><span>${esc(daysText(days))}</span><span>${esc(hoursText(d))}${d.validUntil ? ' · until ' + esc(fmtDate(d.validUntil)) : ''}</span></div>
+    ${d.details ? `<p class="details">${esc(d.details)}</p>` : ''}
+    ${d.address ? `<p class="details" style="color:var(--muted)">${esc(d.address)}${d.town ? ', ' + esc(d.town) : ''}</p>` : ''}
+    <div class="src"><strong>${origin}</strong>${srcLine}${checked}${d.foundAt && d.addedBy !== 'you' ? ' Found ' + esc(fmtDate(d.foundAt)) + '.' : ''}</div>
+    <div class="actions">
+      <a class="btn primary" href="${esc(maps)}" target="_blank" rel="noopener noreferrer">${icon('arrow', 'i-s')}Directions</a>
+      ${state.uid && db ? `<button type="button" class="btn" data-act="save" aria-pressed="${saved}">${icon('heart', 'i-s')}${saved ? 'Saved' : 'Save'}</button>` : ''}
+    </div>
+    ${edit ? (d.status === 'gone'
+      ? `<div class="actions"><button type="button" class="btn ok" data-act="restore">${icon('undo', 'i-s')}Bring it back</button></div>`
+      : `<div class="actions"><button type="button" class="btn ok" data-act="confirm">${icon('check', 'i-s')}Still on</button><button type="button" class="btn" data-act="gone">${icon('x', 'i-s')}It's gone</button></div>`) : ''}
+    ${edit ? `<div class="minor"><button type="button" class="btn ghost" data-act="edit">${icon('edit', 'i-s')}Edit</button><button type="button" class="btn danger" data-act="delete">${icon('trash', 'i-s')}Delete</button></div>` : ''}
+    <div class="minor"><span></span><button type="button" class="btn ghost" data-act="close">Close</button></div>`;
+}
+function openDeal(id){
+  const d = state.deals.find(x => x.id === id); if (!d) return;
+  state.openId = id;
+  openSheet('deal', detailHTML(d), d.title || 'Deal');
+}
+function inboxHTML(){
+  const items = state.deals.filter(d => d.status === 'inbox').sort((a, b) => (b.score || 0) - (a.score || 0));
+  if (!items.length) return `<h2>Inbox clear</h2><p class="hint" style="margin:0">New finds from the deal scanner land here for you to keep or toss.</p><div class="minor"><span></span><button type="button" class="btn ghost" data-act="close">Done</button></div>`;
+  return `<h2>Scanner finds</h2><p class="hint" style="margin:0">Keep adds a deal to DealDevil as Unverified. Toss deletes it.</p>
+    <div class="town-list">${items.map(d => {
+      const src = safeUrl(d.sourceUrl);
+      return `<div class="inbox-row">${tagHTML(d.tag)}<div class="d-main">
+        <span class="d-title">${esc(d.title || 'Untitled deal')}</span>
+        <span class="d-meta">${esc(d.venue || '')}${d.town ? '<span class="sep">·</span>' + esc(d.town) : ''}<span class="sep">·</span>${esc(daysText(daysOf(d)))}<span class="sep">·</span>${esc(hoursText(d))}</span>
+        ${src ? `<a class="src-link" href="${esc(src)}" target="_blank" rel="noopener noreferrer">${esc(d.sourceLabel || 'Open source')} ↗</a>` : ''}
+        <span class="actions"><button type="button" class="btn ok" data-keep="${esc(d.id)}">${icon('check', 'i-s')}Keep</button><button type="button" class="btn" data-toss="${esc(d.id)}">${icon('x', 'i-s')}Toss</button></span>
+      </div></div>`; }).join('')}</div>
+    <div class="minor"><span></span><button type="button" class="btn ghost" data-act="close">Done</button></div>`;
+}
+function refreshSheet(){
+  if (state.sheet === 'inbox'){
+    const top = sheet.scrollTop;
+    sheet.querySelector('.sheet-in').innerHTML = `<div class="grab" aria-hidden="true"></div>${inboxHTML()}`;
+    sheet.scrollTop = top;
+    return;
+  }
+  if (state.sheet !== 'deal' || !state.openId) return;
+  const d = state.deals.find(x => x.id === state.openId);
+  if (!d){ closeSheet(); return; }
+  const top = sheet.scrollTop;
+  sheet.querySelector('.sheet-in').innerHTML = `<div class="grab" aria-hidden="true"></div>${detailHTML(d)}`;
+  sheet.scrollTop = top;
+}
+
+/* ---------- Add / edit form ---------- */
+let form = null;
+function openForm(id){
+  const d = id ? state.deals.find(x => x.id === id) : null;
+  form = {
+    id: d ? d.id : null, base: d,
+    category: d ? d.category : (state.cat !== 'all' ? state.cat : 'food'),
+    days: d ? [...daysOf(d)] : [new Date().getDay()],
+    tagTouched: !!(d && d.tag)
+  };
+  const v = (k, fb = '') => esc(d && d[k] != null ? d[k] : fb);
+  const html = `
+    <form id="dealForm" novalidate>
+      <h2>${d ? 'Edit deal' : 'Add a deal'}</h2>
+      <label class="f" for="f-title">What's the deal?<input id="f-title" maxlength="80" placeholder="$5 espresso martinis" value="${v('title')}" ${d ? '' : 'data-autofocus'} autocomplete="off"></label>
+      <div class="row2">
+        <label class="f" for="f-tag">Price tag<input id="f-tag" maxlength="7" placeholder="$5" value="${v('tag')}" autocomplete="off"></label>
+        <label class="f" for="f-town">Town<input id="f-town" list="townList" placeholder="Patchogue" value="${v('town', state.home)}" autocomplete="off"></label>
+      </div>
+      <label class="f" for="f-venue">Where?<input id="f-venue" maxlength="60" placeholder="Bar, restaurant or store" value="${v('venue')}" autocomplete="off"></label>
+      <fieldset class="f"><legend>Category</legend><div class="opts" id="f-cat">${CATS.map(c => `<button type="button" class="cat" data-fcat="${c.id}" aria-pressed="${form.category === c.id}">${icon(c.icon, 'i-s')}${esc(c.label)}</button>`).join('')}</div></fieldset>
+      <fieldset class="f"><legend>Days</legend>
+        <div class="days" id="f-days">${DOW1.map((l, i) => `<button type="button" data-fday="${i}" aria-pressed="${form.days.includes(i)}" aria-label="${DOW[i]}">${l}</button>`).join('')}</div>
+        <div class="presets"><button type="button" class="linkish" data-preset="all">Every day</button><button type="button" class="linkish" data-preset="wk">Weekdays</button><button type="button" class="linkish" data-preset="we">Weekends</button></div>
+      </fieldset>
+      <div class="row2">
+        <label class="f" for="f-start">From<input id="f-start" type="time" value="${v('start')}"></label>
+        <label class="f" for="f-end">Until<input id="f-end" type="time" value="${v('end')}"></label>
+      </div>
+      <p class="hint">Leave both blank for all day. Leave Until blank for “til close”.</p>
+      <label class="f" for="f-until">Last day (optional)<input id="f-until" type="date" value="${v('validUntil')}"></label>
+      <label class="f" for="f-details">Notes<textarea id="f-details" rows="2" maxlength="400" placeholder="Bar seating only, dine-in, members only…">${v('details')}</textarea></label>
+      <label class="f" for="f-url">Link (optional)<input id="f-url" type="url" inputmode="url" placeholder="https://" value="${v('sourceUrl')}" autocomplete="off"></label>
+      <p class="err" id="f-err" hidden></p>
+      <div class="actions"><button type="button" class="btn ghost" data-act="close">Cancel</button><button type="submit" class="btn hot" id="f-save">${icon('check', 'i-s')}Save deal</button></div>
+    </form>`;
+  openSheet('form', html, d ? 'Edit deal' : 'Add a deal');
+}
+function syncFormButtons(){
+  for (const b of sheet.querySelectorAll('[data-fcat]')) b.setAttribute('aria-pressed', String(b.dataset.fcat === form.category));
+  for (const b of sheet.querySelectorAll('[data-fday]')) b.setAttribute('aria-pressed', String(form.days.includes(+b.dataset.fday)));
+}
+async function submitForm(){
+  const val = id => sheet.querySelector(id).value.trim();
+  const err = sheet.querySelector('#f-err');
+  const showErr = m => { err.textContent = m; err.hidden = false; err.scrollIntoView({block:'nearest'}); };
+  const title = val('#f-title'), venue = val('#f-venue'), start = val('#f-start'), end = val('#f-end'), url = val('#f-url');
+  if (!title) return showErr('Add what the deal is, like “$5 espresso martinis”.');
+  if (!venue) return showErr('Add where the deal is.');
+  if (!form.days.length) return showErr('Pick at least one day.');
+  if (end && !start) return showErr('Add a start time, or clear Until.');
+  if (url && !safeUrl(url)) return showErr('Links need to start with https://');
+  const b = form.base || {}, nowIso = new Date().toISOString();
+  const town = val('#f-town');
+  const data = {
+    title, venue, tag: val('#f-tag') || suggestTag(title),
+    town: TOWN_NAMES.find(t => t.toLowerCase() === town.toLowerCase()) || town,
+    category: form.category, days: [...form.days].sort(), start: start || null, end: end || null, hoursKnown: true,
+    validUntil: val('#f-until') || null, details: val('#f-details'), sourceUrl: url || null,
+    sourceLabel: url === b.sourceUrl ? (b.sourceLabel || null) : null, sourceNote: url === b.sourceUrl ? (b.sourceNote || null) : null,
+    address: b.address || null, foundAt: b.foundAt || null, addedBy: b.addedBy || 'you',
+    status: 'confirmed', checkedAt: isoDay(new Date()), createdAt: b.createdAt || nowIso, updatedAt: nowIso
+  };
+  const btn = sheet.querySelector('#f-save'); btn.disabled = true;
+  try {
+    if (form.id) await db.doc('deals/' + form.id).set(data);
+    else await db.collection('deals').add(data);
+    const wasEdit = !!form.id;
+    closeSheet();
+    toast(wasEdit ? 'Deal updated' : 'Deal added');
+  } catch (e) { btn.disabled = false; showErr(dbErr(e)); }
+}
+
+/* ---------- Writes ---------- */
+function dbErr(e){
+  const c = e && e.code;
+  if (c === 'invalid_argument') return "Only DealDevil's owner can change deals.";
+  if (c === 'quota_exceeded') return 'DealDevil is full. Delete some old deals, then try again.';
+  if (c === 'resource_exhausted') return 'Too many changes at once. Wait a few seconds and try again.';
+  if (c === 'revoked' || c === 'not_granted') return 'You no longer have access to change deals here.';
+  return "Couldn't save. Check your connection and try again.";
+}
+async function patchDeal(id, patch, msg, undoPatch){
+  try {
+    await db.doc('deals/' + id).update(patch);
+    toast(msg, undoPatch ? () => patchDeal(id, undoPatch, 'Undone') : null);
+  } catch (e) { toast(dbErr(e)); }
+}
+let prefsBusy = false, prefsDirty = false;
+async function savePrefs(){
+  const p = {home: state.home, homeSet: state.homeSet, saved: state.saved};
+  LS.set('dd1:prefs', p);
+  if (!prefsRef) return;
+  if (prefsBusy){ prefsDirty = true; return; }
+  prefsBusy = true;
+  try { await prefsRef.set(p); } catch (e) {}
+  prefsBusy = false;
+  if (prefsDirty){ prefsDirty = false; savePrefs(); }
+}
+
+/* ---------- Toast ---------- */
+let toastTimer = 0;
+function toast(msg, undo){
+  const t = $('#toast');
+  t.innerHTML = `<span>${esc(msg)}</span>${undo ? '<button type="button" data-act="undo">Undo</button>' : ''}`;
+  t.hidden = false;
+  t._undo = undo || null;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; t._undo = null; }, undo ? 5000 : 2400);
+}
+
+/* ---------- Home picker ---------- */
+function openHome(){
+  const list = q => TOWN_NAMES.filter(n => n.toLowerCase().includes(q.toLowerCase()))
+    .map(n => `<button type="button" data-town="${esc(n)}" aria-current="${n === state.home}">${esc(n)}${n === state.home ? icon('check', 'i-s') : ''}</button>`).join('')
+    || '<p class="hint" style="margin:12px">No Suffolk town by that name.</p>';
+  openSheet('home', `<h2>Where are you?</h2><p class="hint" style="margin:0">Distances are measured from the center of this town.</p>
+    <label class="search" for="townQ" style="margin:0">${icon('pin', 'i-s')}<input id="townQ" type="search" placeholder="Search towns" autocomplete="off" data-autofocus></label>
+    <div class="town-list" id="townRes">${list('')}</div>`, 'Choose your town');
+  sheet.querySelector('#townQ').addEventListener('input', e => { sheet.querySelector('#townRes').innerHTML = list(e.target.value); });
+}
+
+/* ---------- Events ---------- */
+document.addEventListener('click', e => {
+  const t = e.target.closest('button, [data-open]');
+  if (!t) return;
+  if (t.dataset.open){ openDeal(t.dataset.open); return; }
+  if (t.dataset.time){ state.time = t.dataset.time; LS.set('dd1:view', {time: state.time}); render(); return; }
+  if (t.dataset.cat){ state.cat = t.dataset.cat; render(); return; }
+  if (t.dataset.town){ state.home = t.dataset.town; state.homeSet = true; savePrefs(); closeSheet(); render(); toast('Distances now from ' + state.home); return; }
+  if (t.dataset.keep){ t.disabled = true; db.doc('deals/' + t.dataset.keep).update({status: 'unverified', updatedAt: new Date().toISOString()}).then(() => toast('Added as Unverified'), err => { t.disabled = false; toast(dbErr(err)); }); return; }
+  if (t.dataset.toss){ t.disabled = true; db.doc('deals/' + t.dataset.toss).delete().then(() => toast('Tossed'), err => { t.disabled = false; toast(dbErr(err)); }); return; }
+  if (t.dataset.fcat && form){ form.category = t.dataset.fcat; syncFormButtons(); return; }
+  if (t.dataset.fday && form){ const n = +t.dataset.fday; form.days = form.days.includes(n) ? form.days.filter(x => x !== n) : form.days.concat(n); syncFormButtons(); return; }
+  if (t.dataset.preset && form){ form.days = t.dataset.preset === 'all' ? [...ALL_DAYS] : t.dataset.preset === 'wk' ? [1,2,3,4,5] : [0,6]; syncFormButtons(); return; }
+  const act = t.dataset.act; if (!act) return;
+  const id = state.openId;
+  switch (act){
+    case 'close': closeSheet(); break;
+    case 'add': openForm(null); break;
+    case 'inbox': openSheet('inbox', inboxHTML(), 'Scanner finds'); break;
+    case 'edit': if (id) openForm(id); break;
+    case 'toggle-hidden': state.showHidden = !state.showHidden; render(); break;
+    case 'save':
+      if (!id) break;
+      if (state.saved[id]) delete state.saved[id]; else state.saved[id] = true;
+      savePrefs(); render(); refreshSheet();
+      toast(state.saved[id] ? 'Saved' : 'Removed from saved');
+      break;
+    case 'confirm': patchDeal(id, {status: 'confirmed', checkedAt: isoDay(new Date())}, 'Marked as still on'); break;
+    case 'gone': {
+      const d = state.deals.find(x => x.id === id); const prev = d ? d.status : 'unverified';
+      closeSheet(); patchDeal(id, {status: 'gone', goneAt: isoDay(new Date())}, 'Marked as gone', {status: prev || 'unverified', goneAt: null});
+      break;
+    }
+    case 'restore': patchDeal(id, {status: 'confirmed', checkedAt: isoDay(new Date()), goneAt: null}, 'Back in the list'); break;
+    case 'delete':
+      if (!t.classList.contains('armed')){
+        t.classList.add('armed'); t.innerHTML = icon('trash', 'i-s') + 'Tap again to delete';
+        setTimeout(() => { if (document.contains(t)){ t.classList.remove('armed'); t.innerHTML = icon('trash', 'i-s') + 'Delete'; } }, 3500);
+      } else {
+        closeSheet();
+        db.doc('deals/' + id).delete().then(() => toast('Deal deleted'), err => toast(dbErr(err)));
+      }
+      break;
+    case 'undo': { const tt = $('#toast'); const fn = tt._undo; tt.hidden = true; tt._undo = null; if (fn) fn(); break; }
+  }
+});
+$('#homeBtn').addEventListener('click', openHome);
+$('#savedBtn').addEventListener('click', () => { state.savedOnly = !state.savedOnly; render(); });
+$('#fab').addEventListener('click', () => openForm(null));
+scrim.addEventListener('click', closeSheet);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && state.sheet) closeSheet(); });
+let qTimer = 0;
+$('#q').addEventListener('input', e => { clearTimeout(qTimer); const v = e.target.value; qTimer = setTimeout(() => { state.q = v; render(); }, 60); });
+sheet.addEventListener('submit', e => { e.preventDefault(); if (form) submitForm(); });
+sheet.addEventListener('input', e => {
+  if (!form) return;
+  if (e.target.id === 'f-tag') form.tagTouched = !!e.target.value.trim();
+  if (e.target.id === 'f-title' && !form.tagTouched) sheet.querySelector('#f-tag').value = suggestTag(e.target.value);
+});
+document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
+setInterval(() => { if (!document.hidden){ render(); refreshSheet(); } }, 60000);
+$('#townList').innerHTML = TOWN_NAMES.map(n => `<option value="${esc(n)}"></option>`).join('');
+
+/* ---------- Boot ---------- */
+async function boot(){
+  render();
+  const slow = setTimeout(() => { if (!state.synced && state.conn === 'loading'){ state.conn = 'slow'; render(); } }, 10000);
+  const use = window.claude && typeof window.claude.use === 'function' ? n => window.claude.use(n).catch(() => null) : () => Promise.resolve(null);
+  [db, user] = await Promise.all([use('db'), use('user')]);
+  if (user){
+    try { state.canEdit = !!(await user.canEdit()); } catch (e) {}
+    try { state.uid = await user.id(); } catch (e) {}
+  }
+  if (!db){ clearTimeout(slow); state.conn = 'none'; render(); return; }
+  db.collection('deals').onSnapshot(snap => {
+    state.deals = snap.docs.map(doc => Object.assign({id: doc.id}, doc.data()));
+    if (!snap.metadata.fromCache){
+      state.synced = true; state.conn = 'ok'; clearTimeout(slow);
+      LS.set('dd1:deals', state.deals);
+    }
+    render(); refreshSheet();
+  }, () => { clearTimeout(slow); state.conn = 'error'; render(); });
+  if (state.uid){
+    try {
+      prefsRef = db.doc('data/users/' + state.uid + '/prefs');
+      let first = true;
+      prefsRef.onSnapshot(doc => {
+        if (doc.exists && !doc.metadata.hasPendingWrites){ applyPrefs(doc.data()); LS.set('dd1:prefs', {home: state.home, homeSet: state.homeSet, saved: state.saved}); render(); refreshSheet(); }
+        else if (!doc.exists && first && !doc.metadata.fromCache && (state.homeSet || Object.keys(state.saved).length)) savePrefs();
+        if (!doc.metadata.fromCache) first = false;
+      }, () => { prefsRef = null; });
+    } catch (e) { prefsRef = null; }
+  }
+  render();
+}
+boot();
+})();
+</script>

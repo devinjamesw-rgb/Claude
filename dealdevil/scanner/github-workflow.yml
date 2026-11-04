@@ -1,0 +1,47 @@
+# DealDevil deal scanner, run by GitHub Actions.
+# GitHub only runs scheduled workflows from the repository's DEFAULT branch,
+# and only from .github/workflows/. A copy of this file lives at
+# .github/workflows/dealdevil-scan.yml; this one is kept beside the scanner for reference.
+name: DealDevil scan
+
+on:
+  schedule:
+    - cron: "23 */6 * * *"   # every 6 hours, at 23 minutes past
+  workflow_dispatch: {}       # the "Run workflow" button on GitHub
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dealdevil-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Test the scanner
+        working-directory: dealdevil/scanner
+        run: python3 -m unittest test_dealscan.py
+
+      - name: Scan sources
+        run: python3 dealdevil/scanner/dealscan.py --sources dealdevil/scanner/sources.json --out dealdevil/scanner/out
+
+      - name: Save results
+        run: |
+          git config user.name "dealdevil-scanner"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dealdevil/scanner/out
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "DealDevil scan $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git push
+          fi

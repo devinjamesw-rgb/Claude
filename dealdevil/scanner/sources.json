@@ -1,0 +1,62 @@
+{
+  "_how": "Each source is one page or feed to check. Fields: id, name, url, town (for distance), category (food, happy, grocery, coffee, fun, gas, shop; leave out to auto-detect), venue (defaults to name), include / exclude (regex filters), trust (true = every feed item is a deal), render (true = page needs JavaScript), limit, min_score, enabled, requires_login.",
+  "sources": [
+    {
+      "id": "lucky-strike-commack",
+      "name": "Lucky Strike",
+      "url": "https://www.luckystrikeent.com/location/lucky-strike-commack",
+      "town": "Commack",
+      "category": "fun"
+    },
+    {
+      "id": "roccos-tacos-huntington",
+      "name": "Rocco's Tacos",
+      "url": "https://roccostacos.getbento.com/news-item/taco-tuesdays-huntington",
+      "town": "Huntington Station"
+    },
+    {
+      "id": "bridge-lane-trivia",
+      "name": "Bridge Lane Wine",
+      "url": "https://liwines.com/event/trivia-nights-at-bridge-lane-wine/",
+      "town": "Cutchogue",
+      "category": "fun"
+    },
+    {
+      "id": "last-word-huntington",
+      "name": "The Last Word",
+      "url": "https://events.longislandpress.com/event/happy-hour-at-the-last-word/",
+      "town": "Huntington",
+      "category": "happy"
+    },
+    {
+      "id": "amf-specials",
+      "name": "AMF Bowling",
+      "url": "https://www.amf.com/specials",
+      "category": "fun",
+      "include": "unlimited|every|daily|weekly|night|\\d+% off|\\$\\d"
+    },
+    {
+      "id": "greater-li-happy-hours",
+      "name": "Greater Long Island happy hour guide",
+      "url": "https://greaterlongisland.com/gli-launches-long-islands-most-complete-happy-hour-guide/",
+      "category": "happy",
+      "render": true
+    },
+    {
+      "id": "slickdeals-frontpage",
+      "name": "Slickdeals front page",
+      "url": "https://slickdeals.net/newsearch.php?mode=frontpage&searcharea=deals&searchin=first&rss=1",
+      "category": "shop",
+      "trust": true,
+      "limit": 20
+    },
+    {
+      "id": "unidays",
+      "name": "UNiDAYS",
+      "url": "https://www.myunidays.com/US/en-US",
+      "enabled": false,
+      "requires_login": true,
+      "note": "student offers need a verified login, and UNiDAYS' terms don't allow automated access"
+    }
+  ]
+}
