@@ -1,6 +1,6 @@
 {
   "_rule": "A deal counts only if it names an item, a price, and a day (specific weekdays, an explicit 'daily' from the business, or a specific date). Generic happy-hour windows don't count. A deal is 'verified' only when the business's own website or social account states it; everything else stays in To verify.",
-  "_verify": "verify.url is the business's own page; verify.tokens must all appear on it (case-insensitive) for the scanner to confirm the deal.",
+  "_verify": "verify.url is the business's own page; every verify.tokens entry must appear in one block of that page (or within 250 characters), with no 'ended', 'expired' or 'sold out' nearby, for the scanner to confirm the deal.",
   "deals": [
     {
       "id": "roccos-huntington-aycet",
@@ -9,14 +9,40 @@
       "price": "$34.99",
       "priceNote": "per person, De Casa menu",
       "venue": "Rocco's Tacos & Tequila Bar",
-      "town": "Huntington Station", "state": "NY", "lat": 40.853, "lng": -73.411,
+      "town": "Huntington Station",
+      "state": "NY",
+      "lat": 40.853,
+      "lng": -73.411,
       "address": "160 Walt Whitman Rd (Walt Whitman Shops)",
       "category": "food",
-      "days": [2], "start": null, "end": null, "hoursKnown": true,
-      "conditions": ["Dine-in only", "No sharing", "Tacos come out in rounds: 4 first, then 3 at a time", "Reservations recommended on Tuesdays"],
+      "days": [
+        2
+      ],
+      "start": null,
+      "end": null,
+      "hoursKnown": true,
+      "conditions": [
+        "Dine-in only",
+        "No sharing",
+        "Tacos come out in rounds: 4 first, then 3 at a time",
+        "Reservations recommended on Tuesdays"
+      ],
       "businessUrl": "https://www.roccostacos.com/event/taco-tuesday-huntington/",
-      "verification": {"status": "verified", "method": "website", "via": "search", "url": "https://www.roccostacos.com/event/taco-tuesday-huntington/", "checkedAt": "2026-11-04", "note": "Rocco's Huntington Taco Tuesday page lists it every Tuesday, open to close."},
-      "verify": {"url": "https://www.roccostacos.com/event/taco-tuesday-huntington/", "tokens": ["34.99", "Tuesday"]}
+      "verification": {
+        "status": "verified",
+        "method": "website",
+        "via": "page",
+        "url": "https://www.roccostacos.com/event/taco-tuesday-huntington/",
+        "checkedAt": "2026-11-04",
+        "note": "Rocco's Huntington Taco Tuesday page lists it every Tuesday, open to close."
+      },
+      "verify": {
+        "url": "https://www.roccostacos.com/event/taco-tuesday-huntington/",
+        "tokens": [
+          "34.99",
+          "Tuesday"
+        ]
+      }
     },
     {
       "id": "roccos-huntington-margs",
@@ -24,14 +50,39 @@
       "item": "House margaritas",
       "price": "$7",
       "venue": "Rocco's Tacos & Tequila Bar",
-      "town": "Huntington Station", "state": "NY", "lat": 40.853, "lng": -73.411,
+      "town": "Huntington Station",
+      "state": "NY",
+      "lat": 40.853,
+      "lng": -73.411,
       "address": "160 Walt Whitman Rd (Walt Whitman Shops)",
       "category": "drinks",
-      "days": [2], "start": null, "end": null, "hoursKnown": true,
-      "conditions": ["Taco Tuesday pricing, open to close", "Same night: $27 house pitchers, $70 bottles of house silver tequila"],
+      "days": [
+        2
+      ],
+      "start": null,
+      "end": null,
+      "hoursKnown": true,
+      "conditions": [
+        "Taco Tuesday pricing, open to close",
+        "Same night: $27 house pitchers, $70 bottles of house silver tequila"
+      ],
       "businessUrl": "https://www.roccostacos.com/event/taco-tuesday-huntington/",
-      "verification": {"status": "verified", "method": "website", "via": "search", "url": "https://www.roccostacos.com/event/taco-tuesday-huntington/", "checkedAt": "2026-11-04", "note": "Listed in the Taco Tuesday pricing on Rocco's own page."},
-      "verify": {"url": "https://www.roccostacos.com/event/taco-tuesday-huntington/", "tokens": ["$7", "margarita", "Tuesday"]}
+      "verification": {
+        "status": "verified",
+        "method": "website",
+        "via": "page",
+        "url": "https://www.roccostacos.com/event/taco-tuesday-huntington/",
+        "checkedAt": "2026-11-04",
+        "note": "Listed in the Taco Tuesday pricing on Rocco's own page."
+      },
+      "verify": {
+        "url": "https://www.roccostacos.com/event/taco-tuesday-huntington/",
+        "tokens": [
+          "$7",
+          "margarita",
+          "Tuesday"
+        ]
+      }
     },
     {
       "id": "luckystrike-commack-family",
@@ -40,13 +91,251 @@
       "price": "$15.99",
       "priceNote": "per person, Family Unlimited",
       "venue": "Lucky Strike Commack",
-      "town": "Commack", "state": "NY", "lat": 40.843, "lng": -73.293,
+      "town": "Commack",
+      "state": "NY",
+      "lat": 40.843,
+      "lng": -73.293,
       "category": "fun",
-      "days": [0, 6], "start": "11:00", "end": "15:00", "hoursKnown": true,
-      "conditions": ["Standard per-game or hourly pricing applies after 3 PM"],
+      "days": [
+        0,
+        6
+      ],
+      "start": "11:00",
+      "end": "15:00",
+      "hoursKnown": true,
+      "conditions": [
+        "Standard per-game or hourly pricing applies after 3 PM"
+      ],
       "businessUrl": "https://www.luckystrikeent.com/location/lucky-strike-commack",
-      "verification": {"status": "verified", "method": "website", "via": "search", "url": "https://www.luckystrikeent.com/location/lucky-strike-commack", "checkedAt": "2026-11-04", "note": "Lucky Strike Commack's FAQ lists Family Unlimited, Saturdays and Sundays 11 AM to 3 PM."},
-      "verify": {"url": "https://www.luckystrikeent.com/location/lucky-strike-commack", "tokens": ["15.99", "Family"]}
+      "verification": {
+        "status": "verified",
+        "method": "website",
+        "via": "page",
+        "url": "https://www.luckystrikeent.com/location/lucky-strike-commack",
+        "checkedAt": "2026-11-04",
+        "note": "Lucky Strike Commack's FAQ lists Family Unlimited, Saturdays and Sundays 11 AM to 3 PM."
+      },
+      "verify": {
+        "url": "https://www.luckystrikeent.com/location/lucky-strike-commack",
+        "tokens": [
+          "15.99",
+          "Family"
+        ]
+      }
+    },
+    {
+      "id": "lucky-strike-commack-night-strike-sun",
+      "scope": "local",
+      "venue": "Lucky Strike Commack",
+      "town": "Commack",
+      "state": "NY",
+      "lat": 40.843,
+      "lng": -73.293,
+      "category": "fun",
+      "hoursKnown": true,
+      "businessUrl": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+      "item": "Unlimited bowling, shoes included (Night Strike)",
+      "price": "$19.99",
+      "priceNote": "per person, walk-in only",
+      "days": [
+        0
+      ],
+      "start": "18:00",
+      "end": null,
+      "conditions": [
+        "Walk-in guests only (Lucky Strike promo terms)",
+        "Runs until close"
+      ],
+      "verification": {
+        "status": "verified",
+        "checkedAt": "2026-11-04",
+        "method": "website",
+        "via": "search",
+        "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+        "note": "Lucky Strike Commack lists Night Strike at $19.99, starting 6 PM on Sundays."
+      },
+      "verify": {
+        "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+        "tokens": [
+          "Night Strike",
+          "$19.99",
+          "Sunday starting at 6PM"
+        ]
+      }
+    },
+    {
+      "id": "lucky-strike-commack-night-strike-monthu",
+      "scope": "local",
+      "venue": "Lucky Strike Commack",
+      "town": "Commack",
+      "state": "NY",
+      "lat": 40.843,
+      "lng": -73.293,
+      "category": "fun",
+      "hoursKnown": true,
+      "businessUrl": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+      "item": "Unlimited bowling, shoes included (Night Strike)",
+      "price": "$19.99",
+      "priceNote": "per person, walk-in only",
+      "days": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "start": "19:00",
+      "end": null,
+      "conditions": [
+        "Walk-in guests only (Lucky Strike promo terms)",
+        "Runs until close"
+      ],
+      "verification": {
+        "status": "pending",
+        "checkedAt": "2026-11-04",
+        "reason": "awaiting-page-check",
+        "note": "The Commack page shows 7 PM on Mondays; Tuesday to Thursday comes from Lucky Strike's general terms (Sunday to Thursday). Waiting for the page check to confirm Thursday."
+      },
+      "evidence": [
+        {
+          "label": "Lucky Strike Commack specials",
+          "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+          "kind": "business"
+        },
+        {
+          "label": "Lucky Strike promo terms",
+          "url": "https://www.luckystrikeent.com/promotional-terms-and-conditions",
+          "kind": "business"
+        }
+      ],
+      "verify": {
+        "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+        "tokens": [
+          "Night Strike",
+          "$19.99",
+          "Monday starting at 7PM",
+          "Thursday starting at 7PM"
+        ]
+      }
+    },
+    {
+      "id": "lucky-strike-commack-arcade-wed",
+      "scope": "local",
+      "venue": "Lucky Strike Commack",
+      "town": "Commack",
+      "state": "NY",
+      "lat": 40.843,
+      "lng": -73.293,
+      "category": "fun",
+      "hoursKnown": true,
+      "businessUrl": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+      "item": "Arcade play",
+      "price": "50% off",
+      "priceNote": "all day",
+      "days": [
+        3
+      ],
+      "start": null,
+      "end": null,
+      "conditions": [],
+      "verification": {
+        "status": "verified",
+        "checkedAt": "2026-11-04",
+        "method": "website",
+        "via": "search",
+        "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+        "note": "Lucky Strike Commack: Half-Price Arcade Play, 50% off arcade play all day on Wednesdays."
+      },
+      "verify": {
+        "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+        "tokens": [
+          "Half-Price Arcade Play",
+          "Every Wednesday",
+          "50% off arcade play"
+        ]
+      }
+    },
+    {
+      "id": "lucky-strike-commack-after-party",
+      "scope": "local",
+      "venue": "Lucky Strike Commack",
+      "town": "Commack",
+      "state": "NY",
+      "lat": 40.843,
+      "lng": -73.293,
+      "category": "fun",
+      "hoursKnown": true,
+      "businessUrl": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+      "item": "Unlimited bowling (After Party)",
+      "price": "$28.99",
+      "priceNote": "per person, walk-in only",
+      "days": [
+        5,
+        6
+      ],
+      "start": "20:00",
+      "end": null,
+      "conditions": [
+        "Walk-in guests only (Lucky Strike promo terms)",
+        "Runs until close"
+      ],
+      "verification": {
+        "status": "verified",
+        "checkedAt": "2026-11-04",
+        "method": "website",
+        "via": "search",
+        "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+        "note": "Lucky Strike Commack: After Party unlimited bowling for $28.99, Fridays and Saturdays from 8 PM."
+      },
+      "verify": {
+        "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+        "tokens": [
+          "After Party",
+          "unlimited bowling for only $28.99",
+          "Friday starting at 8PM"
+        ]
+      }
+    },
+    {
+      "id": "lucky-strike-commack-the-special",
+      "scope": "local",
+      "venue": "Lucky Strike Commack",
+      "town": "Commack",
+      "state": "NY",
+      "lat": 40.843,
+      "lng": -73.293,
+      "category": "fun",
+      "hoursKnown": true,
+      "businessUrl": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+      "item": "Third game of bowling (when you buy two)",
+      "price": "50% off",
+      "priceNote": "walk-in only",
+      "days": [],
+      "start": null,
+      "end": null,
+      "conditions": [
+        "Walk-in guests only (Lucky Strike promo terms)"
+      ],
+      "verification": {
+        "status": "pending",
+        "checkedAt": "2026-11-04",
+        "reason": "awaiting-page-check",
+        "note": "The Commack page says \"Buy two games, get the third 50% off!\"; waiting for the page check to confirm it runs daily."
+      },
+      "evidence": [
+        {
+          "label": "Lucky Strike Commack specials",
+          "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+          "kind": "business"
+        }
+      ],
+      "verify": {
+        "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+        "tokens": [
+          "The Special",
+          "Daily",
+          "Buy two games, get the third 50% off"
+        ]
+      }
     },
     {
       "id": "uncleg-northbabylon-pizza",
@@ -54,28 +343,37 @@
       "item": "Two 20-inch pizzas",
       "price": "$22",
       "venue": "Uncle Giuseppe's Marketplace",
-      "town": "North Babylon", "state": "NY", "lat": 40.716, "lng": -73.322,
+      "town": "North Babylon",
+      "state": "NY",
+      "lat": 40.716,
+      "lng": -73.322,
       "category": "food",
-      "days": [3, 5], "start": null, "end": null, "hoursKnown": true,
-      "conditions": ["Listed for the North Babylon store; other stores may differ"],
+      "days": [
+        3,
+        5
+      ],
+      "start": null,
+      "end": null,
+      "hoursKnown": true,
+      "conditions": [
+        "Listed for the North Babylon store; other stores may differ"
+      ],
       "businessUrl": "https://uncleg.com/stores/north-babylon/",
-      "verification": {"status": "verified", "method": "website", "via": "search", "url": "https://uncleg.com/stores/north-babylon/", "checkedAt": "2026-11-04", "note": "The North Babylon store page lists two 20\" pizzas for $22 on Wednesdays and Fridays."},
-      "verify": {"url": "https://uncleg.com/stores/north-babylon/", "tokens": ["$22", "Wednesday"]}
-    },
-    {
-      "id": "luckystrike-commack-nightstrike",
-      "scope": "local",
-      "item": "Unlimited bowling, shoes included (Night Strike)",
-      "price": "$19.99",
-      "venue": "Lucky Strike Commack",
-      "town": "Commack", "state": "NY", "lat": 40.843, "lng": -73.293,
-      "category": "fun",
-      "days": [0, 1, 2, 3, 4], "start": null, "end": null, "hoursKnown": false,
-      "conditions": [],
-      "businessUrl": "https://www.luckystrikeent.com/location/lucky-strike-commack",
-      "verification": {"status": "pending", "reason": "conflict", "checkedAt": "2026-11-04", "note": "Lucky Strike's own pages disagree on the nights: the Commack FAQ says Monday to Thursday from 7 PM and Sunday from 6 PM, and the chain page says Sunday nights and weeknights. The $19.99 price is on the Commack page."},
-      "evidence": [{"label": "Lucky Strike Commack", "url": "https://www.luckystrikeent.com/location/lucky-strike-commack", "kind": "business"}],
-      "verify": {"url": "https://www.luckystrikeent.com/location/lucky-strike-commack", "tokens": ["19.99", "Night Strike"]}
+      "verification": {
+        "status": "verified",
+        "method": "website",
+        "via": "page",
+        "url": "https://uncleg.com/stores/north-babylon/",
+        "checkedAt": "2026-11-04",
+        "note": "The North Babylon store page lists two 20\" pizzas for $22 on Wednesdays and Fridays."
+      },
+      "verify": {
+        "url": "https://uncleg.com/stores/north-babylon/",
+        "tokens": [
+          "$22",
+          "Wednesday"
+        ]
+      }
     },
     {
       "id": "uncleg-heroes-after-730",
@@ -83,26 +381,87 @@
       "item": "Heroes and hot food",
       "price": "50% off",
       "venue": "Uncle Giuseppe's Marketplace",
-      "town": "Smithtown", "state": "NY", "lat": 40.856, "lng": -73.201,
+      "town": "Smithtown",
+      "state": "NY",
+      "lat": 40.856,
+      "lng": -73.201,
       "category": "grocery",
-      "days": [0, 1, 2, 3, 4, 5, 6], "start": "19:30", "end": null, "hoursKnown": true,
+      "days": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "start": "19:30",
+      "end": null,
+      "hoursKnown": true,
       "conditions": [],
-      "verification": {"status": "pending", "reason": "not-on-site", "checkedAt": "2026-11-04", "note": "You mentioned this one. It isn't on uncleg.com, and their site describes half-price meals as an employee perk. If you've seen it at your store, mark it verified in person and set the right store."},
-      "evidence": [{"label": "Restaurantji listing for the Morris Plains, NJ store", "url": "https://www.restaurantji.com/nj/morris-plains/uncle-giuseppes-marketplace-/", "kind": "third-party"}]
+      "verification": {
+        "status": "pending",
+        "reason": "not-on-site",
+        "checkedAt": "2026-11-04",
+        "note": "You mentioned this one. It isn't on uncleg.com, and their site describes half-price meals as an employee perk. If you've seen it at your store, mark it verified in person and set the right store."
+      },
+      "evidence": [
+        {
+          "label": "Restaurantji listing for the Morris Plains, NJ store",
+          "url": "https://www.restaurantji.com/nj/morris-plains/uncle-giuseppes-marketplace-/",
+          "kind": "third-party"
+        }
+      ]
     },
     {
       "id": "saltbarrel-oysters",
       "scope": "local",
-      "item": "Oysters",
-      "price": "Half price",
+      "item": "Local oysters (Buck A Shuck)",
+      "price": "$1",
       "venue": "Salt & Barrel",
-      "town": "Bay Shore", "state": "NY", "lat": 40.725, "lng": -73.245,
-      "address": "61 W Main St",
+      "town": "Bay Shore",
+      "state": "NY",
+      "lat": 40.725,
+      "lng": -73.245,
+      "address": "61 West Main Street",
       "category": "food",
-      "days": [0, 1, 3, 4, 5, 6], "start": "15:00", "end": "18:00", "hoursKnown": true,
-      "conditions": ["Closed Tuesdays"],
-      "verification": {"status": "pending", "reason": "third-party", "checkedAt": "2026-11-04", "note": "Only on OpenTable, and its listings disagree on the days (daily except Tuesday vs. Friday and Saturday only)."},
-      "evidence": [{"label": "OpenTable", "url": "https://www.opentable.com/salt-and-barrel", "kind": "third-party"}, {"label": "Fire Island News review (older)", "url": "https://fireislandnews.com/fire-island-news/dining-review-salt-barrel", "kind": "third-party"}]
+      "days": [],
+      "start": "15:00",
+      "end": "18:00",
+      "hoursKnown": true,
+      "conditions": [
+        "Happy hour 3 to 6 PM every day; $1 off all other oysters",
+        "Older listings say the restaurant closes Tuesdays; call ahead on a Tuesday"
+      ],
+      "verification": {
+        "status": "verified",
+        "checkedAt": "2026-11-04",
+        "method": "website",
+        "via": "search",
+        "url": "https://saltandbarrel.com/happy-hours/",
+        "note": "Salt & Barrel's Happy Hour page: \"HAPPY HOUR 3 PM to 6 PM EVERYDAY!\" with Buck A Shuck Local Oysters. OpenTable's half-price listing was out of date."
+      },
+      "evidence": [
+        {
+          "label": "Salt & Barrel: Happy Hour",
+          "url": "https://saltandbarrel.com/happy-hours/",
+          "kind": "business"
+        },
+        {
+          "label": "OpenTable (outdated)",
+          "url": "https://www.opentable.com/salt-and-barrel",
+          "kind": "third-party"
+        }
+      ],
+      "priceNote": "each",
+      "businessUrl": "https://saltandbarrel.com/happy-hours/",
+      "verify": {
+        "url": "https://saltandbarrel.com/happy-hours/",
+        "tokens": [
+          "HAPPY HOUR 3 PM to 6 PM EVERYDAY",
+          "Buck A Shuck Local Oysters"
+        ]
+      }
     },
     {
       "id": "bridgelane-trivia",
@@ -110,26 +469,41 @@
       "item": "Trivia night",
       "price": "Free",
       "venue": "Bridge Lane Wine",
-      "town": "Mattituck", "state": "NY", "lat": 40.991, "lng": -72.534,
+      "town": "Mattituck",
+      "state": "NY",
+      "lat": 40.991,
+      "lng": -72.534,
       "address": "35 Cox Neck Rd",
       "category": "fun",
-      "days": [4], "start": "18:30", "end": "20:00", "hoursKnown": true,
-      "conditions": ["Teams of up to 6", "Prize for the winning team", "Reserve at reservations@bridgelanewine.com"],
-      "verification": {"status": "pending", "reason": "third-party", "checkedAt": "2026-11-04", "note": "Listed on Long Island Wine Country's event pages, not Bridge Lane's own site, and one listing describes a February to April series."},
-      "evidence": [{"label": "Long Island Wine Country", "url": "https://liwines.com/event/trivia-nights-at-bridge-lane-wine/", "kind": "third-party"}, {"label": "Northforker", "url": "https://northforker.com/events/trivia-night-at-bridge-lane-wine/", "kind": "third-party"}]
-    },
-    {
-      "id": "perfectomundo-tacos",
-      "scope": "local",
-      "item": "Tacos",
-      "price": "$2.95",
-      "venue": "Perfecto Mundo",
-      "town": "Commack", "state": "NY", "lat": 40.843, "lng": -73.293,
-      "category": "food",
-      "days": [2], "start": null, "end": null, "hoursKnown": false,
-      "conditions": ["Same listing mentions 2-for-1 margaritas"],
-      "verification": {"status": "pending", "reason": "third-party", "checkedAt": "2026-11-04", "note": "Only an older Patch post. Not found on the restaurant's own site."},
-      "evidence": [{"label": "Patch", "url": "https://patch.com/new-york/commack/taco-tuesday-and-two-for-one-margaritas", "kind": "third-party"}]
+      "days": [
+        4
+      ],
+      "start": "18:30",
+      "end": "20:00",
+      "hoursKnown": true,
+      "conditions": [
+        "Teams of up to 6",
+        "Prize for the winning team",
+        "Reserve at reservations@bridgelanewine.com"
+      ],
+      "verification": {
+        "status": "pending",
+        "reason": "third-party",
+        "checkedAt": "2026-11-04",
+        "note": "Seasonal winter and spring series (started in February); not on the November 2026 bridgelanewine.com/events calendar, per the owner's Nov 4 audit."
+      },
+      "evidence": [
+        {
+          "label": "Long Island Wine Country",
+          "url": "https://liwines.com/event/trivia-nights-at-bridge-lane-wine/",
+          "kind": "third-party"
+        },
+        {
+          "label": "Northforker",
+          "url": "https://northforker.com/events/trivia-night-at-bridge-lane-wine/",
+          "kind": "third-party"
+        }
+      ]
     },
     {
       "id": "amc-tickets-tue-wed",
@@ -138,11 +512,38 @@
       "price": "50% off",
       "venue": "AMC Theatres",
       "category": "fun",
-      "days": [2, 3], "start": null, "end": null, "hoursKnown": true,
-      "conditions": ["AMC Stubs members, including the free Insider tier", "Fees, taxes and premium-format surcharges aren't discounted", "Up to 10 tickets per show date", "Some films and holidays excluded", "Participating U.S. theatres"],
+      "days": [
+        2,
+        3
+      ],
+      "start": null,
+      "end": null,
+      "hoursKnown": true,
+      "conditions": [
+        "AMC Stubs members, including the free Insider tier",
+        "Fees, taxes and premium-format surcharges aren't discounted",
+        "Up to 10 tickets per show date",
+        "Some films and holidays excluded",
+        "Participating U.S. theatres"
+      ],
       "businessUrl": "https://www.amctheatres.com/50pct-off-tuesdays-and-wednesdays",
-      "verification": {"status": "verified", "method": "website", "via": "search", "url": "https://www.amctheatres.com/50pct-off-tuesdays-and-wednesdays", "checkedAt": "2026-11-04", "note": "AMC's own 50% Off Tuesdays & Wednesdays page."},
-      "verify": {"url": "https://www.amctheatres.com/50pct-off-tuesdays-and-wednesdays", "tokens": ["50%", "Tuesday", "Wednesday"]}
+      "verification": {
+        "status": "verified",
+        "method": "website",
+        "via": "search",
+        "url": "https://www.amctheatres.com/50pct-off-tuesdays-and-wednesdays",
+        "checkedAt": "2026-11-04",
+        "note": "AMC's own 50% Off Tuesdays & Wednesdays page."
+      },
+      "verify": {
+        "url": "https://www.amctheatres.com/50pct-off-tuesdays-and-wednesdays",
+        "tokens": [
+          "50%",
+          "Tuesday",
+          "Wednesday"
+        ]
+      },
+      "loyaltyRequired": true
     },
     {
       "id": "amc-combo-tue-wed",
@@ -151,11 +552,34 @@
       "price": "50% off",
       "venue": "AMC Theatres",
       "category": "fun",
-      "days": [2, 3], "start": null, "end": null, "hoursKnown": true,
-      "conditions": ["AMC Stubs members", "In-theatre purchases only"],
+      "days": [
+        2,
+        3
+      ],
+      "start": null,
+      "end": null,
+      "hoursKnown": true,
+      "conditions": [
+        "AMC Stubs members",
+        "In-theatre purchases only"
+      ],
       "businessUrl": "https://www.amctheatres.com/50pct-off-tuesdays-and-wednesdays",
-      "verification": {"status": "verified", "method": "website", "via": "search", "url": "https://www.amctheatres.com/50pct-off-tuesdays-and-wednesdays", "checkedAt": "2026-11-04", "note": "On AMC's 50% Off Tuesdays & Wednesdays page."},
-      "verify": {"url": "https://www.amctheatres.com/50pct-off-tuesdays-and-wednesdays", "tokens": ["popcorn", "50%"]}
+      "verification": {
+        "status": "verified",
+        "method": "website",
+        "via": "search",
+        "url": "https://www.amctheatres.com/50pct-off-tuesdays-and-wednesdays",
+        "checkedAt": "2026-11-04",
+        "note": "On AMC's 50% Off Tuesdays & Wednesdays page."
+      },
+      "verify": {
+        "url": "https://www.amctheatres.com/50pct-off-tuesdays-and-wednesdays",
+        "tokens": [
+          "popcorn",
+          "50%"
+        ]
+      },
+      "loyaltyRequired": true
     },
     {
       "id": "regal-popcorn-tue",
@@ -164,11 +588,34 @@
       "price": "50% off",
       "venue": "Regal",
       "category": "fun",
-      "days": [2], "start": null, "end": null, "hoursKnown": true,
-      "conditions": ["Regal Rewards members (formerly Crown Club), free to join", "Tickets are also discounted on Tuesdays; price varies by theater"],
+      "days": [
+        2
+      ],
+      "start": null,
+      "end": null,
+      "hoursKnown": true,
+      "conditions": [
+        "Regal Rewards members (formerly Crown Club), free to join",
+        "Tickets are also discounted on Tuesdays; price varies by theater"
+      ],
       "businessUrl": "https://www.regmovies.com/promotions/regal-value-days",
-      "verification": {"status": "verified", "method": "website", "via": "search", "url": "https://www.regmovies.com/promotions/regal-value-days", "checkedAt": "2026-11-04", "note": "Regal Value Days page: 50% off popcorn plus discounted tickets on Tuesdays."},
-      "verify": {"url": "https://www.regmovies.com/promotions/regal-value-days", "tokens": ["50%", "popcorn", "Tuesday"]}
+      "verification": {
+        "status": "verified",
+        "method": "website",
+        "via": "search",
+        "url": "https://www.regmovies.com/promotions/regal-value-days",
+        "checkedAt": "2026-11-04",
+        "note": "Regal Value Days page: 50% off popcorn plus discounted tickets on Tuesdays."
+      },
+      "verify": {
+        "url": "https://www.regmovies.com/promotions/regal-value-days",
+        "tokens": [
+          "50%",
+          "popcorn",
+          "Tuesday"
+        ]
+      },
+      "loyaltyRequired": true
     },
     {
       "id": "regal-candy-mon",
@@ -177,11 +624,33 @@
       "price": "25% off",
       "venue": "Regal",
       "category": "fun",
-      "days": [1], "start": null, "end": null, "hoursKnown": true,
-      "conditions": ["Regal Rewards members"],
+      "days": [
+        1
+      ],
+      "start": null,
+      "end": null,
+      "hoursKnown": true,
+      "conditions": [
+        "Regal Rewards members"
+      ],
       "businessUrl": "https://www.regmovies.com/promotions/regal-value-days",
-      "verification": {"status": "verified", "method": "website", "via": "search", "url": "https://www.regmovies.com/promotions/regal-value-days", "checkedAt": "2026-11-04", "note": "Regal Value Days page: 25% off candy on Mondays."},
-      "verify": {"url": "https://www.regmovies.com/promotions/regal-value-days", "tokens": ["25%", "candy", "Monday"]}
+      "verification": {
+        "status": "verified",
+        "method": "website",
+        "via": "search",
+        "url": "https://www.regmovies.com/promotions/regal-value-days",
+        "checkedAt": "2026-11-04",
+        "note": "Regal Value Days page: 25% off candy on Mondays."
+      },
+      "verify": {
+        "url": "https://www.regmovies.com/promotions/regal-value-days",
+        "tokens": [
+          "25%",
+          "candy",
+          "Monday"
+        ]
+      },
+      "loyaltyRequired": true
     },
     {
       "id": "cinemark-tickets-tue",
@@ -190,11 +659,34 @@
       "price": "Up to 50% off",
       "venue": "Cinemark",
       "category": "fun",
-      "days": [2], "start": null, "end": null, "hoursKnown": true,
-      "conditions": ["Best price for Cinemark Movie Rewards members (free)", "Excludes films opening that Tuesday, special engagements and holidays", "Premium formats add their upcharge", "Discount varies by theater"],
+      "days": [
+        2
+      ],
+      "start": null,
+      "end": null,
+      "hoursKnown": true,
+      "conditions": [
+        "Best price for Cinemark Movie Rewards members (free)",
+        "Excludes films opening that Tuesday, special engagements and holidays",
+        "Premium formats add their upcharge",
+        "Discount varies by theater"
+      ],
       "businessUrl": "https://www.cinemark.com/discounts/discount-tuesdays",
-      "verification": {"status": "verified", "method": "website", "via": "search", "url": "https://www.cinemark.com/discounts/discount-tuesdays", "checkedAt": "2026-11-04", "note": "Cinemark's Discount Tuesdays page."},
-      "verify": {"url": "https://www.cinemark.com/discounts/discount-tuesdays", "tokens": ["Discount Tuesdays", "50%"]}
+      "verification": {
+        "status": "verified",
+        "method": "website",
+        "via": "page",
+        "url": "https://www.cinemark.com/discounts/discount-tuesdays",
+        "checkedAt": "2026-11-04",
+        "note": "Cinemark's Discount Tuesdays page."
+      },
+      "verify": {
+        "url": "https://www.cinemark.com/discounts/discount-tuesdays",
+        "tokens": [
+          "Discount Tuesdays",
+          "50%"
+        ]
+      }
     },
     {
       "id": "dnb-games-wed",
@@ -203,11 +695,33 @@
       "price": "Half price",
       "venue": "Dave & Buster's",
       "category": "fun",
-      "days": [3], "start": null, "end": null, "hoursKnown": true,
-      "conditions": ["Standard arcade games only; excludes VR, the Arena, Game Suites, the Human Crane and photo booths", "Can't be combined with other offers", "Some D&B pages also list Sundays; Wednesday is the one every page agrees on"],
+      "days": [
+        3
+      ],
+      "start": null,
+      "end": null,
+      "hoursKnown": true,
+      "conditions": [
+        "Standard arcade games only; excludes VR, the Arena, Game Suites, the Human Crane and photo booths",
+        "Can't be combined with other offers",
+        "Some D&B pages also list Sundays; Wednesday is the one every page agrees on"
+      ],
       "businessUrl": "https://www.daveandbusters.com/us/en/play",
-      "verification": {"status": "verified", "method": "website", "via": "search", "url": "https://www.daveandbusters.com/us/en/play", "checkedAt": "2026-11-04", "note": "Dave & Buster's play page: half-price games every Wednesday, open to close."},
-      "verify": {"url": "https://www.daveandbusters.com/us/en/play", "tokens": ["Half", "Wednesday"]}
+      "verification": {
+        "status": "verified",
+        "method": "website",
+        "via": "page",
+        "url": "https://www.daveandbusters.com/us/en/play",
+        "checkedAt": "2026-11-04",
+        "note": "Dave & Buster's play page: half-price games every Wednesday, open to close."
+      },
+      "verify": {
+        "url": "https://www.daveandbusters.com/us/en/play",
+        "tokens": [
+          "Half",
+          "Wednesday"
+        ]
+      }
     },
     {
       "id": "bww-boneless-thu",
@@ -217,40 +731,162 @@
       "priceNote": "second order of equal or lesser value free",
       "venue": "Buffalo Wild Wings",
       "category": "food",
-      "days": [4], "start": null, "end": null, "hoursKnown": true,
-      "conditions": ["Dine-in, or takeout and delivery through BWW's own site or app", "No third-party delivery", "Limited time, participating locations"],
+      "days": [
+        4
+      ],
+      "start": null,
+      "end": null,
+      "hoursKnown": true,
+      "conditions": [
+        "Dine-in, or takeout and delivery through BWW's own site or app",
+        "No third-party delivery",
+        "Limited time, participating locations"
+      ],
       "businessUrl": "https://www.buffalowildwings.com/bogo-days/",
-      "verification": {"status": "verified", "method": "website", "via": "search", "url": "https://www.buffalowildwings.com/bogo-days/", "checkedAt": "2026-11-04", "note": "BWW's BOGO Days page and homepage advertise BOGO boneless wings every Thursday."},
-      "verify": {"url": "https://www.buffalowildwings.com/bogo-days/", "tokens": ["BOGO", "Boneless", "Thursday"]}
+      "verification": {
+        "status": "verified",
+        "method": "website",
+        "via": "page",
+        "url": "https://www.buffalowildwings.com/bogo-days/",
+        "checkedAt": "2026-11-04",
+        "note": "BWW's BOGO Days page and homepage advertise BOGO boneless wings every Thursday."
+      },
+      "verify": {
+        "url": "https://www.buffalowildwings.com/bogo-days/",
+        "tokens": [
+          "BOGO",
+          "Boneless",
+          "Thursday"
+        ]
+      }
     },
     {
-      "id": "bww-traditional-tue",
+      "id": "bww-traditional-tue-50",
       "scope": "anywhere",
-      "item": "Traditional wings",
-      "price": "BOGO 50%",
-      "priceNote": "second order 50% off",
       "venue": "Buffalo Wild Wings",
       "category": "food",
-      "days": [2], "start": null, "end": null, "hoursKnown": true,
-      "conditions": [],
+      "days": [
+        2
+      ],
+      "start": null,
+      "end": null,
+      "hoursKnown": true,
       "businessUrl": "https://www.buffalowildwings.com/bogo-days/",
-      "verification": {"status": "pending", "reason": "conflict", "checkedAt": "2026-11-04", "note": "BWW's own pages disagree: an older page says buy one, get one free with a Rewards account; newer terms say the second order is 50% off."},
-      "evidence": [{"label": "Buffalo Wild Wings", "url": "https://www.buffalowildwings.com/bogo-days/", "kind": "business"}],
-      "verify": {"url": "https://www.buffalowildwings.com/bogo-days/", "tokens": ["Tuesday", "Traditional"]}
+      "item": "Traditional wings",
+      "price": "BOGO 50% off",
+      "priceNote": "second order of equal or lesser value",
+      "conditions": [
+        "Dine-in, or takeout and delivery through BWW's own site or app",
+        "No third-party delivery",
+        "Limited time, participating locations"
+      ],
+      "verification": {
+        "status": "verified",
+        "checkedAt": "2026-11-04",
+        "method": "website",
+        "via": "page",
+        "url": "https://www.buffalowildwings.com/bogo-days/",
+        "note": "BWW's BOGO Days page.",
+        "snippet": "Get BOGO 50% off Traditional Wings on Tuesdays"
+      },
+      "verify": {
+        "url": "https://www.buffalowildwings.com/bogo-days/",
+        "tokens": [
+          "BOGO 50% off Traditional Wings",
+          "Tuesdays"
+        ]
+      }
+    },
+    {
+      "id": "bww-traditional-tue-bogo-free",
+      "scope": "anywhere",
+      "venue": "Buffalo Wild Wings",
+      "category": "food",
+      "days": [
+        2
+      ],
+      "start": null,
+      "end": null,
+      "hoursKnown": true,
+      "businessUrl": "https://www.buffalowildwings.com/bogo-days/",
+      "item": "Traditional wings (6, 10 or 15 count)",
+      "price": "BOGO free",
+      "priceNote": "free Rewards members, dine-in only",
+      "loyaltyRequired": true,
+      "conditions": [
+        "Requires a free Buffalo Wild Wings Rewards account",
+        "Dine-in only",
+        "6-, 10- or 15-count traditional wings",
+        "The page's fine print describes the general Tuesday offer as 50% off; ask which applies"
+      ],
+      "verification": {
+        "status": "verified",
+        "checkedAt": "2026-11-04",
+        "method": "website",
+        "via": "page",
+        "url": "https://www.buffalowildwings.com/bogo-days/",
+        "note": "BWW's BOGO Days page.",
+        "snippet": "Every Tuesday when you buy one 6-, 10- or 15-count traditional wings with a valid Buffalo Wild Wings Rewards account you get one of equal value free. Dine-in only."
+      },
+      "verify": {
+        "url": "https://www.buffalowildwings.com/bogo-days/",
+        "tokens": [
+          "15-count traditional wings",
+          "Rewards account",
+          "Dine-in only"
+        ]
+      }
     },
     {
       "id": "wholefoods-oysters-fri",
       "scope": "anywhere",
       "item": "Live oysters",
-      "price": "$1",
-      "priceNote": "each, minimum 12",
+      "price": "12 for $12",
+      "priceNote": "live oysters",
       "venue": "Whole Foods Market",
       "category": "grocery",
-      "days": [5], "start": null, "end": null, "hoursKnown": true,
-      "conditions": ["In-store only, U.S. stores", "Minimum purchase of 12", "Excludes refrigerated shucked oysters", "One Whole Foods page frames it as a Prime member deal"],
+      "days": [
+        5
+      ],
+      "start": null,
+      "end": null,
+      "hoursKnown": true,
+      "conditions": [
+        "In-store only, U.S. stores",
+        "Excludes refrigerated shucked oysters",
+        "Whole Foods' Amazon page frames it as a Prime member deal"
+      ],
       "businessUrl": "https://www.wholefoodsmarket.com/days-of-deals",
-      "verification": {"status": "verified", "method": "website", "via": "search", "url": "https://www.wholefoodsmarket.com/days-of-deals", "checkedAt": "2026-11-04", "note": "Whole Foods' Days of Deals page lists $1 all live oysters on Fridays."},
-      "verify": {"url": "https://www.wholefoodsmarket.com/days-of-deals", "tokens": ["oysters", "$1"]}
+      "verification": {
+        "status": "verified",
+        "method": "website",
+        "via": "page",
+        "url": "https://www.wholefoodsmarket.com/days-of-deals",
+        "checkedAt": "2026-11-04",
+        "note": "Whole Foods' Days of Deals page lists \"12 for $12 All Live Oysters\" among its Friday deals.",
+        "snippet": "12 for $12 All Live Oysters"
+      },
+      "verify": {
+        "url": "https://www.wholefoodsmarket.com/days-of-deals",
+        "tokens": [
+          "12 for $12",
+          "live oysters"
+        ]
+      }
+    }
+  ],
+  "removed": [
+    {
+      "id": "perfectomundo-tacos",
+      "why": "The only source was a 2012 Patch post; the owner's audit reports Perfecto Mundo closed in 2014"
+    },
+    {
+      "id": "luckystrike-commack-nightstrike",
+      "why": "Split into Sunday and Monday-Thursday records"
+    },
+    {
+      "id": "bww-traditional-tue",
+      "why": "Split into the 50% off and free Rewards tiers"
     }
   ]
 }

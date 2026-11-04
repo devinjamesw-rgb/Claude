@@ -167,6 +167,69 @@ class VerifyTests(unittest.TestCase):
             self.assertNotIn("no-check", res)
 
 
+FILLER = ("<p>Our lanes, arcade and kitchen are open seven days a week. Book a lane online or walk in; "
+          "parties of every size are welcome, and our team can set up birthdays, corporate events and league nights. "
+          "Ask about gift cards, game cards and the seasonal menu at the front desk.</p>") * 2
+
+
+def verify_once(tmp, html, tokens):
+    import json
+    page = os.path.join(tmp, "page.html")
+    with open(page, "w") as f:
+        f.write(f"<html><head><title>Specials</title></head><body>{html}{FILLER}</body></html>")
+    cat = os.path.join(tmp, "cat.json")
+    with open(cat, "w") as f:
+        json.dump({"deals": [{"id": "d", "verify": {"url": "file://" + page, "tokens": tokens}}]}, f)
+    ds.main(["--verify", cat, "--out", tmp, "--min-delay", "0"])
+    with open(os.path.join(tmp, "verification.json")) as f:
+        return json.load(f)["results"]["d"]
+
+
+class StrictVerifyTests(unittest.TestCase):
+    def test_adjacent_tokens_pass_with_snippet(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            r = verify_once(tmp, "<h2>Night Strike</h2><p>Unlimited bowling for $19.99, Sunday starting at 6 PM.</p>",
+                            ["Night Strike", "$19.99", "Sunday starting at 6PM"])
+            self.assertEqual(r["status"], "verified")
+            self.assertIn("$19.99", r["matchedSnippet"])
+            self.assertEqual(len(r["snippetHash"]), 16)
+
+    def test_scattered_tokens_fail(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            r = verify_once(tmp, "<p>Night Strike is back this season.</p>" + FILLER + "<p>Gift cards from $19.99.</p>",
+                            ["Night Strike", "$19.99"])
+            self.assertEqual(r["status"], "not_together")
+
+    def test_negated_deal_fails(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            r = verify_once(tmp, "<p>Night Strike unlimited bowling $19.99. This offer has ended.</p>", ["Night Strike", "$19.99"])
+            self.assertEqual(r["status"], "expired_or_negated")
+
+    def test_ampm_spacing_is_normalized(self):
+        page = ds._norm("HAPPY HOUR 3 PM to 6 P.M. EVERYDAY!")
+        self.assertTrue(ds.token_on_page("3pm to 6pm everyday", page))
+
+
+class StaleArticleTests(unittest.TestCase):
+    PAGE = ('<html><head><script type="application/ld+json">{{"@type":"NewsArticle","datePublished":"{d}"}}</script>'
+            '<meta property="article:published_time" content="{d}T10:00:00Z"/></head>'
+            '<body><p>Taco Tuesday: $2.95 tacos every Tuesday</p></body></html>')
+
+    def test_old_third_party_article_is_rejected(self):
+        src = {"id": "patch", "name": "Patch", "url": "https://example.com/old"}
+        self.assertEqual(ds.extract_from_html(self.PAGE.format(d="2012-09-15"), src["url"], src, TODAY), [])
+        self.assertEqual(src.get("_stale"), "2012-09-15")
+
+    def test_recent_article_and_official_pages_pass(self):
+        src = {"id": "patch", "name": "Patch", "url": "https://example.com/new"}
+        self.assertTrue(ds.extract_from_html(self.PAGE.format(d="2026-10-01"), src["url"], src, TODAY))
+        official = {"id": "biz", "name": "Some Bar", "url": "https://example.com/specials", "official": True}
+        self.assertTrue(ds.extract_from_html(self.PAGE.format(d="2012-09-15"), official["url"], official, TODAY))
+
+
 class RunTests(unittest.TestCase):
     def test_full_run_tracks_new_deals(self):
         import json, tempfile

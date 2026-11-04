@@ -28,9 +28,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -40,7 +40,7 @@ jobs:
 
       - name: Install a headless browser for pages that load with JavaScript
         run: |
-          pip install --quiet playwright==1.48.0
+          pip install --quiet playwright==1.64.0
           python3 -m playwright install --with-deps chromium
 
       - name: Re-check every deal on the business's own site

@@ -111,6 +111,9 @@ main{padding-bottom:8px}
 .st.ended{color:var(--faint)}
 .seal{display:inline-flex;align-items:center;gap:4px;color:var(--seal);font-weight:500}
 .flag{display:inline-flex;align-items:center;gap:4px;color:var(--warn);font-weight:500}
+.member{display:inline-flex;align-items:center;height:19px;padding:0 7px;border:1px solid var(--line-2);border-radius:6px;font-size:11.5px;font-weight:500;color:var(--ink-2);white-space:nowrap}
+.d-price .member{align-self:center}
+.quote{margin:4px 0 2px;padding:2px 0 2px 12px;border-left:2px solid var(--seal);font:400 17px/1.4 var(--serif);color:var(--ink);overflow-wrap:anywhere}
 
 .empty{margin-top:22px;padding:28px 22px;border:1px solid var(--line);border-radius:16px;background:var(--surface);text-align:center}
 .empty h3{margin:0 0 6px;font:400 26px/1.15 var(--serif);text-wrap:balance}
@@ -260,8 +263,10 @@ const RADII = [5, 10, 25, 50, 100, 0];
 const METHOD = {website:'Business website', instagram:'Instagram', facebook:'Facebook', 'in-person':'In person'};
 const REASON = {
   'conflict':'Sources disagree', 'third-party':'Third-party only', 'not-on-site':'Not on business site',
-  'scanner-official':'Found on business site', 'not-found':'No longer on business site', 'unreachable':'Business site unreachable'
+  'scanner-official':'Found on business site', 'not-found':'No longer on business site', 'unreachable':'Business site unreachable',
+  'stale':'Check is out of date', 'awaiting-page-check':'Waiting for a page check', 'negated':'Business page says it ended'
 };
+const STALE_DAYS = {local: 14, anywhere: 30};
 // Words that don't name an item on their own (same rule as the scanner).
 const GENERIC = new Set(('and with for our any all the from only get each per off price priced half day days night nights daily every weekly week special specials deal deals discount discounts save savings sale happy hour hours menu bar drinks drink cocktails cocktail beer beers wine wines apps appetizers appetizer app food select well drafts draft bottles bottle shots shot mixed everything items item entrees entree desserts dessert house order orders purchase until til close great new more also plus including available served start starts enjoy late early seasonal signature specialty premium domestic imported craft local tap taps pint pints glass glasses bucket buckets pitcher pitchers liquor spirits booze bites snacks small plates plate offer offers promo promotion').split(' '));
 const FALLBACK_PLACES = `Ronkonkoma|NY|40.815|-73.112|19
@@ -347,7 +352,18 @@ function haversine(a, b){
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 const milesText = mi => mi == null ? '' : mi < 0.8 ? 'nearby' : (mi < 10 ? mi.toFixed(1) : Math.round(mi)) + ' mi';
-const isVerified = d => !!(d.verification && d.verification.status === 'verified');
+// A verification goes stale: local deals after 14 days, chain deals after 30. Stale deals wait in To verify.
+function verOf(d){
+  const v = d.verification || {};
+  if (v.status !== 'verified') return v;
+  const c = parseDay(v.checkedAt);
+  if (!c) return v;
+  const lim = STALE_DAYS[scopeOf(d)], age = Math.floor((Date.now() - c.getTime()) / 864e5);
+  if (age <= lim) return v;
+  return Object.assign({}, v, {status: 'pending', reason: 'stale',
+    note: `Last checked ${longDate(v.checkedAt)}, over ${lim} days ago. ${scopeOf(d) === 'local' ? 'Local deals' : 'Chain deals'} need a fresh check every ${lim} days.`});
+}
+const isVerified = d => verOf(d).status === 'verified';
 const scopeOf = d => d.scope === 'anywhere' ? 'anywhere' : 'local';
 function namesAnItem(item){ return (String(item || '').toLowerCase().match(/[a-z][a-z'’&-]+/g) || []).some(w => w.length >= 3 && !GENERIC.has(w.replace(/['’-]/g, ''))); }
 
@@ -517,12 +533,13 @@ function rowHTML(x, opts = {}){
   const place = state.scope === 'local' ? [d.venue, d.town, milesText(mi)].filter(Boolean) : [d.venue, 'participating locations'];
   let meta;
   if (pend){
-    const r = (d.verification && d.verification.reason) || '';
+    const r = verOf(d).reason || '';
     meta = `<span class="flag">${icon('alert', 'i-s')}${esc(REASON[r] || 'Not verified')}</span><span class="nw"><span class="sep">·</span>${esc(daysText(daysOf(d)))}</span>`;
   } else {
-    const ver = d.verification || {};
+    const ver = verOf(d);
     const vtxt = ver.method === 'website' ? (hostOf(ver.url) || 'business site') : (METHOD[ver.method] || 'verified');
-    meta = `<span class="st ${w.state}">${esc(w.label)}</span><span class="nw"><span class="sep">·</span><span class="seal">${icon('seal', 'i-s')}${esc(vtxt)}</span></span>`;
+    meta = `<span class="st ${w.state}">${esc(w.label)}</span><span class="nw"><span class="sep">·</span><span class="seal">${icon('seal', 'i-s')}${esc(vtxt)}</span></span>`
+      + (d.loyaltyRequired ? '<span class="nw"><span class="sep">·</span><span class="member">Free member login</span></span>' : '');
   }
   return `<button type="button" class="row${w && w.state === 'ended' ? ' dim' : ''}" data-open="${esc(d.id)}">
     <span class="r-main">
@@ -584,7 +601,7 @@ function emptyHTML(v){
 function renderFoot(v){
   const parts = [];
   if (state.scope === 'local') parts.push(`<span>Distances are measured from the center of ${esc(state.home.name)}.</span>`);
-  parts.push('<span>A deal names an item, a price and a day, and is confirmed on the business’s own website or socials before it appears.</span>');
+  parts.push('<span>A deal names an item, a price and a day, and is confirmed on the business’s own website or socials before it appears. Checks expire after 14 days for local deals and 30 for chains.</span>');
   if (v.removed.length) parts.push(`<span><button type="button" class="linkish" data-act="removed">${state.showRemoved ? 'Hide' : 'Show'} ${v.removed.length} removed</button></span>`);
   if (state.showRemoved && v.removed.length) parts.push(`<div class="group-b" style="margin-top:6px">${v.removed.map(d => rowHTML({d, mi: haversine(state.home, d), w: {state: 'ended', label: 'Removed'}})).join('')}</div>`);
   $('#foot').innerHTML = parts.join('');
@@ -609,7 +626,8 @@ function closeSheet(){
   if (lastFocus && document.contains(lastFocus)) lastFocus.focus({preventScroll: true});
 }
 function detailHTML(d){
-  const now = new Date(), t = target(now), days = daysOf(d), ver = d.verification || {};
+  const now = new Date(), t = target(now), days = daysOf(d), ver = verOf(d);
+  const quote = ver.snippet ? `<blockquote class="quote">“${esc(ver.snippet)}”</blockquote>` : '';
   const local = scopeOf(d) === 'local', mi = local ? haversine(state.home, d) : null;
   const w = when(d, t && runsOn(d, t, now) ? t : null, now);
   const edit = state.canEdit && db;
@@ -620,13 +638,15 @@ function detailHTML(d){
     const vu = safeUrl(ver.url);
     const how = ver.via === 'page' ? 'The scanner loaded the business’s page and found it.' : ver.via === 'search' ? 'Seen on the business’s own page through a search check.' : ver.via === 'you' ? 'Confirmed by you.' : '';
     vcard = `<div class="vcard ok"><span class="vt">${icon('seal')}Verified · ${esc(METHOD[ver.method] || 'Verified')}</span>
-      ${vu ? `<a href="${esc(vu)}" target="_blank" rel="noopener noreferrer">${esc(hostOf(vu) + pathOf(vu))} ↗</a>` : ''}
+      ${quote}
+      ${vu ?`<a href="${esc(vu)}" target="_blank" rel="noopener noreferrer">${esc(hostOf(vu) + pathOf(vu))} ↗</a>` : ''}
       ${ver.note ? `<p>${esc(ver.note)}</p>` : ''}
       <span class="sub">${ver.checkedAt ? 'Checked ' + esc(longDate(ver.checkedAt)) + '. ' : ''}${esc(how)}${d.verify ? ' Re-checked automatically.' : ''}</span></div>`;
   } else {
     const ev = Array.isArray(d.evidence) ? d.evidence.filter(e => safeUrl(e.url)) : [];
     vcard = `<div class="vcard pend"><span class="vt">${icon('alert')}Not verified · ${esc(REASON[ver.reason] || 'needs a check')}</span>
       ${ver.note ? `<p>${esc(ver.note)}</p>` : ''}
+      ${quote}
       ${ev.length ? `<ul class="ev">${ev.map(e => `<li><a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.label || hostOf(e.url))} ↗</a><span>${e.kind === 'business' ? 'business' : 'third party'}</span></li>`).join('')}</ul>` : ''}
       ${edit && !state.verifyOpen ? '<div class="actions" style="margin-top:6px"><button type="button" class="btn primary" data-act="verify-open">' + icon('seal', 'i-s') + 'I verified it</button></div>' : ''}
       ${edit && state.verifyOpen ? verifyFormHTML(d) : ''}</div>`;
@@ -637,7 +657,7 @@ function detailHTML(d){
   const saved = !!state.saved[d.id];
   return `
     <div><p class="eyebrow">${esc((CAT[catOf(d)] || {}).label || '')} · ${local ? 'Local' : 'Anywhere'}</p><h2>${esc(d.item || 'Untitled deal')}</h2></div>
-    <div class="d-price"><b>${esc(d.price || '')}</b>${d.priceNote ? `<span>${esc(d.priceNote)}</span>` : ''}</div>
+    <div class="d-price"><b>${esc(d.price || '')}</b>${d.priceNote ? `<span>${esc(d.priceNote)}</span>` : ''}${d.loyaltyRequired ? '<span class="member">Free member login</span>' : ''}</div>
     ${place}
     <div class="block"><h4>When</h4>
       <div class="week" aria-label="${esc(daysText(days, true))}">${DOW.map((l, i) => `<span class="${days.includes(i) ? 'on' : ''}${i === now.getDay() ? ' today' : ''}">${l.slice(0, 2)}</span>`).join('')}</div>
@@ -908,6 +928,7 @@ setInterval(() => { if (!document.hidden){ render(); refreshSheet(); } }, 60000)
 
 /* ---------- Boot ---------- */
 async function boot(){
+  try { ['dd1:view', 'dd1:deals', 'dd1:prefs'].forEach(k => localStorage.removeItem(k)); } catch (e) {}  // first-version keys
   render();
   const slow = setTimeout(() => { if (!state.synced && state.conn === 'loading'){ state.conn = 'slow'; render(); } }, 10000);
   const use = window.claude && typeof window.claude.use === 'function' ? n => window.claude.use(n).catch(() => null) : () => Promise.resolve(null);

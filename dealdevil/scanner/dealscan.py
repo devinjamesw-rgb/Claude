@@ -101,9 +101,18 @@ class PageParser(HTMLParser):
         self._jbuf: list[str] | None = None
         self._in_title = False
         self._seen_title = False
+        self.published: list[str] = []  # publish dates the page states about itself
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
+        if tag == "meta" and a.get("content"):
+            key = (a.get("property") or a.get("name") or a.get("itemprop") or "").lower()
+            if key in ("article:published_time", "og:published_time", "datepublished", "publish-date", "pubdate"):
+                self.published.append(a["content"])
+        if tag == "time" and a.get("datetime"):
+            cls = (a.get("class") or "").lower()
+            if "pubdate" in a or (a.get("itemprop") or "").lower() == "datepublished" or any(k in cls for k in ("publish", "entry-date", "post-date")):
+                self.published.append(a["datetime"])
         if tag == "script" and (a.get("type") or "").lower().strip() == "application/ld+json":
             self._jbuf = []
             return
@@ -124,6 +133,8 @@ class PageParser(HTMLParser):
     def handle_startendtag(self, tag, attrs):
         if tag in ("br", "hr"):
             self._buf.append(" ")
+        elif tag == "meta":  # <meta ... /> carries publish dates
+            self.handle_starttag(tag, attrs)
 
     def handle_endtag(self, tag):
         if tag == "script" and self._jbuf is not None:
@@ -515,6 +526,27 @@ def meets_rule(title: str, full: str, schedule_text: str, today: dt.date) -> boo
     return named_day and has_named_price(full) and names_an_item(item_name(title) or "")
 
 
+def published_date(p: "PageParser") -> dt.date | None:
+    """The newest publish date the page states: article:published_time, <time pubdate>, or JSON-LD datePublished."""
+    raw = list(p.published)
+    for blob in p.jsonld:
+        try:
+            for node in _walk_json(json.loads(blob.strip())):
+                if node.get("datePublished"):
+                    raw.append(str(node["datePublished"]))
+        except (ValueError, TypeError, AttributeError):
+            continue
+    dates = []
+    for r in raw:
+        mt = re.match(r"(\d{4})-(\d{2})-(\d{2})", str(r).strip())
+        if mt:
+            try:
+                dates.append(dt.date(int(mt.group(1)), int(mt.group(2)), int(mt.group(3))))
+            except ValueError:
+                pass
+    return max(dates) if dates else None
+
+
 def extract_from_html(html_text: str, url: str, src: dict, today: dt.date) -> list[dict]:
     p = PageParser(url)
     try:
@@ -522,6 +554,11 @@ def extract_from_html(html_text: str, url: str, src: dict, today: dt.date) -> li
         p.close()
     except Exception:  # malformed markup: keep whatever was parsed
         pass
+    if not src.get("official"):  # third-party and news pages older than a year are not evidence of anything current
+        pub = published_date(p)
+        if pub and (today - pub).days > 365:
+            src["_stale"] = pub.isoformat()
+            return []
     deals = extract_from_jsonld(p.jsonld, url, src, today)
     blocks = [b for b in p.blocks if not b["is_heading"] or len(b["text"]) < 120]
     include = re.compile(src["include"], I) if src.get("include") else None
@@ -804,6 +841,8 @@ def scan_source(src: dict, fetcher: Fetcher, today: dt.date, allow_render: bool)
             if rendered:
                 body = rendered
         deals = extract_from_html(body, src["url"], src, today)
+        if src.get("_stale"):
+            return f"skipped: page published {src.pop('_stale')}, over a year ago", []
     # dedupe within source, best score first, cap
     best: dict[str, dict] = {}
     for d in sorted(deals, key=lambda d: -d["score"]):
@@ -833,26 +872,87 @@ def write_json(path: str, data):
 
 # --------------------------------------------------------------------------- verification
 
-def page_text(body: str) -> str:
+def _parse(body: str) -> "PageParser":
     p = PageParser("about:blank")
     try:
         p.feed(body)
         p.close()
     except Exception:
         pass
+    return p
+
+
+def page_text(body: str) -> str:
+    p = _parse(body)
     return " ".join([p.title] + [b["text"] for b in p.blocks] + [strip_tags(j) for j in p.jsonld])
 
 
+def _clean(s: str) -> str:
+    """Normalize spacing, dashes and am/pm ("3 PM", "3 p.m." -> "3pm") without changing case."""
+    s = (s or "").replace("–", "-").replace("—", "-").replace("\xa0", " ").replace("’", "'")
+    s = re.sub(r"(\d)\s*([AaPp])\.?\s?[Mm]\.?(?![A-Za-z])", lambda m: m.group(1) + m.group(2).lower() + "m", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
 def _norm(s: str) -> str:
-    s = (s or "").lower().replace("–", "-").replace("—", "-").replace("\xa0", " ").replace("’", "'")
-    return re.sub(r"\s+", " ", s)
+    return _clean(s).lower()
+
+
+def _token_rx(token: str):
+    t = _norm(token)
+    if re.match(r"^\$?\d", t):  # prices and numbers: "$1" must not match "$12" or "$1.50"
+        return re.compile(r"(?<![\d.])" + re.escape(t) + r"(?!\.?\d)")
+    return re.compile(re.escape(t))
 
 
 def token_on_page(token: str, page: str) -> bool:
-    t = _norm(token)
-    if re.match(r"^\$?\d", t):  # prices and numbers: "$1" must not match "$12" or "$1.50"
-        return re.search(r"(?<![\d.])" + re.escape(t) + r"(?!\.?\d)", page) is not None
-    return t in page
+    return _token_rx(token).search(_norm(page)) is not None
+
+
+# Words near a match that mean the deal is over.
+NEGATION = re.compile(r"\b(expired|has ended|have ended|ended|no longer available|no longer offered|no longer valid|sold out|discontinued)\b", I)
+VERIFY_WINDOW = 250
+
+
+def page_blocks(body: str) -> list[str]:
+    """The page as blocks of text, each list item or paragraph carrying the heading above it."""
+    p = _parse(body)
+    out = [p.title] if p.title else []
+    for b in p.blocks:
+        out.append(f"{b['heading']} · {b['text']}" if b["heading"] and not b["is_heading"] else b["text"])
+    out += [strip_tags(j) for j in p.jsonld]
+    return [c for c in (_clean(x) for x in out) if c]
+
+
+def find_match(tokens: list[str], blocks: list[str], window: int = VERIFY_WINDOW) -> dict | None:
+    """All tokens inside one block, or else inside one stretch of at most `window` characters."""
+    rxs = [_token_rx(t) for t in tokens]
+    for b in blocks:
+        low = b.lower()
+        hits = [r.search(low) for r in rxs]
+        if all(hits):
+            return {"scope": "block", "text": b, "lo": min(h.start() for h in hits), "hi": max(h.end() for h in hits)}
+    full = " · ".join(blocks)
+    low = full.lower()
+    occ = [[(m.start(), m.end()) for m in r.finditer(low)] for r in rxs]
+    if not all(occ):
+        return None
+    best = None
+    for s0, e0 in occ[0]:
+        lo, hi = s0, e0
+        for o in occ[1:]:
+            q = min(o, key=lambda se: max(hi, se[1]) - min(lo, se[0]))
+            lo, hi = min(lo, q[0]), max(hi, q[1])
+        if hi - lo <= window and (best is None or hi - lo < best[1] - best[0]):
+            best = (lo, hi)
+    return {"scope": "window", "text": full, "lo": best[0], "hi": best[1]} if best else None
+
+
+def _snippet(m: dict, size: int = 240) -> str:
+    text, lo, hi = m["text"], m["lo"], m["hi"]
+    start = lo if hi - lo >= size else max(0, lo - (size - (hi - lo)) // 2)
+    s = text[start:start + size].strip()
+    return ("…" if start > 0 else "") + s + ("…" if start + size < len(text) else "")
 
 
 def verify_catalog(path: str, out_dir: str, min_delay: float, allow_render: bool) -> int:
@@ -872,23 +972,34 @@ def verify_catalog(path: str, out_dir: str, min_delay: float, allow_render: bool
             continue
         if url not in pages:
             status, body, _ = fetcher.get(url)
-            pages[url] = (status, _norm(page_text(body)) if body else "")
-        status, text = pages[url]
-        missing = [t for t in tokens if not token_on_page(t, text)] if status == "ok" else tokens
-        if status == "ok" and missing and allow_render and not url.startswith("file:"):
+            pages[url] = (status, page_blocks(body) if body else [])
+        status, blocks = pages[url]
+        m = find_match(tokens, blocks) if status == "ok" else None
+        if status == "ok" and not m and allow_render and not url.startswith("file:"):
             html = render_with_browser(url)
             if html:
-                pages[url] = (status, _norm(page_text(html)))
-                text = pages[url][1]
-                missing = [t for t in tokens if not token_on_page(t, text)]
+                pages[url] = (status, page_blocks(html))
+                blocks = pages[url][1]
+                m = find_match(tokens, blocks)
+        alltext = " ".join(blocks).lower()
+        missing = [t for t in tokens if not _token_rx(t).search(alltext)]
         if status != "ok":
             res = {"status": "unreachable", "reason": status}
-        elif not missing:
-            res = {"status": "verified"}
-        elif len(text) < 300:
+        elif m:
+            snip = _snippet(m)
+            region = m["text"][max(0, m["lo"] - 120): m["hi"] + 120].lower()
+            neg = NEGATION.search(region)
+            if neg:
+                res = {"status": "expired_or_negated", "reason": f'the matched text says "{neg.group(0)}"', "matchedSnippet": snip}
+            else:
+                res = {"status": "verified", "matchScope": m["scope"], "matchedSnippet": snip,
+                       "snippetHash": hashlib.sha256(snip.encode("utf-8")).hexdigest()[:16]}
+        elif len(alltext) < 300:
             res = {"status": "needs_render", "missing": missing, "reason": "page text is nearly empty; it probably loads with JavaScript"}
-        else:
+        elif missing:
             res = {"status": "not_found", "missing": missing}
+        else:
+            res = {"status": "not_together", "reason": f"every word is on the page, but not within one block or {VERIFY_WINDOW} characters"}
         res.update({"url": url, "tokens": tokens, "checkedAt": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")})
         results[d["id"]] = res
         print(f"  {d['id']:<34} {res['status']}{' (' + res.get('reason', '') + ')' if res.get('reason') else ''}", file=sys.stderr)
