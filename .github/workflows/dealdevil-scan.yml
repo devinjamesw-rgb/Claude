@@ -1,25 +1,32 @@
 # DealDevil deal scanner, run by GitHub Actions.
-# GitHub only runs scheduled workflows from the repository's DEFAULT branch,
-# and only from .github/workflows/. A copy of this file lives at
-# .github/workflows/dealdevil-scan.yml; this one is kept beside the scanner for reference.
+# The live copy is .github/workflows/dealdevil-scan.yml; this one sits beside the scanner for reference.
+# - Pushes to claude/* branches that touch the scanner or the catalog run it right away.
+# - The 6-hour schedule only runs once this file is on the repository's default branch (a GitHub rule).
 name: DealDevil scan
 
 on:
   schedule:
-    - cron: "23 */6 * * *"   # every 6 hours, at 23 minutes past
-  workflow_dispatch: {}       # the "Run workflow" button on GitHub
+    - cron: "23 */6 * * *"
+  workflow_dispatch: {}
+  push:
+    branches: ["claude/**"]
+    paths:
+      - "dealdevil/scanner/*.py"
+      - "dealdevil/scanner/sources.json"
+      - "dealdevil/deals/**"
+      - ".github/workflows/dealdevil-scan.yml"
 
 permissions:
   contents: write
 
 concurrency:
-  group: dealdevil-scan
+  group: dealdevil-scan-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -31,8 +38,16 @@ jobs:
         working-directory: dealdevil/scanner
         run: python3 -m unittest test_dealscan.py
 
-      - name: Scan sources
-        run: python3 dealdevil/scanner/dealscan.py --sources dealdevil/scanner/sources.json --out dealdevil/scanner/out
+      - name: Install a headless browser for pages that load with JavaScript
+        run: |
+          pip install --quiet playwright==1.48.0
+          python3 -m playwright install --with-deps chromium
+
+      - name: Re-check every deal on the business's own site
+        run: python3 dealdevil/scanner/dealscan.py --verify dealdevil/deals/catalog.json --out dealdevil/scanner/out --render
+
+      - name: Scan sources for new deals
+        run: python3 dealdevil/scanner/dealscan.py --sources dealdevil/scanner/sources.json --out dealdevil/scanner/out --render
 
       - name: Save results
         run: |
@@ -43,5 +58,6 @@ jobs:
             echo "No changes."
           else
             git commit -m "DealDevil scan $(date -u '+%Y-%m-%d %H:%M UTC')"
-            git push
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
           fi

@@ -414,6 +414,46 @@ def make_title(text: str, heading: str) -> str:
     return best[:1].upper() + best[1:]
 
 
+# Words that don't name an item on their own. "$10 cocktails" or "$1 off drafts" fails the rule;
+# "$5 espresso martinis" or "$3 Bud Light drafts" passes.
+GENERIC = set("""
+and with for our any all the from only get each per off price priced half day days night nights daily every weekly week
+special specials deal deals discount discounts save savings sale happy hour hours menu bar drinks drink cocktails cocktail
+beer beers wine wines apps appetizers appetizer app food select well drafts draft bottles bottle shots shot mixed everything
+items item entrees entree desserts dessert house order orders purchase until til till close great new more also plus including
+included available served serving start starts starting enjoy join you your today tonight weekday weekdays weekend weekends
+late early bird seasonal signature specialty premium domestic imported craft local tap taps pint pints glass glasses
+round rounds bucket buckets pitcher pitchers liquor spirits booze bites snacks small plates plate offer offers promo promotion
+sunday monday tuesday wednesday thursday friday saturday sundays mondays tuesdays wednesdays thursdays fridays saturdays
+""".split())
+PRICE_BITS = re.compile(
+    r"\$\s?\d+(?:\.\d{2})?(?:\s?off)?|\b\d{1,3}\s?%\s?(?:off|discount)?|\bhalf[\s-]?(?:off|price|priced)\b|\bbogo\b|"
+    r"\bbuy one,? get one(?: free| half off)?\b|\b2[\s-]?for[\s-]?1\b|\bfree\b|\d+\s?(?:¢|cents)\s?off", I)
+
+
+def item_name(title: str) -> str:
+    """'$5 espresso martinis' -> 'Espresso martinis'; '$6 shots, 10pm-2am Fri & Sat' -> 'Shots'."""
+    t = PRICE_BITS.sub(" ", title)
+    t = TIME_RANGE.sub(" ", t)
+    t = TIME_FROM.sub(" ", t)
+    t = DAY_RANGE.sub(" ", t)
+    t = DAY_SINGLE.sub(" ", t)
+    t = re.sub(r"\b(every|all day|daily|on|from|after|at the bar|each|only|special|deal)\b", " ", t, flags=I)
+    t = re.sub(r"\s*[:;,|•·]\s*", " ", t)
+    t = clean(re.sub(r"(^|\s)[-–—&+]+(\s|$)", " ", t)).strip(" -–—&+.,")
+    return t[:1].upper() + t[1:] if t else ""
+
+
+def names_an_item(item: str) -> bool:
+    words = re.findall(r"[a-z][a-z'’&-]+", item.lower())
+    return any(len(w) >= 3 and w.strip("'’-") not in GENERIC for w in words)
+
+
+def has_named_price(text: str) -> bool:
+    s = signals(text)
+    return bool(s["price"] or s["pct"] or s["deal"] or s["off"] or s["free"])
+
+
 def fingerprint(source_id: str, title: str, venue: str) -> str:
     norm = re.sub(r"[^a-z0-9$%]+", " ", f"{source_id}|{venue}|{title}".lower()).strip()
     return "scan-" + hashlib.sha1(norm.encode()).hexdigest()[:12]
@@ -428,35 +468,51 @@ def build_deal(text: str, heading: str, schedule_text: str, link: str | None, sr
     full = f"{heading} {text}".strip()
     venue = venue or src.get("venue") or src.get("name") or ""
     title = title or make_title(text, heading)
+    official = bool(src.get("official"))
+    label = src.get("name") or urllib.parse.urlparse(src["url"]).hostname
     deal = {
         "id": fingerprint(src["id"], title, venue),
-        "title": title,
-        "tag": price_tag(full),
+        "scope": src.get("scope", "local"),
+        "item": item_name(title) or title,
+        "price": price_tag(full),
         "venue": venue,
         "town": src.get("town", ""),
-        "category": src.get("category") or guess_category(full, None),
+        "state": src.get("state", ""),
+        "category": src.get("category") or guess_category(full, src.get("category_fallback")),
         "days": days or list(range(7)),
         "start": times.get("start"),
         "end": times.get("end"),
         "hoursKnown": bool(times),
         "validUntil": parse_expiry(full, today),
+        "conditions": [],
         "details": text if len(text) <= 400 else text[:397] + "…",
-        "sourceUrl": link or src["url"],
-        "sourceLabel": src.get("name") or urllib.parse.urlparse(src["url"]).hostname,
-        "sourceNote": "found by the scanner",
-        "status": "inbox",  # lands in DealDevil's Inbox for you to keep or toss
+        "businessUrl": src["url"] if official else None,
+        # Nothing the scanner finds is shown as verified until a person checks the details.
+        "verification": {
+            "status": "pending",
+            "reason": "scanner-official" if official else "third-party",
+            "checkedAt": today.isoformat(),
+            "note": ("Found on the business's own site by the scanner. Check the details, then mark it verified."
+                     if official else "Found by the scanner on a third-party site. Confirm it on the business's own site or socials."),
+        },
+        "evidence": [{"label": label, "url": link or src["url"], "kind": "business" if official else "third-party"}],
+        "status": "active",
         "addedBy": "scanner",
         "scanSource": src["id"],
         "score": score_pts,
         "foundAt": today.isoformat(),
     }
-    if src.get("category") is None:
-        deal["category"] = guess_category(full, src.get("category_fallback"))
     if not days and not times:
         deal["hoursKnown"] = False
     if extra:
         deal.update({k: v for k, v in extra.items() if v is not None})
     return deal
+
+
+def meets_rule(title: str, full: str, schedule_text: str, today: dt.date) -> bool:
+    """Named item + named price + named day (weekdays, an explicit 'daily', or a dated deal)."""
+    named_day = bool(parse_days(schedule_text) or parse_expiry(full, today))
+    return named_day and has_named_price(full) and names_an_item(item_name(title) or "")
 
 
 def extract_from_html(html_text: str, url: str, src: dict, today: dt.date) -> list[dict]:
@@ -494,6 +550,8 @@ def extract_from_html(html_text: str, url: str, src: dict, today: dt.date) -> li
         if pts < src.get("min_score", 3):
             if own_sched and len(text) < 100 and not b["is_heading"]:
                 section_sched = text  # a plain "Monday – Friday, 4–7pm" line applies to the deals below it
+            continue
+        if not meets_rule(make_title(text, b["heading"]), f"{b['heading']} {text}", schedule_text, today):
             continue
         deals.append(build_deal(text, b["heading"], schedule_text, b["link"] or url, src, today, pts))
     return deals
@@ -551,8 +609,13 @@ def extract_from_jsonld(blobs: list[str], url: str, src: dict, today: dt.date) -
                     extra["hoursKnown"] = True
             loc = node.get("location") if isinstance(node.get("location"), dict) else {}
             venue = clean(str(loc.get("name") or "")) or None
+            if not extra.get("days") and not parse_days(sched_text):
+                continue  # no named day
+            if not names_an_item(name) or not has_named_price(tag_text):
+                continue
             deal = build_deal(text, "", sched_text, str(node.get("url") or url), src, today, 5, venue=venue, title=make_title(name, ""), extra=extra)
-            deal["tag"] = price_tag(tag_text)
+            deal["price"] = price_tag(tag_text)
+            deal["item"] = name
             out.append(deal)
     return out
 
@@ -589,6 +652,8 @@ def extract_from_feed(xml_text: str, url: str, src: dict, today: dt.date) -> lis
         sched = {"days": parse_days(text), **parse_times(text)}
         pts, _ = score(text, "", sched)
         if not src.get("trust") and pts < src.get("min_score", 3):
+            continue
+        if not meets_rule(title, text, text, today):
             continue
         deals.append(build_deal(text, "", text, link or url, src, today, max(pts, 3), title=make_title(title, "")))
     return deals
@@ -759,7 +824,86 @@ def write_json(path: str, data):
     os.replace(tmp, path)
 
 
+# --------------------------------------------------------------------------- verification
+
+def page_text(body: str) -> str:
+    p = PageParser("about:blank")
+    try:
+        p.feed(body)
+        p.close()
+    except Exception:
+        pass
+    return " ".join([p.title] + [b["text"] for b in p.blocks] + [strip_tags(j) for j in p.jsonld])
+
+
+def _norm(s: str) -> str:
+    s = (s or "").lower().replace("–", "-").replace("—", "-").replace("\xa0", " ").replace("’", "'")
+    return re.sub(r"\s+", " ", s)
+
+
+def token_on_page(token: str, page: str) -> bool:
+    t = _norm(token)
+    if re.match(r"^\$?\d", t):  # prices and numbers: "$1" must not match "$12" or "$1.50"
+        return re.search(r"(?<![\d.])" + re.escape(t) + r"(?!\.?\d)", page) is not None
+    return t in page
+
+
+def verify_catalog(path: str, out_dir: str, min_delay: float, allow_render: bool) -> int:
+    """Re-check each catalog deal against the business's own page. Writes verification.json and verification.md."""
+    cat = load_json(path, None)
+    if cat is None:
+        print(f"Couldn't read {path}", file=sys.stderr)
+        return 2
+    os.makedirs(out_dir, exist_ok=True)
+    fetcher = Fetcher(min_delay, {})  # always a fresh read: verification never trusts a cache
+    pages: dict[str, tuple[str, str]] = {}
+    results = {}
+    for d in cat.get("deals", []):
+        v = d.get("verify") or {}
+        url, tokens = v.get("url"), v.get("tokens") or []
+        if not url or not tokens:
+            continue
+        if url not in pages:
+            status, body, _ = fetcher.get(url)
+            pages[url] = (status, _norm(page_text(body)) if body else "")
+        status, text = pages[url]
+        missing = [t for t in tokens if not token_on_page(t, text)] if status == "ok" else tokens
+        if status == "ok" and missing and allow_render and not url.startswith("file:"):
+            html = render_with_browser(url)
+            if html:
+                pages[url] = (status, _norm(page_text(html)))
+                text = pages[url][1]
+                missing = [t for t in tokens if not token_on_page(t, text)]
+        if status != "ok":
+            res = {"status": "unreachable", "reason": status}
+        elif not missing:
+            res = {"status": "verified"}
+        elif len(text) < 300:
+            res = {"status": "needs_render", "missing": missing, "reason": "page text is nearly empty; it probably loads with JavaScript"}
+        else:
+            res = {"status": "not_found", "missing": missing}
+        res.update({"url": url, "tokens": tokens, "checkedAt": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")})
+        results[d["id"]] = res
+        print(f"  {d['id']:<34} {res['status']}{' (' + res.get('reason', '') + ')' if res.get('reason') else ''}", file=sys.stderr)
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    write_json(os.path.join(out_dir, "verification.json"), {"generatedAt": stamp, "results": results})
+    counts: dict[str, int] = {}
+    for r in results.values():
+        counts[r["status"]] = counts.get(r["status"], 0) + 1
+    lines = [f"# DealDevil verification, {stamp}", "", ", ".join(f"{n} {k.replace('_', ' ')}" for k, n in sorted(counts.items())) or "Nothing to check.", "",
+             "| Deal | Result | Business page |", "|---|---|---|"]
+    for did, r in results.items():
+        extra = r.get("reason") or (("missing: " + ", ".join(r["missing"])) if r.get("missing") else "")
+        lines.append(f"| {did} | {r['status'].replace('_', ' ')}{' (' + extra.replace('|', '/') + ')' if extra else ''} | [{urllib.parse.urlparse(r['url']).hostname or 'file'}]({r['url']}) |")
+    with open(os.path.join(out_dir, "verification.md"), "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    print(f"Checked {len(results)} deals: {counts}", file=sys.stderr)
+    return 0
+
+
 def run(args) -> int:
+    if args.verify:
+        return verify_catalog(args.verify, args.out, args.min_delay, args.render)
     today = dt.date.fromisoformat(args.today) if args.today else dt.date.today()
     if args.url:
         sources = [{"id": "adhoc", "name": args.name or urllib.parse.urlparse(args.url).hostname, "url": args.url,
@@ -799,7 +943,7 @@ def run(args) -> int:
     cutoff = (today - dt.timedelta(days=args.forget_days)).isoformat()
     for did in [k for k, v in seen.items() if v.get("last", "") < cutoff]:
         del seen[did]
-    deals_out = sorted(current.values(), key=lambda d: (d["scanSource"], -d["score"], d["title"]))
+    deals_out = sorted(current.values(), key=lambda d: (d["scanSource"], -d["score"], d["item"]))
     if args.url or args.dry_run:
         print(json.dumps(deals_out, indent=1, ensure_ascii=False))
         return 0
@@ -811,7 +955,7 @@ def run(args) -> int:
              "| Source | Result | Deals |", "|---|---|---|"]
     lines += [f"| [{r['source']}]({r['url']}) | {r['result'].replace('|', '/')} | {r['deals']} |" for r in report]
     if new:
-        lines += ["", "## New this scan", ""] + [f"- **{d['tag']}** {d['title']} — {d['venue']} ([source]({d['sourceUrl']}))" for d in new[:60]]
+        lines += ["", "## New this scan", ""] + [f"- **{d['price']}** {d['item']} at {d['venue']} ([source]({d['evidence'][0]['url']}))" for d in new[:60]]
     with open(os.path.join(args.out, "report.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
     print(f"{len(deals_out)} deals, {len(new)} new. Wrote {args.out}/deals.json, new.json, report.md", file=sys.stderr)
@@ -827,6 +971,7 @@ def main(argv=None) -> int:
     ap.add_argument("--name", help="with --url: the venue or site name")
     ap.add_argument("--town", help="with --url: the town, for distance in DealDevil")
     ap.add_argument("--category", help="with --url: force a category (food, happy, grocery, coffee, fun, gas, shop)")
+    ap.add_argument("--verify", metavar="CATALOG", help="re-check each deal in a catalog file against the business's own page")
     ap.add_argument("--render", action="store_true", help="use a headless browser for sources marked render:true (needs Playwright)")
     ap.add_argument("--min-delay", type=float, default=3.0, help="seconds between requests to the same site (default 3)")
     ap.add_argument("--forget-days", type=int, default=21, help="forget deals not seen for this many days (default 21)")

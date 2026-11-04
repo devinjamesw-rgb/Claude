@@ -15,7 +15,7 @@ def fixture(name):
 
 
 def by_title(deals, needle):
-    hits = [d for d in deals if needle.lower() in d["title"].lower()]
+    hits = [d for d in deals if needle.lower() in (d["item"] + " " + d["details"]).lower()]
     return hits[0] if hits else None
 
 
@@ -51,6 +51,20 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(ds.price_tag("$2 off any pint"), "-$2")
         self.assertEqual(ds.price_tag("Free trivia"), "FREE")
 
+    def test_named_item_rule(self):
+        self.assertEqual(ds.item_name("$5 espresso martinis"), "Espresso martinis")
+        self.assertTrue(ds.names_an_item("Espresso martinis"))
+        self.assertTrue(ds.names_an_item("Bud Light drafts"))
+        self.assertTrue(ds.names_an_item("Wings at the bar"))
+        self.assertFalse(ds.names_an_item("Cocktails"))
+        self.assertFalse(ds.names_an_item("Select drafts and house wine"))
+        self.assertFalse(ds.names_an_item("Happy hour drink specials"))
+        self.assertFalse(ds.meets_rule("Happy hour 3-6pm", "Happy hour 3-6pm", "Monday-Friday 3-6pm", TODAY))
+        self.assertFalse(ds.meets_rule("$10 cocktails", "$10 cocktails", "Tue-Thu 5-7pm", TODAY))
+        self.assertFalse(ds.meets_rule("$5 espresso martinis", "$5 espresso martinis", "", TODAY))  # no day
+        self.assertTrue(ds.meets_rule("$5 espresso martinis", "$5 espresso martinis", "Fridays", TODAY))
+        self.assertTrue(ds.meets_rule("$1 oysters", "$1 oysters daily", "$1 oysters daily", TODAY))
+
 
 class PageTests(unittest.TestCase):
     def setUp(self):
@@ -60,14 +74,16 @@ class PageTests(unittest.TestCase):
     def test_happy_hour_list_inherits_section_hours(self):
         d = by_title(self.deals, "espresso martinis")
         self.assertIsNotNone(d)
-        self.assertEqual(d["tag"], "$5")
+        self.assertEqual(d["item"], "Espresso martinis")
+        self.assertEqual(d["price"], "$5")
+        self.assertEqual(d["verification"]["status"], "pending")
         self.assertEqual(d["days"], [1, 2, 3, 4, 5])
         self.assertEqual((d["start"], d["end"]), ("16:00", "19:00"))
         self.assertEqual(d["category"], "happy")
         self.assertEqual(d["town"], "Patchogue")
         w = by_title(self.deals, "half-price wings")
         self.assertIsNotNone(w)
-        self.assertEqual(w["tag"], "50%")
+        self.assertEqual(w["price"], "50%")
         self.assertEqual(w["days"], [1, 2, 3, 4, 5])
 
     def test_weekly_specials(self):
@@ -79,13 +95,14 @@ class PageTests(unittest.TestCase):
         w = by_title(self.deals, "50% off wings")
         self.assertEqual(w["days"], [4])
         self.assertEqual(w["start"], "20:00")
-        s = by_title(self.deals, "$6 shots")
-        self.assertEqual(s["days"], [5, 6])
-        self.assertEqual((s["start"], s["end"]), ("22:00", "02:00"))
-        self.assertEqual(s["sourceUrl"], "https://example.com/late")
+
+    def test_generic_deals_are_dropped(self):
+        self.assertIsNone(by_title(self.deals, "$6 shots"))       # "shots" names no item
+        self.assertIsNone(by_title(self.deals, "$1 off drafts"))  # generic happy hour line
+        self.assertIsNone(by_title(self.deals, "house wine"))
 
     def test_ignores_menu_nav_footer_scripts(self):
-        text = " ".join(d["title"] + d["details"] for d in self.deals).lower()
+        text = " ".join(d["item"] + d["details"] for d in self.deals).lower()
         self.assertNotIn("burger", text)
         self.assertNotIn("sign in", text)
         self.assertNotIn("newsletter", text)
@@ -102,7 +119,7 @@ class StructuredTests(unittest.TestCase):
         deals = ds.extract_from_html(fixture("event.html"), src["url"], src, TODAY)
         ev = by_title(deals, "trivia night")
         self.assertIsNotNone(ev)
-        self.assertEqual(ev["tag"], "FREE")
+        self.assertEqual(ev["price"], "FREE")
         self.assertEqual(ev["validFrom"], "2026-11-12")
         self.assertEqual(ev["days"], [4])
         self.assertEqual(ev["start"], "19:30")
@@ -115,10 +132,39 @@ class StructuredTests(unittest.TestCase):
         deals = ds.extract_from_feed(fixture("feed.xml"), src["url"], src, TODAY)
         self.assertEqual(len(deals), 1)
         d = deals[0]
-        self.assertEqual(d["tag"], "25%")
+        self.assertEqual(d["price"], "25%")
         self.assertEqual(d["validUntil"], "2026-11-30")
-        self.assertEqual(d["sourceUrl"], "https://example.com/nike")
+        self.assertEqual(d["evidence"][0]["url"], "https://example.com/nike")
         self.assertEqual(d["category"], "shop")
+
+
+class VerifyTests(unittest.TestCase):
+    def test_price_tokens_match_exactly(self):
+        page = ds._norm("Fridays: $1 all live oysters, or 12 for $12. Wings $7.50")
+        self.assertTrue(ds.token_on_page("$1", page))
+        self.assertTrue(ds.token_on_page("$12", page))
+        self.assertFalse(ds.token_on_page("$7", page))   # $7.50 is not $7
+        self.assertFalse(ds.token_on_page("$2", page))
+        self.assertTrue(ds.token_on_page("Oysters", page))
+
+    def test_verify_catalog(self):
+        import json, tempfile
+        url = "file://" + os.path.join(HERE, "fixtures", "verify_page.html")
+        with tempfile.TemporaryDirectory() as tmp:
+            cat = os.path.join(tmp, "catalog.json")
+            with open(cat, "w") as f:
+                json.dump({"deals": [
+                    {"id": "oysters", "verify": {"url": url, "tokens": ["$1", "oysters", "Friday"]}},
+                    {"id": "wrong-price", "verify": {"url": url, "tokens": ["$2", "oysters"]}},
+                    {"id": "no-check", "item": "Something with no business page"},
+                ]}, f)
+            self.assertEqual(ds.main(["--verify", cat, "--out", tmp, "--min-delay", "0"]), 0)
+            with open(os.path.join(tmp, "verification.json")) as f:
+                res = json.load(f)["results"]
+            self.assertEqual(res["oysters"]["status"], "verified")
+            self.assertEqual(res["wrong-price"]["status"], "not_found")
+            self.assertEqual(res["wrong-price"]["missing"], ["$2"])
+            self.assertNotIn("no-check", res)
 
 
 class RunTests(unittest.TestCase):
@@ -134,12 +180,13 @@ class RunTests(unittest.TestCase):
             out = os.path.join(tmp, "out")
             args = ["--sources", src_file, "--out", out, "--today", "2026-11-04", "--min-delay", "0"]
             self.assertEqual(ds.main(args), 0)
-            first = json.load(open(os.path.join(out, "new.json")))
-            self.assertGreaterEqual(len(first), 5)
+            with open(os.path.join(out, "new.json")) as f:
+                self.assertGreaterEqual(len(json.load(f)), 5)
             self.assertEqual(ds.main(args), 0)
-            self.assertEqual(json.load(open(os.path.join(out, "new.json"))), [])  # nothing new the second time
-            report = open(os.path.join(out, "report.md")).read()
-            self.assertIn("needs a login", report)
+            with open(os.path.join(out, "new.json")) as f:
+                self.assertEqual(json.load(f), [])  # nothing new the second time
+            with open(os.path.join(out, "report.md")) as f:
+                self.assertIn("needs a login", f.read())
 
 
 if __name__ == "__main__":
