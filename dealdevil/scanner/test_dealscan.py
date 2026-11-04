@@ -211,6 +211,25 @@ class StrictVerifyTests(unittest.TestCase):
     def test_ampm_spacing_is_normalized(self):
         page = ds._norm("HAPPY HOUR 3 PM to 6 P.M. EVERYDAY!")
         self.assertTrue(ds.token_on_page("3pm to 6pm everyday", page))
+        self.assertTrue(ds.token_on_page("HAPPY HOUR 3 PM to 6 PM EVERYDAY", page))
+
+    def test_snippet_is_verbatim_and_skips_unrelated_heading(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            r = verify_once(tmp, "<h2>Free Wings Every Thursday</h2><p>Get BOGO 50% off Traditional Wings on Tuesdays</p><a>View Details</a>"
+                                 "<h2>Happy Hour 3 PM to 6 PM Everyday!</h2><ul><li>Buck A Shuck Local Oysters</li></ul>",
+                            ["BOGO 50% off Traditional Wings", "Tuesdays"])
+            self.assertEqual(r["matchedSnippet"], "Get BOGO 50% off Traditional Wings on Tuesdays")
+            r = verify_once(tmp, "<h2>Happy Hour 3 PM to 6 PM Everyday!</h2><ul><li>Buck A Shuck Local Oysters</li></ul>",
+                            ["HAPPY HOUR 3 PM to 6 PM EVERYDAY", "Buck A Shuck"])
+            self.assertEqual(r["matchedSnippet"], "Happy Hour 3 PM to 6 PM Everyday! · Buck A Shuck Local Oysters")
+
+    def test_statement_preferred_over_faq_question(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            r = verify_once(tmp, "<p>Are movie tickets 50% off on Discount Tuesdays?</p><p>Save up to 50% on Discount Tuesdays at participating theatres.</p>",
+                            ["Discount Tuesdays", "50%"])
+            self.assertTrue(r["matchedSnippet"].startswith("Save up to 50%"))
 
 
 class StaleArticleTests(unittest.TestCase):

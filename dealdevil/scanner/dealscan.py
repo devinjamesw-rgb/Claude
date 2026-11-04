@@ -888,9 +888,8 @@ def page_text(body: str) -> str:
 
 
 def _clean(s: str) -> str:
-    """Normalize spacing, dashes and am/pm ("3 PM", "3 p.m." -> "3pm") without changing case."""
-    s = (s or "").replace("–", "-").replace("—", "-").replace("\xa0", " ").replace("’", "'")
-    s = re.sub(r"(\d)\s*([AaPp])\.?\s?[Mm]\.?(?![A-Za-z])", lambda m: m.group(1) + m.group(2).lower() + "m", s)
+    """Normalize spacing, dashes and apostrophes only, so a saved snippet stays the page's own words."""
+    s = (s or "").replace("–", "-").replace("—", "-").replace("\xa0", " ").replace("’", "'").replace("​", "")
     return re.sub(r"\s+", " ", s).strip()
 
 
@@ -900,9 +899,16 @@ def _norm(s: str) -> str:
 
 def _token_rx(token: str):
     t = _norm(token)
-    if re.match(r"^\$?\d", t):  # prices and numbers: "$1" must not match "$12" or "$1.50"
+    if re.fullmatch(r"\$?\d[\d.,]*%?", t):  # a bare price or number: "$1" must not match "$12" or "$1.50"
         return re.compile(r"(?<![\d.])" + re.escape(t) + r"(?!\.?\d)")
-    return re.compile(re.escape(t))
+    # Times match however the page spaces them: "3pm" in a token finds "3 PM", "3pm" or "3 p.m.".
+    t = re.sub(r"(\d)\s*([ap])\.?\s?m\.?(?![a-z])", r"\1\2m", t)
+    pattern = re.sub(r"(\d)([ap])m", r"\1\\s?\2\\.?\\s?m\\.?", re.escape(t))
+    if re.match(r"[\d$]", t):  # numbers at either edge keep exact boundaries ("12 for $12" never matches "$120")
+        pattern = r"(?<![\d.])" + pattern
+    if re.search(r"\d$", t):
+        pattern += r"(?!\.?\d)"
+    return re.compile(pattern)
 
 
 def token_on_page(token: str, page: str) -> bool:
@@ -927,11 +933,12 @@ def page_blocks(body: str) -> list[str]:
 def find_match(tokens: list[str], blocks: list[str], window: int = VERIFY_WINDOW) -> dict | None:
     """All tokens inside one block, or else inside one stretch of at most `window` characters."""
     rxs = [_token_rx(t) for t in tokens]
-    for b in blocks:
+    for b in sorted(blocks, key=lambda x: x.rstrip().endswith("?")):  # statements before FAQ questions
         low = b.lower()
         hits = [r.search(low) for r in rxs]
         if all(hits):
-            return {"scope": "block", "text": b, "lo": min(h.start() for h in hits), "hi": max(h.end() for h in hits)}
+            return {"scope": "block", "text": b, "lo": min(h.start() for h in hits), "hi": max(h.end() for h in hits),
+                    "hits": sorted((h.start(), h.end()) for h in hits)}
     full = " · ".join(blocks)
     low = full.lower()
     occ = [[(m.start(), m.end()) for m in r.finditer(low)] for r in rxs]
@@ -939,20 +946,40 @@ def find_match(tokens: list[str], blocks: list[str], window: int = VERIFY_WINDOW
         return None
     best = None
     for s0, e0 in occ[0]:
-        lo, hi = s0, e0
+        lo, hi, picked = s0, e0, [(s0, e0)]
         for o in occ[1:]:
             q = min(o, key=lambda se: max(hi, se[1]) - min(lo, se[0]))
             lo, hi = min(lo, q[0]), max(hi, q[1])
+            picked.append(q)
         if hi - lo <= window and (best is None or hi - lo < best[1] - best[0]):
-            best = (lo, hi)
-    return {"scope": "window", "text": full, "lo": best[0], "hi": best[1]} if best else None
+            best = (lo, hi, sorted(picked))
+    return {"scope": "window", "text": full, "lo": best[0], "hi": best[1], "hits": best[2]} if best else None
+
+
+CTA_TAIL = re.compile(r"\s*(view details|learn more|read more|order now|see details)\s*$", I)
 
 
 def _snippet(m: dict, size: int = 240) -> str:
+    """The page's own words around the match: the smallest run of blocks that holds every token,
+    so an unrelated heading is left out; if that runs long, the pieces around each token joined by '…'."""
     text, lo, hi = m["text"], m["lo"], m["hi"]
-    start = lo if hi - lo >= size else max(0, lo - (size - (hi - lo)) // 2)
-    s = text[start:start + size].strip()
-    return ("…" if start > 0 else "") + s + ("…" if start + size < len(text) else "")
+    sep = " · "
+    start = text.rfind(sep, 0, lo)
+    start = 0 if start < 0 else start + len(sep)
+    end = text.find(sep, hi)
+    end = len(text) if end < 0 else end
+    run = CTA_TAIL.sub("", text[start:end]).strip()
+    if len(run) <= size:
+        return run
+    pieces, last = [], -1
+    for s, e in m.get("hits") or [(lo, hi)]:
+        a, b = max(start, s - 50), min(end, e + 50)
+        if pieces and a <= last:
+            pieces[-1] = (pieces[-1][0], max(pieces[-1][1], b))
+        else:
+            pieces.append((a, b))
+        last = pieces[-1][1]
+    return " … ".join(CTA_TAIL.sub("", text[a:b]).strip() for a, b in pieces)
 
 
 def verify_catalog(path: str, out_dir: str, min_delay: float, allow_render: bool) -> int:

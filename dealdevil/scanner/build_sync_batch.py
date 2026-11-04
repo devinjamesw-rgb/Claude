@@ -65,9 +65,12 @@ def apply_result(doc: dict, r: dict | None) -> str:
     if status == "verified":
         if v.get("status") == "pending" and v.get("reason") == "conflict":
             return "page words found, but the catalog marks a conflict; left pending"
+        snippet = r.get("matchedSnippet")
+        if snippet and snippet.rstrip().endswith("?"):  # an FAQ question is not a quote of the offer
+            snippet = None
         doc["verification"] = {"status": "verified", "method": "website", "via": "page", "url": r.get("url"), "checkedAt": day,
-                               "note": v.get("note"), "snippet": r.get("matchedSnippet") or v.get("snippet"),
-                               "snippetHash": r.get("snippetHash"), "reason": None}
+                               "note": v.get("note"), "snippet": snippet or v.get("snippet"),
+                               "snippetHash": r.get("snippetHash") if snippet else None, "reason": None}
         return "verified on the business page"
     if status in FAIL:
         detail = r.get("reason") or ("missing: " + ", ".join(r.get("missing") or []))
