@@ -1,0 +1,140 @@
+{
+ "generatedAt": "2026-11-04 17:59 UTC",
+ "results": {
+  "roccos-huntington-aycet": {
+   "status": "verified",
+   "url": "https://www.roccostacos.com/event/taco-tuesday-huntington/",
+   "tokens": [
+    "34.99",
+    "Tuesday"
+   ],
+   "checkedAt": "2026-11-04T17:58:45+00:00"
+  },
+  "roccos-huntington-margs": {
+   "status": "verified",
+   "url": "https://www.roccostacos.com/event/taco-tuesday-huntington/",
+   "tokens": [
+    "$7",
+    "margarita",
+    "Tuesday"
+   ],
+   "checkedAt": "2026-11-04T17:58:45+00:00"
+  },
+  "luckystrike-commack-family": {
+   "status": "verified",
+   "url": "https://www.luckystrikeent.com/location/lucky-strike-commack",
+   "tokens": [
+    "15.99",
+    "Family"
+   ],
+   "checkedAt": "2026-11-04T17:58:48+00:00"
+  },
+  "uncleg-northbabylon-pizza": {
+   "status": "verified",
+   "url": "https://uncleg.com/stores/north-babylon/",
+   "tokens": [
+    "$22",
+    "Wednesday"
+   ],
+   "checkedAt": "2026-11-04T17:58:52+00:00"
+  },
+  "luckystrike-commack-nightstrike": {
+   "status": "verified",
+   "url": "https://www.luckystrikeent.com/location/lucky-strike-commack",
+   "tokens": [
+    "19.99",
+    "Night Strike"
+   ],
+   "checkedAt": "2026-11-04T17:58:52+00:00"
+  },
+  "amc-tickets-tue-wed": {
+   "status": "unreachable",
+   "reason": "HTTP 403",
+   "url": "https://www.amctheatres.com/50pct-off-tuesdays-and-wednesdays",
+   "tokens": [
+    "50%",
+    "Tuesday",
+    "Wednesday"
+   ],
+   "checkedAt": "2026-11-04T17:58:55+00:00"
+  },
+  "amc-combo-tue-wed": {
+   "status": "unreachable",
+   "reason": "HTTP 403",
+   "url": "https://www.amctheatres.com/50pct-off-tuesdays-and-wednesdays",
+   "tokens": [
+    "popcorn",
+    "50%"
+   ],
+   "checkedAt": "2026-11-04T17:58:55+00:00"
+  },
+  "regal-popcorn-tue": {
+   "status": "unreachable",
+   "reason": "robots.txt refused",
+   "url": "https://www.regmovies.com/promotions/regal-value-days",
+   "tokens": [
+    "50%",
+    "popcorn",
+    "Tuesday"
+   ],
+   "checkedAt": "2026-11-04T17:58:55+00:00"
+  },
+  "regal-candy-mon": {
+   "status": "unreachable",
+   "reason": "robots.txt refused",
+   "url": "https://www.regmovies.com/promotions/regal-value-days",
+   "tokens": [
+    "25%",
+    "candy",
+    "Monday"
+   ],
+   "checkedAt": "2026-11-04T17:58:55+00:00"
+  },
+  "cinemark-tickets-tue": {
+   "status": "verified",
+   "url": "https://www.cinemark.com/discounts/discount-tuesdays",
+   "tokens": [
+    "Discount Tuesdays",
+    "50%"
+   ],
+   "checkedAt": "2026-11-04T17:59:01+00:00"
+  },
+  "dnb-games-wed": {
+   "status": "verified",
+   "url": "https://www.daveandbusters.com/us/en/play",
+   "tokens": [
+    "Half",
+    "Wednesday"
+   ],
+   "checkedAt": "2026-11-04T17:59:04+00:00"
+  },
+  "bww-boneless-thu": {
+   "status": "verified",
+   "url": "https://www.buffalowildwings.com/bogo-days/",
+   "tokens": [
+    "BOGO",
+    "Boneless",
+    "Thursday"
+   ],
+   "checkedAt": "2026-11-04T17:59:07+00:00"
+  },
+  "bww-traditional-tue": {
+   "status": "verified",
+   "url": "https://www.buffalowildwings.com/bogo-days/",
+   "tokens": [
+    "Tuesday",
+    "Traditional"
+   ],
+   "checkedAt": "2026-11-04T17:59:07+00:00"
+  },
+  "wholefoods-oysters-fri": {
+   "status": "verified",
+   "url": "https://www.wholefoodsmarket.com/days-of-deals",
+   "tokens": [
+    "oysters",
+    "$1"
+   ],
+   "checkedAt": "2026-11-04T17:59:10+00:00"
+  }
+ }
+}
