@@ -764,13 +764,20 @@ def render_with_browser(url: str) -> str | None:
         from playwright.sync_api import sync_playwright  # type: ignore
     except ImportError:
         return None
-    with sync_playwright() as pw:
-        browser = pw.chromium.launch()
-        page = browser.new_page(user_agent=USER_AGENT)
-        page.goto(url, wait_until="networkidle", timeout=45000)
-        html = page.content()
-        browser.close()
-        return html
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch()
+            try:
+                page = browser.new_page(user_agent=USER_AGENT)
+                # "networkidle" never arrives on pages with endless trackers; load the DOM, then give scripts a moment.
+                page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                page.wait_for_timeout(3000)
+                return page.content()
+            finally:
+                browser.close()
+    except Exception as e:  # a slow or hostile page must never stop the run
+        print(f"  (headless render failed for {url}: {e.__class__.__name__})", file=sys.stderr)
+        return None
 
 
 def looks_like_feed(body: str, ctype: str) -> bool:
@@ -925,7 +932,10 @@ def run(args) -> int:
     for src in sources:
         src.setdefault("id", re.sub(r"[^a-z0-9]+", "-", src.get("name", src["url"]).lower()).strip("-"))
         t0 = time.time()
-        note, deals = scan_source(src, fetcher, today, args.render)
+        try:
+            note, deals = scan_source(src, fetcher, today, args.render)
+        except Exception as e:  # one broken source never stops the others
+            note, deals = f"failed: {e.__class__.__name__}: {e}", []
         if deals is None:  # unchanged: carry forward what we had
             deals = [d for d in previous.values() if d.get("scanSource") == src["id"]]
         for d in deals:
