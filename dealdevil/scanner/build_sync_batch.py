@@ -68,8 +68,10 @@ def apply_result(doc: dict, r: dict | None) -> str:
         snippet = r.get("matchedSnippet")
         if snippet and snippet.rstrip().endswith("?"):  # an FAQ question is not a quote of the offer
             snippet = None
+        host = re.sub(r"^https?://(www\.)?", "", str(r.get("url") or "")).split("/")[0]
+        note = v.get("note") if v.get("status") == "verified" else f"Confirmed on {host} by the page check on {day}."
         doc["verification"] = {"status": "verified", "method": "website", "via": "page", "url": r.get("url"), "checkedAt": day,
-                               "note": v.get("note"), "snippet": snippet or v.get("snippet"),
+                               "note": note, "snippet": snippet or v.get("snippet"),
                                "snippetHash": r.get("snippetHash") if snippet else None, "reason": None}
         return "verified on the business page"
     if status in FAIL:

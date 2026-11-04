@@ -34,7 +34,9 @@
         "via": "page",
         "url": "https://www.roccostacos.com/event/taco-tuesday-huntington/",
         "checkedAt": "2026-11-04",
-        "note": "Rocco's Huntington Taco Tuesday page lists it every Tuesday, open to close."
+        "note": "Rocco's Huntington Taco Tuesday page lists it every Tuesday, open to close.",
+        "snippet": "All-You-Can-Eat Taco Tuesday · Pricing $34.99 All-You-Can-Eat Tacos $7 Rocco's House Margaritas $5 Cervezas $27 Rocco's House Pitchers $70 Bottles of Traditional Silver Tequila",
+        "snippetHash": "90fa5b9b82db0af8"
       },
       "verify": {
         "url": "https://www.roccostacos.com/event/taco-tuesday-huntington/",
@@ -73,7 +75,9 @@
         "via": "page",
         "url": "https://www.roccostacos.com/event/taco-tuesday-huntington/",
         "checkedAt": "2026-11-04",
-        "note": "Listed in the Taco Tuesday pricing on Rocco's own page."
+        "note": "Listed in the Taco Tuesday pricing on Rocco's own page.",
+        "snippet": "All-You-Can-Eat Taco Tuesday · Every Tuesday at Rocco's Tacos Huntington Stati … ring unlimited De Casa tacos made fresh to order, $7 margaritas, and unbeatable drink specials at the Walt Whitm",
+        "snippetHash": "4cc90d897073c00f"
       },
       "verify": {
         "url": "https://www.roccostacos.com/event/taco-tuesday-huntington/",
@@ -113,7 +117,9 @@
         "via": "page",
         "url": "https://www.luckystrikeent.com/location/lucky-strike-commack",
         "checkedAt": "2026-11-04",
-        "note": "Lucky Strike Commack's FAQ lists Family Unlimited, Saturdays and Sundays 11 AM to 3 PM."
+        "note": "Lucky Strike Commack's FAQ lists Family Unlimited, Saturdays and Sundays 11 AM to 3 PM.",
+        "snippet": "Family Unlimited · Enjoy unlimited bowling, shoes included, for only $15.99. Plus, enjoy specially priced select appetizers, Craft Lemonades and Dirty Sodas while you bowl.",
+        "snippetHash": "bbd176d3445789da"
       },
       "verify": {
         "url": "https://www.luckystrikeent.com/location/lucky-strike-commack",
@@ -148,11 +154,13 @@
       ],
       "verification": {
         "status": "verified",
-        "checkedAt": "2026-11-04",
         "method": "website",
-        "via": "search",
+        "via": "page",
         "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
-        "note": "Lucky Strike Commack lists Night Strike at $19.99, starting 6 PM on Sundays."
+        "checkedAt": "2026-11-04",
+        "note": "Lucky Strike Commack lists Night Strike at $19.99, starting 6 PM on Sundays.",
+        "snippet": "Enjoy unlimited bowling, shoes included, for only $19.99, plus delicious food & drink specials. · Night Strike · Wednesday starting at 7PM · Night Strike · Thursday starting at 7PM · Night Strike · Sunday starting at 6PM",
+        "snippetHash": "4650d400fcc14168"
       },
       "verify": {
         "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
@@ -190,10 +198,14 @@
         "Runs until close"
       ],
       "verification": {
-        "status": "pending",
+        "status": "verified",
+        "method": "website",
+        "via": "page",
+        "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
         "checkedAt": "2026-11-04",
-        "reason": "awaiting-page-check",
-        "note": "The Commack page shows 7 PM on Mondays; Tuesday to Thursday comes from Lucky Strike's general terms (Sunday to Thursday). Waiting for the page check to confirm Thursday."
+        "note": "Confirmed on luckystrikeent.com by the page check on 2026-11-04.",
+        "snippet": "Enjoy unlimited bowling, shoes included, for only $19.99, plus delicious food & drink specials. · Night Strike · Wednesday starting at 7PM · Night Strike · Thursday starting at 7PM · Night Strike · Sunday starting at 6PM · Night Strike · Monday starting at 7PM",
+        "snippetHash": "ac58e91548c8d78b"
       },
       "evidence": [
         {
@@ -239,11 +251,13 @@
       "conditions": [],
       "verification": {
         "status": "verified",
-        "checkedAt": "2026-11-04",
         "method": "website",
-        "via": "search",
+        "via": "page",
         "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
-        "note": "Lucky Strike Commack: Half-Price Arcade Play, 50% off arcade play all day on Wednesdays."
+        "checkedAt": "2026-11-04",
+        "note": "Lucky Strike Commack: Half-Price Arcade Play, 50% off arcade play all day on Wednesdays.",
+        "snippet": "Half-Price Arcade Play · Every Wednesday | Open - Close · Every Wednesday | Open - Close · Get your game on and enjoy 50% off arcade play all day long. Play more of your favorites for less, from classic cabinets to modern must-plays.",
+        "snippetHash": "281567739d8013e1"
       },
       "verify": {
         "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
@@ -280,11 +294,13 @@
       ],
       "verification": {
         "status": "verified",
-        "checkedAt": "2026-11-04",
         "method": "website",
-        "via": "search",
+        "via": "page",
         "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
-        "note": "Lucky Strike Commack: After Party unlimited bowling for $28.99, Fridays and Saturdays from 8 PM."
+        "checkedAt": "2026-11-04",
+        "note": "Lucky Strike Commack: After Party unlimited bowling for $28.99, Fridays and Saturdays from 8 PM.",
+        "snippet": "Keep the night alive with After Party, our special that gives you unlimited bowling for only $28.99. Perfect for friends, fun, and unforgettable nights out. · After Party · Friday starting at 8PM",
+        "snippetHash": "4c983599e0316094"
       },
       "verify": {
         "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
@@ -316,10 +332,14 @@
         "Walk-in guests only (Lucky Strike promo terms)"
       ],
       "verification": {
-        "status": "pending",
+        "status": "verified",
+        "method": "website",
+        "via": "page",
+        "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
         "checkedAt": "2026-11-04",
-        "reason": "awaiting-page-check",
-        "note": "The Commack page says \"Buy two games, get the third 50% off!\"; waiting for the page check to confirm it runs daily."
+        "note": "Confirmed on luckystrikeent.com by the page check on 2026-11-04.",
+        "snippet": "Buy two games, get the third 50% off! · Daily | Open - Close · The Special makes every game more fun (and more affordable). Gather your crew, hit the lanes, and keep the good times rolling.",
+        "snippetHash": "86b28ed654c85119"
       },
       "evidence": [
         {
@@ -365,7 +385,9 @@
         "via": "page",
         "url": "https://uncleg.com/stores/north-babylon/",
         "checkedAt": "2026-11-04",
-        "note": "The North Babylon store page lists two 20\" pizzas for $22 on Wednesdays and Fridays."
+        "note": "The North Babylon store page lists two 20\" pizzas for $22 on Wednesdays and Fridays.",
+        "snippet": "Hand-stretched dough, house-made tomato sauce, fresh mozzarella from our bar. Two 20″ pizzas for $22 every Wednesday & Friday.",
+        "snippetHash": "c424acd3596e47ed"
       },
       "verify": {
         "url": "https://uncleg.com/stores/north-babylon/",
@@ -435,11 +457,13 @@
       ],
       "verification": {
         "status": "verified",
-        "checkedAt": "2026-11-04",
         "method": "website",
-        "via": "search",
+        "via": "page",
         "url": "https://saltandbarrel.com/happy-hours/",
-        "note": "Salt & Barrel's Happy Hour page: \"HAPPY HOUR 3 PM to 6 PM EVERYDAY!\" with Buck A Shuck Local Oysters. OpenTable's half-price listing was out of date."
+        "checkedAt": "2026-11-04",
+        "note": "Salt & Barrel's Happy Hour page: \"HAPPY HOUR 3 PM to 6 PM EVERYDAY!\" with Buck A Shuck Local Oysters. OpenTable's half-price listing was out of date.",
+        "snippet": "HAPPY HOUR 3 PM to 6 PM EVERYDAY! · Buck A Shuck Local Oysters",
+        "snippetHash": "012339954068ab5e"
       },
       "evidence": [
         {
@@ -713,7 +737,9 @@
         "via": "page",
         "url": "https://www.daveandbusters.com/us/en/play",
         "checkedAt": "2026-11-04",
-        "note": "Dave & Buster's play page: half-price games every Wednesday, open to close."
+        "note": "Dave & Buster's play page: half-price games every Wednesday, open to close.",
+        "snippet": "Half-Price Wednesdays: Maximize your chip count by visiting on any given Wednesday to enjoy 50% off all standard arcade titles all day long.",
+        "snippetHash": "0534dd231f61c219"
       },
       "verify": {
         "url": "https://www.daveandbusters.com/us/en/play",
@@ -749,7 +775,9 @@
         "via": "page",
         "url": "https://www.buffalowildwings.com/bogo-days/",
         "checkedAt": "2026-11-04",
-        "note": "BWW's BOGO Days page and homepage advertise BOGO boneless wings every Thursday."
+        "note": "BWW's BOGO Days page and homepage advertise BOGO boneless wings every Thursday.",
+        "snippet": "Free Wings Every Thursday · Enjoy BOGO free boneless wings Thursdays with takeout and delivery from Buffalo Wild Wings GO.",
+        "snippetHash": "46ec7fcba38aca04"
       },
       "verify": {
         "url": "https://www.buffalowildwings.com/bogo-days/",
@@ -782,12 +810,13 @@
       ],
       "verification": {
         "status": "verified",
-        "checkedAt": "2026-11-04",
         "method": "website",
         "via": "page",
         "url": "https://www.buffalowildwings.com/bogo-days/",
+        "checkedAt": "2026-11-04",
         "note": "BWW's BOGO Days page.",
-        "snippet": "Get BOGO 50% off Traditional Wings on Tuesdays"
+        "snippet": "Get BOGO 50% off Traditional Wings on Tuesdays",
+        "snippetHash": "17933ebdc21fd025"
       },
       "verify": {
         "url": "https://www.buffalowildwings.com/bogo-days/",
@@ -821,12 +850,13 @@
       ],
       "verification": {
         "status": "verified",
-        "checkedAt": "2026-11-04",
         "method": "website",
         "via": "page",
         "url": "https://www.buffalowildwings.com/bogo-days/",
+        "checkedAt": "2026-11-04",
         "note": "BWW's BOGO Days page.",
-        "snippet": "Every Tuesday when you buy one 6-, 10- or 15-count traditional wings with a valid Buffalo Wild Wings Rewards account you get one of equal value free. Dine-in only."
+        "snippet": "Every Tuesday when you buy one 6-, 10- or 15-count traditional wings with a valid Buffalo Wild Wings Rewards account you get one of equal value free. Dine-in only. Not a member, get your free Buffalo Wild Wings Rewards account now",
+        "snippetHash": "4a6cc1d330b441c0"
       },
       "verify": {
         "url": "https://www.buffalowildwings.com/bogo-days/",
@@ -864,7 +894,8 @@
         "url": "https://www.wholefoodsmarket.com/days-of-deals",
         "checkedAt": "2026-11-04",
         "note": "Whole Foods' Days of Deals page lists \"12 for $12 All Live Oysters\" among its Friday deals.",
-        "snippet": "12 for $12 All Live Oysters"
+        "snippet": "12 for $12 All Live Oysters",
+        "snippetHash": "e53f7977c4058e89"
       },
       "verify": {
         "url": "https://www.wholefoodsmarket.com/days-of-deals",
