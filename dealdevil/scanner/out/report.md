@@ -1,4 +1,4 @@
-# DealDevil scan, 2026-11-04 18:30 UTC
+# DealDevil scan, 2026-11-04 18:41 UTC
 
 32 deals found, 0 new since last scan.
 
@@ -12,6 +12,6 @@
 | [amc-deals](https://www.amctheatres.com/50pct-off-tuesdays-and-wednesdays) | HTTP 403 | 0 |
 | [regal-value-days](https://www.regmovies.com/promotions/regal-value-days) | robots.txt refused | 0 |
 | [cinemark-tuesdays](https://www.cinemark.com/discounts/discount-tuesdays) | 3 deals | 3 |
-| [dnb-specials](https://www.daveandbusters.com/us/en/play/specials) | unchanged since last scan | 5 |
+| [dnb-specials](https://www.daveandbusters.com/us/en/play/specials) | 5 deals | 5 |
 | [bww-bogo](https://www.buffalowildwings.com/bogo-days/) | 11 deals | 11 |
-| [wholefoods-days](https://www.wholefoodsmarket.com/days-of-deals) | 3 deals | 3 |
+| [wholefoods-days](https://www.wholefoodsmarket.com/days-of-deals) | unchanged since last scan | 3 |

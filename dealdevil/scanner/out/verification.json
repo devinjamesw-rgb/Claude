@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-04 18:29 UTC",
+ "generatedAt": "2026-11-04 18:40 UTC",
  "results": {
   "roccos-huntington-aycet": {
    "status": "verified",
@@ -11,7 +11,7 @@
     "34.99",
     "Tuesday"
    ],
-   "checkedAt": "2026-11-04T18:28:51+00:00"
+   "checkedAt": "2026-11-04T18:40:08+00:00"
   },
   "roccos-huntington-margs": {
    "status": "verified",
@@ -24,7 +24,7 @@
     "margarita",
     "Tuesday"
    ],
-   "checkedAt": "2026-11-04T18:28:51+00:00"
+   "checkedAt": "2026-11-04T18:40:08+00:00"
   },
   "luckystrike-commack-family": {
    "status": "verified",
@@ -36,7 +36,7 @@
     "15.99",
     "Family"
    ],
-   "checkedAt": "2026-11-04T18:28:55+00:00"
+   "checkedAt": "2026-11-04T18:40:12+00:00"
   },
   "lucky-strike-commack-night-strike-sun": {
    "status": "verified",
@@ -49,7 +49,7 @@
     "$19.99",
     "Sunday starting at 6PM"
    ],
-   "checkedAt": "2026-11-04T18:28:58+00:00"
+   "checkedAt": "2026-11-04T18:40:15+00:00"
   },
   "lucky-strike-commack-night-strike-monthu": {
    "status": "verified",
@@ -63,7 +63,7 @@
     "Monday starting at 7PM",
     "Thursday starting at 7PM"
    ],
-   "checkedAt": "2026-11-04T18:28:58+00:00"
+   "checkedAt": "2026-11-04T18:40:15+00:00"
   },
   "lucky-strike-commack-arcade-wed": {
    "status": "verified",
@@ -76,7 +76,7 @@
     "Every Wednesday",
     "50% off arcade play"
    ],
-   "checkedAt": "2026-11-04T18:28:58+00:00"
+   "checkedAt": "2026-11-04T18:40:15+00:00"
   },
   "lucky-strike-commack-after-party": {
    "status": "verified",
@@ -89,7 +89,7 @@
     "unlimited bowling for only $28.99",
     "Friday starting at 8PM"
    ],
-   "checkedAt": "2026-11-04T18:28:58+00:00"
+   "checkedAt": "2026-11-04T18:40:15+00:00"
   },
   "lucky-strike-commack-the-special": {
    "status": "verified",
@@ -102,7 +102,7 @@
     "Daily",
     "Buy two games, get the third 50% off"
    ],
-   "checkedAt": "2026-11-04T18:28:58+00:00"
+   "checkedAt": "2026-11-04T18:40:15+00:00"
   },
   "uncleg-northbabylon-pizza": {
    "status": "verified",
@@ -114,7 +114,7 @@
     "$22",
     "Wednesday"
    ],
-   "checkedAt": "2026-11-04T18:29:01+00:00"
+   "checkedAt": "2026-11-04T18:40:18+00:00"
   },
   "saltbarrel-oysters": {
    "status": "verified",
@@ -126,7 +126,7 @@
     "HAPPY HOUR 3 PM to 6 PM EVERYDAY",
     "Buck A Shuck Local Oysters"
    ],
-   "checkedAt": "2026-11-04T18:29:05+00:00"
+   "checkedAt": "2026-11-04T18:40:22+00:00"
   },
   "amc-tickets-tue-wed": {
    "status": "unreachable",
@@ -137,7 +137,7 @@
     "Tuesday",
     "Wednesday"
    ],
-   "checkedAt": "2026-11-04T18:29:08+00:00"
+   "checkedAt": "2026-11-04T18:40:25+00:00"
   },
   "amc-combo-tue-wed": {
    "status": "unreachable",
@@ -147,7 +147,7 @@
     "popcorn",
     "50%"
    ],
-   "checkedAt": "2026-11-04T18:29:08+00:00"
+   "checkedAt": "2026-11-04T18:40:25+00:00"
   },
   "regal-popcorn-tue": {
    "status": "unreachable",
@@ -158,7 +158,7 @@
     "popcorn",
     "Tuesday"
    ],
-   "checkedAt": "2026-11-04T18:29:08+00:00"
+   "checkedAt": "2026-11-04T18:40:25+00:00"
   },
   "regal-candy-mon": {
    "status": "unreachable",
@@ -169,7 +169,7 @@
     "candy",
     "Monday"
    ],
-   "checkedAt": "2026-11-04T18:29:08+00:00"
+   "checkedAt": "2026-11-04T18:40:25+00:00"
   },
   "cinemark-tickets-tue": {
    "status": "verified",
@@ -181,7 +181,7 @@
     "Discount Tuesdays",
     "50%"
    ],
-   "checkedAt": "2026-11-04T18:29:12+00:00"
+   "checkedAt": "2026-11-04T18:40:30+00:00"
   },
   "dnb-games-wed": {
    "status": "verified",
@@ -193,7 +193,7 @@
     "Half",
     "Wednesday"
    ],
-   "checkedAt": "2026-11-04T18:29:16+00:00"
+   "checkedAt": "2026-11-04T18:40:33+00:00"
   },
   "bww-boneless-thu": {
    "status": "verified",
@@ -206,7 +206,7 @@
     "Boneless",
     "Thursday"
    ],
-   "checkedAt": "2026-11-04T18:29:19+00:00"
+   "checkedAt": "2026-11-04T18:40:36+00:00"
   },
   "bww-traditional-tue-50": {
    "status": "verified",
@@ -218,7 +218,7 @@
     "BOGO 50% off Traditional Wings",
     "Tuesdays"
    ],
-   "checkedAt": "2026-11-04T18:29:25+00:00"
+   "checkedAt": "2026-11-04T18:40:43+00:00"
   },
   "bww-traditional-tue-bogo-free": {
    "status": "verified",
@@ -231,7 +231,7 @@
     "Rewards account",
     "Dine-in only"
    ],
-   "checkedAt": "2026-11-04T18:29:25+00:00"
+   "checkedAt": "2026-11-04T18:40:43+00:00"
   },
   "wholefoods-oysters-fri": {
    "status": "verified",
@@ -243,7 +243,7 @@
     "12 for $12",
     "live oysters"
    ],
-   "checkedAt": "2026-11-04T18:29:28+00:00"
+   "checkedAt": "2026-11-04T18:40:46+00:00"
   }
  }
 }
