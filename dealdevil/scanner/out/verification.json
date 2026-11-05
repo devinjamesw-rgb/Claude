@@ -1,0 +1,566 @@
+{
+ "generatedAt": "2026-11-05 05:34 UTC",
+ "results": {
+  "roccos-huntington-aycet": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "All-You-Can-Eat Taco Tuesday · Pricing $34.99 All-You-Can-Eat Tacos $7 Rocco's House Margaritas $5 Cervezas $27 Rocco's House Pitchers $70 Bottles of Traditional Silver Tequila",
+   "snippetHash": "90fa5b9b82db0af8",
+   "url": "https://www.roccostacos.com/event/taco-tuesday-huntington/",
+   "tokens": [
+    "34.99",
+    "Tuesday"
+   ],
+   "checkedAt": "2026-11-05T05:32:41+00:00"
+  },
+  "roccos-huntington-margs": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "All-You-Can-Eat Taco Tuesday · Every Tuesday at Rocco's Tacos Huntington Stati … ring unlimited De Casa tacos made fresh to order, $7 margaritas, and unbeatable drink specials at the Walt Whitm",
+   "snippetHash": "4cc90d897073c00f",
+   "url": "https://www.roccostacos.com/event/taco-tuesday-huntington/",
+   "tokens": [
+    "$7",
+    "margarita",
+    "Tuesday"
+   ],
+   "checkedAt": "2026-11-05T05:32:41+00:00"
+  },
+  "luckystrike-commack-family": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Family Unlimited · Enjoy unlimited bowling, shoes included, for only $15.99. Plus, enjoy specially priced select appetizers, Craft Lemonades and Dirty Sodas while you bowl.",
+   "snippetHash": "bbd176d3445789da",
+   "url": "https://www.luckystrikeent.com/location/lucky-strike-commack",
+   "tokens": [
+    "15.99",
+    "Family"
+   ],
+   "checkedAt": "2026-11-05T05:32:45+00:00"
+  },
+  "lucky-strike-commack-night-strike-sun": {
+   "status": "verified",
+   "matchScope": "window",
+   "matchedSnippet": "Enjoy unlimited bowling, shoes included, for only $19.99, plus delicious food & drink specials. · Night Strike · Thursday starting at 7PM · Night Strike · Sunday starting at 6PM",
+   "snippetHash": "633df223da2529e9",
+   "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+   "tokens": [
+    "Night Strike",
+    "$19.99",
+    "Sunday starting at 6PM"
+   ],
+   "checkedAt": "2026-11-05T05:32:48+00:00"
+  },
+  "lucky-strike-commack-night-strike-monthu": {
+   "status": "verified",
+   "matchScope": "window",
+   "matchedSnippet": "Enjoy unlimited bowling, shoes included, for only $19.99, plus delicious food & drink specials. · Night Strike · Thursday starting at 7PM · Night Strike · Sunday starting at 6PM · Night Strike · Monday starting at 7PM",
+   "snippetHash": "f6ef41d91bcf00ad",
+   "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+   "tokens": [
+    "Night Strike",
+    "$19.99",
+    "Monday starting at 7PM",
+    "Thursday starting at 7PM"
+   ],
+   "checkedAt": "2026-11-05T05:32:48+00:00"
+  },
+  "lucky-strike-commack-arcade-wed": {
+   "status": "verified",
+   "matchScope": "window",
+   "matchedSnippet": "Half-Price Arcade Play · Every Wednesday | Open - Close · Every Wednesday | Open - Close · Get your game on and enjoy 50% off arcade play all day long. Play more of your favorites for less, from classic cabinets to modern must-plays.",
+   "snippetHash": "281567739d8013e1",
+   "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+   "tokens": [
+    "Half-Price Arcade Play",
+    "Every Wednesday",
+    "50% off arcade play"
+   ],
+   "checkedAt": "2026-11-05T05:32:48+00:00"
+  },
+  "lucky-strike-commack-after-party": {
+   "status": "verified",
+   "matchScope": "window",
+   "matchedSnippet": "Keep the night alive with After Party, our special that gives you unlimited bowling for only $28.99. Perfect for friends, fun, and unforgettable nights out. · After Party · Friday starting at 8PM",
+   "snippetHash": "4c983599e0316094",
+   "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+   "tokens": [
+    "After Party",
+    "unlimited bowling for only $28.99",
+    "Friday starting at 8PM"
+   ],
+   "checkedAt": "2026-11-05T05:32:48+00:00"
+  },
+  "lucky-strike-commack-the-special": {
+   "status": "verified",
+   "matchScope": "window",
+   "matchedSnippet": "Buy two games, get the third 50% off! · Daily | Open - Close · The Special makes every game more fun (and more affordable). Gather your crew, hit the lanes, and keep the good times rolling.",
+   "snippetHash": "86b28ed654c85119",
+   "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+   "tokens": [
+    "The Special",
+    "Daily",
+    "Buy two games, get the third 50% off"
+   ],
+   "checkedAt": "2026-11-05T05:32:48+00:00"
+  },
+  "uncleg-northbabylon-pizza": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Hand-stretched dough, house-made tomato sauce, fresh mozzarella from our bar. Two 20″ pizzas for $22 every Wednesday & Friday.",
+   "snippetHash": "c424acd3596e47ed",
+   "url": "https://uncleg.com/stores/north-babylon/",
+   "tokens": [
+    "$22",
+    "Wednesday"
+   ],
+   "checkedAt": "2026-11-05T05:32:51+00:00"
+  },
+  "saltbarrel-oysters": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "HAPPY HOUR 3 PM to 6 PM EVERYDAY! · Buck A Shuck Local Oysters",
+   "snippetHash": "012339954068ab5e",
+   "url": "https://saltandbarrel.com/happy-hours/",
+   "tokens": [
+    "HAPPY HOUR 3 PM to 6 PM EVERYDAY",
+    "Buck A Shuck Local Oysters"
+   ],
+   "checkedAt": "2026-11-05T05:32:55+00:00"
+  },
+  "amc-tickets-tue-wed": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "days All 36 million-plus AMC Stubs® members enjoy 50% off the standard adult evening ticket price every Tuesday and Wednesday. And it's not just movie tickets - AMC Stubs memb",
+   "snippetHash": "9fc827eb4b7d5925",
+   "url": "https://investor.amctheatres.com/news-events/press-releases/detail/392/your-summer-movie-hack-six-ways-to-save-money-at-the-movies-with-amc-theatres",
+   "tokens": [
+    "50% off the standard adult evening ticket price",
+    "every Tuesday and Wednesday"
+   ],
+   "checkedAt": "2026-11-05T05:32:58+00:00"
+  },
+  "amc-combo-tue-wed": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "y 50% off the standard adult evening ticket price every Tuesday and Wednesday. And it's not just movie tickets - AMC Stubs members also get 50% off the Small popcorn & fountain drink Combo. Whether you're catching a new release or rewatch",
+   "snippetHash": "3b9e99cfddcddd07",
+   "url": "https://investor.amctheatres.com/news-events/press-releases/detail/392/your-summer-movie-hack-six-ways-to-save-money-at-the-movies-with-amc-theatres",
+   "tokens": [
+    "every Tuesday and Wednesday",
+    "50% off the Small popcorn & fountain drink Combo"
+   ],
+   "checkedAt": "2026-11-05T05:32:58+00:00"
+  },
+  "regal-popcorn-tue": {
+   "status": "unreachable",
+   "reason": "robots.txt refused",
+   "url": "https://www.regmovies.com/promotions/regal-value-days",
+   "tokens": [
+    "50%",
+    "popcorn",
+    "Tuesday"
+   ],
+   "checkedAt": "2026-11-05T05:32:58+00:00"
+  },
+  "regal-candy-mon": {
+   "status": "unreachable",
+   "reason": "robots.txt refused",
+   "url": "https://www.regmovies.com/promotions/regal-value-days",
+   "tokens": [
+    "25%",
+    "candy",
+    "Monday"
+   ],
+   "checkedAt": "2026-11-05T05:32:58+00:00"
+  },
+  "cinemark-tickets-tue": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Are movie tickets 50% off on Discount Tuesdays?",
+   "snippetHash": "7c90cfa8a894fc3e",
+   "url": "https://www.cinemark.com/discounts/discount-tuesdays",
+   "tokens": [
+    "Discount Tuesdays",
+    "50%"
+   ],
+   "checkedAt": "2026-11-05T05:33:04+00:00"
+  },
+  "dnb-games-wed": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Half-Price Wednesdays: Maximize your chip count by visiting on any given Wednesday to enjoy 50% off all standard arcade titles all day long.",
+   "snippetHash": "0534dd231f61c219",
+   "url": "https://www.daveandbusters.com/us/en/play",
+   "tokens": [
+    "Half",
+    "Wednesday"
+   ],
+   "checkedAt": "2026-11-05T05:33:07+00:00"
+  },
+  "bww-boneless-thu": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Free Wings Every Thursday · Enjoy BOGO free boneless wings Thursdays with takeout and delivery from Buffalo Wild Wings GO.",
+   "snippetHash": "46ec7fcba38aca04",
+   "url": "https://www.buffalowildwings.com/bogo-days/",
+   "tokens": [
+    "BOGO",
+    "Boneless",
+    "Thursday"
+   ],
+   "checkedAt": "2026-11-05T05:33:11+00:00"
+  },
+  "bww-traditional-tue-50": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Get BOGO 50% off Traditional Wings on Tuesdays",
+   "snippetHash": "17933ebdc21fd025",
+   "url": "https://www.buffalowildwings.com/bogo-days/",
+   "tokens": [
+    "BOGO 50% off Traditional Wings",
+    "Tuesdays"
+   ],
+   "checkedAt": "2026-11-05T05:33:17+00:00"
+  },
+  "bww-traditional-tue-bogo-free": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Every Tuesday when you buy one 6-, 10- or 15-count traditional wings with a valid Buffalo Wild Wings Rewards account you get one of equal value free. Dine-in only. Not a member, get your free Buffalo Wild Wings Rewards account now",
+   "snippetHash": "4a6cc1d330b441c0",
+   "url": "https://www.buffalowildwings.com/bogo-days/",
+   "tokens": [
+    "15-count traditional wings",
+    "Rewards account",
+    "Dine-in only"
+   ],
+   "checkedAt": "2026-11-05T05:33:17+00:00"
+  },
+  "wholefoods-oysters-fri": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "12 for $12 All Live Oysters",
+   "snippetHash": "e53f7977c4058e89",
+   "url": "https://www.wholefoodsmarket.com/days-of-deals",
+   "tokens": [
+    "12 for $12",
+    "live oysters"
+   ],
+   "checkedAt": "2026-11-05T05:33:20+00:00"
+  },
+  "imc-huntington-monday-roast": {
+   "status": "unreachable",
+   "reason": "HTTP 404",
+   "url": "https://www.imcrestaurant.com/monday-special/",
+   "tokens": [
+    "Monday Roast",
+    "$79.98"
+   ],
+   "checkedAt": "2026-11-05T05:33:23+00:00"
+  },
+  "imc-huntington-tuesday-surf-turf": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Tuesday Surf & Turf Dinner Serves Two - $110",
+   "snippetHash": "d77bf69f7376ad76",
+   "url": "https://www.imcrestaurant.com/tuesdays-at-imc-restaurant-bar-huntington-village/",
+   "tokens": [
+    "Surf & Turf",
+    "$110"
+   ],
+   "checkedAt": "2026-11-05T05:33:26+00:00"
+  },
+  "imc-huntington-wed-thu-porterhouse": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Porterhouse & Wine Night · Join us every Wednesday and Thursd … ur signature Porterhouse & Wine Night. Indulge in $68 42 oz. Prime Porterhouse Steak, Half price, regul",
+   "snippetHash": "f59ce80d430f8885",
+   "url": "https://www.imcrestaurant.com/wednesday-thursday-at-imc-restaurant-bar-huntington-village/",
+   "tokens": [
+    "Porterhouse",
+    "$68"
+   ],
+   "checkedAt": "2026-11-05T05:33:29+00:00"
+  },
+  "imc-huntington-friday-tomahawk": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Tomahawk Dinner for Two - just $99",
+   "snippetHash": "f52457c2a57c4c59",
+   "url": "https://www.imcrestaurant.com/friday-special-at-imc-restaurant-bar-huntington-village/",
+   "tokens": [
+    "Tomahawk",
+    "$99"
+   ],
+   "checkedAt": "2026-11-05T05:33:32+00:00"
+  },
+  "imc-huntington-sunday-prix-fixe": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Sunday Prix-Fixe at IMC Restaurant & Bar · Looking for a … e, enjoy our Three-Course Prix-Fixe Menu for just $42.95, featuring a selection of signature appetizers, e",
+   "snippetHash": "d2e49780919a1ef6",
+   "url": "https://www.imcrestaurant.com/sunday-prix-fixe-dinner-huntington-ny/",
+   "tokens": [
+    "$42.95",
+    "Sunday"
+   ],
+   "checkedAt": "2026-11-05T05:33:35+00:00"
+  },
+  "lombardis-bay-patchogue-pasta-tue": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Pasta Night · Every Tuesday for $22.95",
+   "snippetHash": "4ea77758ac8851a7",
+   "url": "https://lombardisonthebay.com/weekly-specials-menu/",
+   "tokens": [
+    "Pasta Night",
+    "$22.95"
+   ],
+   "checkedAt": "2026-11-05T05:33:39+00:00"
+  },
+  "lombardis-bay-patchogue-chicken-wed": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Chicken Night · Every Wednesday for $26.99",
+   "snippetHash": "7ec5b2cbf93ef078",
+   "url": "https://lombardisonthebay.com/weekly-specials-menu/",
+   "tokens": [
+    "Chicken Night",
+    "$26.99"
+   ],
+   "checkedAt": "2026-11-05T05:33:39+00:00"
+  },
+  "lombardis-bay-patchogue-seafood-thu": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Seafood Night · Every Thursday for $26.95",
+   "snippetHash": "75729dc9f796b8e4",
+   "url": "https://lombardisonthebay.com/weekly-specials-menu/",
+   "tokens": [
+    "Seafood Night",
+    "$26.95"
+   ],
+   "checkedAt": "2026-11-05T05:33:39+00:00"
+  },
+  "lombardis-bay-patchogue-steak-thu": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Steak Night · Every Thursday for $64.95",
+   "snippetHash": "76ef7145b3b69214",
+   "url": "https://lombardisonthebay.com/weekly-specials-menu/",
+   "tokens": [
+    "Steak Night",
+    "$64.95"
+   ],
+   "checkedAt": "2026-11-05T05:33:39+00:00"
+  },
+  "ita-kitchen-patchogue-endless-pasta": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Endless Pasta · $35 per person + tax and tip. *Not available on holidays*",
+   "snippetHash": "bdb927ae9847c01a",
+   "url": "https://www.itakitchen.com/event/endless-pasta-edition/",
+   "tokens": [
+    "Endless Pasta",
+    "$35"
+   ],
+   "checkedAt": "2026-11-05T05:33:42+00:00"
+  },
+  "ita-kitchen-patchogue-nonnas-dinner": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Nonna's Family Dinner · $39 per person + tax & tip. (Not available on holidays)",
+   "snippetHash": "97d6bbff8d17a244",
+   "url": "https://www.itakitchen.com/event/nonnas-prix-fixe/",
+   "tokens": [
+    "Nonna's Family Dinner",
+    "$39"
+   ],
+   "checkedAt": "2026-11-05T05:33:45+00:00"
+  },
+  "ginos-lindenhurst-pizza-wed": {
+   "status": "unreachable",
+   "reason": "robots.txt refused",
+   "url": "https://www.ginosoflindenhurst.com/pizza",
+   "tokens": [
+    "Wednesday",
+    "$15.25"
+   ],
+   "checkedAt": "2026-11-05T05:33:45+00:00"
+  },
+  "mamma-lombardis-holbrook-lunch-for-two": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "$30.00 · LUNCH FOR TWO CASH ONLY",
+   "snippetHash": "bf2b36f0b35e51e4",
+   "url": "https://mammalombardis.com/menu/3-course-prix-fixe-lunch-menu/",
+   "tokens": [
+    "$30.00",
+    "LUNCH FOR TWO"
+   ],
+   "checkedAt": "2026-11-05T05:33:49+00:00"
+  },
+  "spotify-premium-student": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Student · $6.99 / month after",
+   "snippetHash": "43ceba0d86d211b0",
+   "url": "https://www.spotify.com/us/premium/",
+   "tokens": [
+    "Student",
+    "$6.99"
+   ],
+   "checkedAt": "2026-11-05T05:33:52+00:00"
+  },
+  "apple-music-student": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Student · Extra savings at just $6.99/month, first month free for new subscribers.",
+   "snippetHash": "caaa2a9bb65ce74d",
+   "url": "https://www.apple.com/apple-music/",
+   "tokens": [
+    "student",
+    "$6.99"
+   ],
+   "checkedAt": "2026-11-05T05:33:55+00:00"
+  },
+  "youtube-premium-student": {
+   "status": "needs_render",
+   "missing": [
+    "student",
+    "$8.99"
+   ],
+   "reason": "page text is nearly empty; it probably loads with JavaScript",
+   "url": "https://music.youtube.com/youtube_premium/web",
+   "tokens": [
+    "student",
+    "$8.99"
+   ],
+   "checkedAt": "2026-11-05T05:34:02+00:00"
+  },
+  "hulu-disney-student-bundle": {
+   "status": "unreachable",
+   "reason": "robots.txt disallows this page",
+   "url": "https://www.hulu.com/student",
+   "tokens": [
+    "Student",
+    "$6.49"
+   ],
+   "checkedAt": "2026-11-05T05:34:03+00:00"
+  },
+  "hbo-max-student": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "HBO Max student discount · An HBO Max student discount is availab … t you can get the HBO Max Basic with Ads plan for $5.49/month (a 50% savings) for up to 12 months.",
+   "snippetHash": "47ed6696081f03b0",
+   "url": "https://help.hbomax.com/US/Answer/Detail/000002583",
+   "tokens": [
+    "student",
+    "$5.49"
+   ],
+   "checkedAt": "2026-11-05T05:34:06+00:00"
+  },
+  "peacock-premium-student": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "Student Discount: Get Peacock Premium for only $6.99/mo. for 12 months.",
+   "snippetHash": "74f705aea6e8660b",
+   "url": "https://www.peacocktv.com/student",
+   "tokens": [
+    "Student",
+    "$6.99"
+   ],
+   "checkedAt": "2026-11-05T05:34:09+00:00"
+  },
+  "amazon-prime-young-adults": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "18-to-24-year-olds can join the newly enhanced membership for $7.49 a month or $69 per year.",
+   "snippetHash": "8989a0fb777af5aa",
+   "url": "https://www.aboutamazon.com/news/retail/amazon-prime-for-young-adults",
+   "tokens": [
+    "$7.49",
+    "$69"
+   ],
+   "checkedAt": "2026-11-05T05:34:12+00:00"
+  },
+  "walmart-plus-student": {
+   "status": "unreachable",
+   "reason": "HTTP 412",
+   "url": "https://www.walmart.com/plus/student",
+   "tokens": [
+    "Student",
+    "$49"
+   ],
+   "checkedAt": "2026-11-05T05:34:15+00:00"
+  },
+  "target-circle-360-student": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "How do I get the Target Circle 360 student discount? · Verified college students can enjoy a … et Circle 360 membership for a discounted rate of $4.99/month. To get the discount and see full offer det",
+   "snippetHash": "4e4b270b312dfa33",
+   "url": "https://www.target.com/help/article/000172062",
+   "tokens": [
+    "student",
+    "$4.99"
+   ],
+   "checkedAt": "2026-11-05T05:34:19+00:00"
+  },
+  "dashpass-student": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "n will receive DashPass at a discounted charge of $4.99 a month or $48 annually instead of $9.99 a month or $96 a year.",
+   "snippetHash": "10e0c7653d680793",
+   "url": "https://help.doordash.com/en-us/consumers/article/dashpass-for-students",
+   "tokens": [
+    "$4.99",
+    "$48"
+   ],
+   "checkedAt": "2026-11-05T05:34:22+00:00"
+  },
+  "headspace-student": {
+   "status": "unreachable",
+   "reason": "HTTP 403",
+   "url": "https://help.headspace.com/hc/en-us/articles/360008780334-How-do-I-receive-the-Student-rate",
+   "tokens": [
+    "Student",
+    "$9.99"
+   ],
+   "checkedAt": "2026-11-05T05:34:25+00:00"
+  },
+  "peloton-app-one-student": {
+   "status": "unreachable",
+   "reason": "HTTP 401",
+   "url": "https://support.onepeloton.com/hc/en-us/articles/360061427191-Special-Pricing-On-Peloton-Digital-Membership",
+   "tokens": [
+    "$6.99",
+    "Students"
+   ],
+   "checkedAt": "2026-11-05T05:34:28+00:00"
+  },
+  "uber-one-student": {
+   "status": "not_found",
+   "missing": [
+    "$48"
+   ],
+   "url": "https://www.uber.com/us/en/uber-one/student/",
+   "tokens": [
+    "$4.99",
+    "$48"
+   ],
+   "checkedAt": "2026-11-05T05:34:35+00:00"
+  },
+  "paramount-plus-student": {
+   "status": "verified",
+   "matchScope": "block",
+   "matchedSnippet": "STUDENTS GET 50% OFF",
+   "snippetHash": "c71eea90491d2d3b",
+   "url": "https://www.paramountplus.com/account/signup/edu-offer/",
+   "tokens": [
+    "50%",
+    "student"
+   ],
+   "checkedAt": "2026-11-05T05:34:38+00:00"
+  }
+ }
+}

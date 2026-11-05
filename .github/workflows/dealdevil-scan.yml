@@ -1,0 +1,63 @@
+# DealDevil deal scanner, run by GitHub Actions.
+# The live copy is .github/workflows/dealdevil-scan.yml; this one sits beside the scanner for reference.
+# - Pushes to claude/* branches that touch the scanner or the catalog run it right away.
+# - The 6-hour schedule only runs once this file is on the repository's default branch (a GitHub rule).
+name: DealDevil scan
+
+on:
+  schedule:
+    - cron: "23 */6 * * *"
+  workflow_dispatch: {}
+  push:
+    branches: ["claude/**"]
+    paths:
+      - "dealdevil/scanner/*.py"
+      - "dealdevil/scanner/sources.json"
+      - "dealdevil/deals/**"
+      - ".github/workflows/dealdevil-scan.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dealdevil-scan-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Test the scanner
+        working-directory: dealdevil/scanner
+        run: python3 -m unittest test_dealscan.py
+
+      - name: Install a headless browser for pages that load with JavaScript
+        run: |
+          pip install --quiet playwright==1.64.0
+          python3 -m playwright install --with-deps chromium
+
+      - name: Re-check every deal on the business's own site
+        run: python3 dealdevil/scanner/dealscan.py --verify dealdevil/deals/catalog.json --out dealdevil/scanner/out --render
+
+      - name: Scan sources for new deals
+        run: python3 dealdevil/scanner/dealscan.py --sources dealdevil/scanner/sources.json --out dealdevil/scanner/out --render
+
+      - name: Save results
+        run: |
+          git config user.name "dealdevil-scanner"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dealdevil/scanner/out
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "DealDevil scan $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi

@@ -1,0 +1,1664 @@
+[
+ {
+  "id": "scan-579aaf1c5621",
+  "scope": "anywhere",
+  "item": "Get Traditional Wings TuesdaysView Details",
+  "price": "50%",
+  "venue": "Buffalo Wild Wings",
+  "town": "",
+  "state": "",
+  "category": "food",
+  "days": [
+   2,
+   4
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Get BOGO 50% off Traditional Wings on TuesdaysView Details",
+  "businessUrl": "https://www.buffalowildwings.com/bogo-days/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Buffalo Wild Wings",
+    "url": "https://www.buffalowildwings.com/bogo-days/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "bww-bogo",
+  "score": 7,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-f16971caf82b",
+  "scope": "anywhere",
+  "item": "We offer Boneless which means for any quantity of boneless wings…",
+  "price": "BOGO",
+  "venue": "Buffalo Wild Wings",
+  "town": "",
+  "state": "",
+  "category": "food",
+  "days": [
+   4
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Every Thursday we offer BOGO Boneless, which means for any quantity of boneless wings you order you will get the same number of Boneless wings free",
+  "businessUrl": "https://www.buffalowildwings.com/bogo-days/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Buffalo Wild Wings",
+    "url": "https://www.buffalowildwings.com/bogo-days/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "bww-bogo",
+  "score": 6,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-d73523f3d410",
+  "scope": "anywhere",
+  "item": "What is the Buffalo Wild Wings ?",
+  "price": "BOGO",
+  "venue": "Buffalo Wild Wings",
+  "town": "",
+  "state": "",
+  "category": "food",
+  "days": [
+   2
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "What is the Buffalo Wild Wings BOGO Tuesday Special?",
+  "businessUrl": "https://www.buffalowildwings.com/bogo-days/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Buffalo Wild Wings",
+    "url": "https://www.buffalowildwings.com/bogo-days/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "bww-bogo",
+  "score": 6,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-489728411beb",
+  "scope": "anywhere",
+  "item": "Enjoy boneless wings with takeout and delivery Buffalo Wild…",
+  "price": "BOGO",
+  "venue": "Buffalo Wild Wings",
+  "town": "",
+  "state": "",
+  "category": "food",
+  "days": [
+   4
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Enjoy BOGO free boneless wings Thursdays with takeout and delivery from Buffalo Wild Wings GO​.",
+  "businessUrl": "https://www.buffalowildwings.com/bogo-days/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Buffalo Wild Wings",
+    "url": "https://www.buffalowildwings.com/bogo-days/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "bww-bogo",
+  "score": 5,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-dc1ca77f99e1",
+  "scope": "anywhere",
+  "item": "Get Boneless WingsView Details",
+  "price": "BOGO",
+  "venue": "Buffalo Wild Wings",
+  "town": "",
+  "state": "",
+  "category": "food",
+  "days": [
+   4
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Get BOGO Free Boneless WingsView Details",
+  "businessUrl": "https://www.buffalowildwings.com/bogo-days/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Buffalo Wild Wings",
+    "url": "https://www.buffalowildwings.com/bogo-days/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "bww-bogo",
+  "score": 5,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-934993a793d8",
+  "scope": "anywhere",
+  "item": "What is the Buffalo Wild Wings ?",
+  "price": "BOGO",
+  "venue": "Buffalo Wild Wings",
+  "town": "",
+  "state": "",
+  "category": "food",
+  "days": [
+   4
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "What is the Buffalo Wild Wings BOGO Thursday Special?",
+  "businessUrl": "https://www.buffalowildwings.com/bogo-days/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Buffalo Wild Wings",
+    "url": "https://www.buffalowildwings.com/bogo-days/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "bww-bogo",
+  "score": 5,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-6c3439a283a1",
+  "scope": "anywhere",
+  "item": "Price get 1 of equal or lesser value buy 1 order boneless wings…",
+  "price": "50%",
+  "venue": "Buffalo Wild Wings",
+  "town": "",
+  "state": "",
+  "category": "food",
+  "days": [
+   2,
+   4
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "At particip. locs. On Tues., buy 1 order trad. wings at reg. price, get 1 of equal or lesser value 50% off & on Thurs., buy 1 order boneless wings at reg. price, get 1 of equal or lesser value free. Offers only valid for takeout/delivery thru BWW Web/App. & with dine-in orders. Deliv. subj. to avail. 3rd-party delivery excluded. Size exclusions apply. Offers may not be combined with other disco…",
+  "businessUrl": "https://www.buffalowildwings.com/bogo-days/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Buffalo Wild Wings",
+    "url": "https://www.buffalowildwings.com/bogo-days/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "bww-bogo",
+  "score": 4,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-8d468b5c337f",
+  "scope": "anywhere",
+  "item": "Wings get 1 of equal or lesser value buy 1 order…",
+  "price": "50%",
+  "venue": "Buffalo Wild Wings",
+  "town": "",
+  "state": "",
+  "category": "food",
+  "days": [
+   2,
+   4
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "At particip. locs. for a lim. time, buy 1 reg. priced order trad. wings on Tues., get 1 of equal or lesser value 50% off & on Thurs., buy 1 order boneless wings at reg. price, get 1 of equal or lesser value free. Offer valid for takeout/delivery thru BWW Web/App. only, & with dine-in orders – 3rd party delivery excluded. May not be combined with other discounts/offers. Size exclusions apply. Li…",
+  "businessUrl": "https://www.buffalowildwings.com/bogo-days/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Buffalo Wild Wings",
+    "url": "https://www.buffalowildwings.com/bogo-days/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "bww-bogo",
+  "score": 4,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-440693d117c6",
+  "scope": "anywhere",
+  "item": "Wings ​",
+  "price": "BOGO",
+  "venue": "Buffalo Wild Wings",
+  "town": "",
+  "state": "",
+  "category": "food",
+  "days": [
+   2,
+   4
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "BOGO TUESDAYS",
+  "businessUrl": "https://www.buffalowildwings.com/bogo-days/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Buffalo Wild Wings",
+    "url": "https://www.buffalowildwings.com/bogo-days/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "bww-bogo",
+  "score": 4,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-2b24c5ec5330",
+  "scope": "anywhere",
+  "item": "When you buy one 6- 10- or 15-count traditional wings with a valid…",
+  "price": "BOGO",
+  "venue": "Buffalo Wild Wings",
+  "town": "",
+  "state": "",
+  "category": "food",
+  "days": [
+   2
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Every Tuesday when you buy one 6-, 10- or 15-count traditional wings with a valid Buffalo Wild Wings Rewards account you get one of equal value free. Dine-in only. Not a member, get your free Buffalo Wild Wings Rewards account now",
+  "businessUrl": "https://www.buffalowildwings.com/bogo-days/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Buffalo Wild Wings",
+    "url": "https://www.buffalowildwings.com/rewards",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "bww-bogo",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-af0709d7d295",
+  "scope": "anywhere",
+  "item": "Wings get 1 of equal or lesser value",
+  "price": "50%",
+  "venue": "Buffalo Wild Wings",
+  "town": "",
+  "state": "",
+  "category": "food",
+  "days": [
+   2
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "At particip. locs. for a lim. time, buy 1 reg. priced order trad. wings on Tues., get 1 of equal or lesser value 50% off. Offer valid for takeout/delivery thru BWW Web/App. only, & with dine-in orders – 3rd party delivery excluded. May not be combined with other discounts/offers. Size exclusions apply. Limit 1. Deliv. subj. to avail. Tax/Fees (incl. service) apply. TM & © 2025 Buffalo Wild Wing…",
+  "businessUrl": "https://www.buffalowildwings.com/bogo-days/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Buffalo Wild Wings",
+    "url": "https://www.buffalowildwings.com/bogo-days/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "bww-bogo",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-bbcfbce7cf41",
+  "scope": "anywhere",
+  "item": "Are movie tickets Discount ?",
+  "price": "50%",
+  "venue": "Cinemark",
+  "town": "",
+  "state": "",
+  "category": "fun",
+  "days": [
+   2
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Are movie tickets 50% off on Discount Tuesdays?",
+  "businessUrl": "https://www.cinemark.com/discounts/discount-tuesdays",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Cinemark",
+    "url": "https://www.cinemark.com/discounts/discount-tuesdays",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "cinemark-tuesdays",
+  "score": 6,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-d956fe851b25",
+  "scope": "anywhere",
+  "item": "Participating Cinemark theatres offer up to movie tickets Discount",
+  "price": "50%",
+  "venue": "Cinemark",
+  "town": "",
+  "state": "",
+  "category": "fun",
+  "days": [
+   2
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Participating Cinemark theatres offer up to 50% off movie tickets on Discount Tuesdays. Availability, pricing, and exclusions may vary by location. Check your local theatre for details.",
+  "businessUrl": "https://www.cinemark.com/discounts/discount-tuesdays",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Cinemark",
+    "url": "https://www.cinemark.com/discounts/discount-tuesdays",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "cinemark-tuesdays",
+  "score": 5,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-967415e432c1",
+  "scope": "anywhere",
+  "item": "All Cinemark guests can receive Discount ticket pricing by purchasing tickets…",
+  "price": "FREE",
+  "venue": "Cinemark",
+  "town": "",
+  "state": "",
+  "category": "fun",
+  "days": [
+   2
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "All Cinemark guests can receive Discount Tuesdays ticket pricing by purchasing tickets online or at the theatre box office. For the best admission price on Tuesdays, join Cinemark Movie Rewards for free!",
+  "businessUrl": "https://www.cinemark.com/discounts/discount-tuesdays",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Cinemark",
+    "url": "https://www.cinemark.com/movie-rewards-info",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "cinemark-tuesdays",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-f58b35e81fe1",
+  "scope": "anywhere",
+  "item": "Starting at receive arcade gameplay food non-alcoholic…",
+  "price": "50%",
+  "venue": "Dave & Buster's",
+  "town": "",
+  "state": "",
+  "category": "fun",
+  "days": [
+   0,
+   3
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "*UFC Membership: PROMOTIONAL. Offer valid starting on 7/7/2026. Membership is available for use for 365 days from date of purchase. Starting at $50, receive 50% off arcade gameplay, 20% off food & non-alcoholic beverages, a custom $35 UFC® Power Card®, and access to exclusive giveaways. Gameplay and food & non-alcoholic beverage discounts are only available during UFC® Fight Nights and UFC® Num…",
+  "businessUrl": "https://www.daveandbusters.com/us/en/play/specials",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Dave & Buster's",
+    "url": "https://www.daveandbusters.com/us/en/shop/ufc-membership/terms-and-conditions",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "dnb-specials",
+  "score": 6,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-44efd224856a",
+  "scope": "anywhere",
+  "item": "Get Food Drinks^ with a Valid Military/First Responder ID",
+  "price": "15%",
+  "venue": "Dave & Buster's",
+  "town": "",
+  "state": "",
+  "category": "shop",
+  "days": [
+   0,
+   3
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "What’s Another Word for Winner? Veteran. Nurse. Firefighter. EMT. Officer. Doctor. Hero. Get 15% Off Food & Drinks^ with a Valid Military/First Responder ID",
+  "businessUrl": "https://www.daveandbusters.com/us/en/play/specials",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Dave & Buster's",
+    "url": "https://www.daveandbusters.com/us/en/play/specials",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "dnb-specials",
+  "score": 5,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-72c591981cf3",
+  "scope": "anywhere",
+  "item": "Game Play coupons may not be valid in combination with the Games offer …",
+  "price": "50%",
+  "venue": "Dave & Buster's",
+  "town": "",
+  "state": "",
+  "category": "shop",
+  "days": [
+   0,
+   3
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "1/2 Price Games Sunday & Wednesday: Promotional. Half Price Games. Offer valid in-store only. Valid only on Sundays and Wednesdays. Not valid on Virtual Reality, The Arena, Game Suites, or Human Crane. Excludes photo booths. Game Play coupons may not be valid in combination with the Half Price Games offer on select days. Power Card activation fee may apply. Offer cannot be combined with other p…",
+  "businessUrl": "https://www.daveandbusters.com/us/en/play/specials",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Dave & Buster's",
+    "url": "https://www.daveandbusters.com/us/en/play/specials",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "dnb-specials",
+  "score": 4,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-7d23da2562c6",
+  "scope": "anywhere",
+  "item": "Drinks 10 For Wings",
+  "price": "$5",
+  "venue": "Dave & Buster's",
+  "town": "",
+  "state": "",
+  "category": "food",
+  "days": [
+   0,
+   3
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "$5 Drinks & 10 For $10 Wings",
+  "businessUrl": "https://www.daveandbusters.com/us/en/play/specials",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Dave & Buster's",
+    "url": "https://www.daveandbusters.com/us/en/play/specials",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "dnb-specials",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-5208b904c977",
+  "scope": "anywhere",
+  "item": "Get a Dave’s Double Cheeseburger Fish Chips Boneless Wings Crispy Chicken…",
+  "price": "$4.99",
+  "venue": "Dave & Buster's",
+  "town": "",
+  "state": "",
+  "category": "food",
+  "days": [
+   0,
+   3
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "*Play & Eat Combo: Promotional. Limited Time only. Get a Dave’s Double Cheeseburger, Fish & Chips, Boneless Wings, Crispy Chicken Sandwich, Classic Goldfingers or Parmesan Garlic Chicken Caesar Salad for $4.99 plus your choice of a Power Card purchase. Power Card purchase must be $25 or more. At Times Square, Hawaii, and Canada locations, entrée pricing starts at $9.99. Price may be subject to …",
+  "businessUrl": "https://www.daveandbusters.com/us/en/play/specials",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Dave & Buster's",
+    "url": "https://www.daveandbusters.com/us/en/play/specials",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "dnb-specials",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-0bb2da6c3b31",
+  "scope": "local",
+  "item": "42oz Prime Aged Porterhouse regularly",
+  "price": "50%",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "happy",
+  "days": [
+   3,
+   4
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "42oz Prime Aged Porterhouse, half price — regularly $136. Plus 50% off any bottle of wine over $99.",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 9,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-741fc2195920",
+  "scope": "local",
+  "item": "Porterhouse Wine",
+  "price": "50%",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "happy",
+  "days": [
+   3,
+   4
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Porterhouse & Wine 50% Off",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 4,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-8cafdf519492",
+  "scope": "local",
+  "item": "Weekend Brunch Bottomless Drinks",
+  "price": "$22",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "food",
+  "days": [
+   0,
+   6
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Weekend Brunch $22 Bottomless Drinks",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 4,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-78611c59b0cc",
+  "scope": "local",
+  "item": "Add three wine pairings for",
+  "price": "$15",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "happy",
+  "days": [
+   0
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Add three wine pairings for $15. Entrées include Prime NY Strip, Wagyu Skirt Steak, Salmon, Short Rib, Brick Chicken and more. Imperial Filet Mignon available with a $10 supplement.",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-e40c5794fd39",
+  "scope": "local",
+  "item": "Prix-Fixe Dinner pp",
+  "price": "$42.95",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "food",
+  "days": [
+   0
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Prix-Fixe Dinner $42.95 pp",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-a2aa95ea3543",
+  "scope": "local",
+  "item": "Roast for Two",
+  "price": "$79.98",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   1
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Monday Roast $79.98 for Two",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-c14434ca92b9",
+  "scope": "local",
+  "item": "Surf Turf for Two",
+  "price": "$110",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   2
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Surf & Turf for Two $110",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-d6e38e4d06fb",
+  "scope": "local",
+  "item": "Tomahawk Night For Two",
+  "price": "$99",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   5
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Tomahawk Night $99 For Two",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-aa46de68dd0f",
+  "scope": "local",
+  "item": "Endless Pasta",
+  "price": "$35",
+  "venue": "ITA Kitchen",
+  "town": "Patchogue",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   1
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Endless Pasta. Monday - ThursdayStarts with choice of Caesar Salad or Mozzarella and Tomato.Chef 's choice of 3 pasta's served in a hot pan table side change weekly.$35 per person + tax and tip.*Not available on holidays*Make Your Reservations Now!",
+  "businessUrl": "https://www.itakitchen.com/event/endless-pasta-edition/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "ITA Kitchen",
+    "url": "https://www.itakitchen.com/event/endless-pasta-edition/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "ita-kitchen-patchogue",
+  "score": 5,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-71a792d35b1c",
+  "scope": "local",
+  "item": "Per person tax and tip",
+  "price": "$35",
+  "venue": "ITA Kitchen",
+  "town": "Patchogue",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "$35 per person + tax and tip. *Not available on holidays*",
+  "businessUrl": "https://www.itakitchen.com/event/endless-pasta-edition/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "ITA Kitchen",
+    "url": "https://www.itakitchen.com/event/endless-pasta-edition/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "ita-kitchen-patchogue",
+  "score": 4,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-3047feffa54a",
+  "scope": "local",
+  "item": "Gluten- Whole-Wheat pasta available (+ )",
+  "price": "$3",
+  "venue": "Lombardi's on the Bay",
+  "town": "Patchogue",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   3
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Gluten-Free & Whole-Wheat pasta available (+$3).",
+  "businessUrl": "https://lombardisonthebay.com/weekly-specials-menu/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Lombardi's on the Bay",
+    "url": "https://lombardisonthebay.com/weekly-specials-menu/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "lombardis-on-the-bay",
+  "score": 4,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-ce8d0a224c83",
+  "scope": "local",
+  "item": "Buy two games get the third !",
+  "price": "50%",
+  "venue": "Lucky Strike Commack",
+  "town": "Commack",
+  "state": "NY",
+  "category": "fun",
+  "days": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Buy two games, get the third 50% off!",
+  "businessUrl": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Lucky Strike Commack",
+    "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "luckystrike-commack",
+  "score": 5,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-285095667f7a",
+  "scope": "local",
+  "item": "Enjoy unlimited bowling shoes included for plus delicious food drink…",
+  "price": "$19.99",
+  "venue": "Lucky Strike Commack",
+  "town": "Commack",
+  "state": "NY",
+  "category": "fun",
+  "days": [
+   4
+  ],
+  "start": "19:00",
+  "end": null,
+  "hoursKnown": true,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Enjoy unlimited bowling, shoes included, for only $19.99, plus delicious food & drink specials.",
+  "businessUrl": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Lucky Strike Commack",
+    "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "luckystrike-commack",
+  "score": 5,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-8cc4fae75832",
+  "scope": "local",
+  "item": "Keep the night alive with Party our that gives you unlimited bowling for…",
+  "price": "$28.99",
+  "venue": "Lucky Strike Commack",
+  "town": "Commack",
+  "state": "NY",
+  "category": "fun",
+  "days": [
+   5
+  ],
+  "start": "20:00",
+  "end": null,
+  "hoursKnown": true,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Keep the night alive with After Party, our special that gives you unlimited bowling for only $28.99. Perfect for friends, fun, and unforgettable nights out.",
+  "businessUrl": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Lucky Strike Commack",
+    "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "luckystrike-commack",
+  "score": 5,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-b233e5ab2836",
+  "scope": "local",
+  "item": "Arcade Play",
+  "price": "50%",
+  "venue": "Lucky Strike Commack",
+  "town": "Commack",
+  "state": "NY",
+  "category": "fun",
+  "days": [
+   3
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Half-Price Arcade Play",
+  "businessUrl": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Lucky Strike Commack",
+    "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "luckystrike-commack",
+  "score": 4,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-191d997d3d3f",
+  "scope": "local",
+  "item": "Enjoy unlimited bowling shoes included for",
+  "price": "$15.99",
+  "venue": "Lucky Strike Commack",
+  "town": "Commack",
+  "state": "NY",
+  "category": "fun",
+  "days": [
+   0,
+   6
+  ],
+  "start": "11:00",
+  "end": "15:00",
+  "hoursKnown": true,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Enjoy unlimited bowling, shoes included, for only $15.99. Plus, enjoy specially priced select appetizers, Craft Lemonades and Dirty Sodas while you bowl.",
+  "businessUrl": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Lucky Strike Commack",
+    "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "luckystrike-commack",
+  "score": 4,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-d252358d6b7c",
+  "scope": "local",
+  "item": "Get your game and enjoy arcade play long",
+  "price": "50%",
+  "venue": "Lucky Strike Commack",
+  "town": "Commack",
+  "state": "NY",
+  "category": "fun",
+  "days": [
+   3
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": true,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Get your game on and enjoy 50% off arcade play all day long. Play more of your favorites for less, from classic cabinets to modern must-plays.",
+  "businessUrl": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Lucky Strike Commack",
+    "url": "https://www.luckystrikeent.com/location/lucky-strike-commack/specials",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "luckystrike-commack",
+  "score": 4,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-6a31f60aee4a",
+  "scope": "local",
+  "item": "Join us for an all-you-can-eat fiesta featuring unlimited De Casa tacos made fresh to…",
+  "price": "$7",
+  "venue": "Rocco's Tacos & Tequila Bar",
+  "town": "Huntington Station",
+  "state": "NY",
+  "category": "food",
+  "days": [
+   2
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": true,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Every Tuesday at Rocco's Tacos Huntington Station, open to close. Join us for an all-you-can-eat fiesta featuring unlimited De Casa tacos made fresh to order, $7 margaritas, and unbeatable drink specials at the Walt Whitman Shops. Get the full Long Island guide →",
+  "businessUrl": "https://www.roccostacos.com/event/taco-tuesday-huntington/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Rocco's Tacos & Tequila Bar",
+    "url": "https://www.roccostacos.com/news-item/taco-tuesdays-huntington/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "roccos-huntington",
+  "score": 5,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-dd75d298ab27",
+  "scope": "local",
+  "item": "Upgrade to Carne Asada / Steak for per taco",
+  "price": "$2.00",
+  "venue": "Rocco's Tacos & Tequila Bar",
+  "town": "Huntington Station",
+  "state": "NY",
+  "category": "food",
+  "days": [
+   2
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": true,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Fillings: Pollo (Chicken), Cochinitas Achiote (Pork), Carne Molida (Ground Beef), Chorizo, Hongos (Mushrooms), Crispy Fish, and Camarones (Shrimp). Upgrade to Carne Asada / Steak for +$2.00 per taco.",
+  "businessUrl": "https://www.roccostacos.com/event/taco-tuesday-huntington/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Rocco's Tacos & Tequila Bar",
+    "url": "https://www.roccostacos.com/event/taco-tuesday-huntington/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "roccos-huntington",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-f43b1d16219f",
+  "scope": "local",
+  "item": "Two 20″ pizzas for",
+  "price": "$22",
+  "venue": "Uncle Giuseppe's Marketplace",
+  "town": "North Babylon",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   3,
+   5
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Hand-stretched dough, house-made tomato sauce, fresh mozzarella from our bar. Two 20″ pizzas for $22 every Wednesday & Friday.",
+  "businessUrl": "https://uncleg.com/stores/north-babylon/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Uncle Giuseppe's Marketplace",
+    "url": "https://uncleg.com/stores/north-babylon/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "uncleg-north-babylon",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-a6844bae298d",
+  "scope": "local",
+  "item": "Two 20″ pizzas for",
+  "price": "$22",
+  "venue": "Uncle Giuseppe's Marketplace",
+  "town": "North Babylon",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   3,
+   5
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Hand-stretched dough, house-made tomato sauce, fresh mozzarella from our bar. Two 20″ pizzas for $22 every Wed & Fri.",
+  "businessUrl": "https://uncleg.com/stores/north-babylon/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Uncle Giuseppe's Marketplace",
+    "url": "https://uncleg.com/stores/north-babylon/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "uncleg-north-babylon",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-9ce1d979e5ee",
+  "scope": "anywhere",
+  "item": "Whole Foods Market Rotisserie Chicken",
+  "price": "-$2",
+  "venue": "Whole Foods Market",
+  "town": "",
+  "state": "",
+  "category": "grocery",
+  "days": [
+   2
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "$2 off Whole Foods Market Rotisserie Chicken",
+  "businessUrl": "https://www.wholefoodsmarket.com/days-of-deals",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Whole Foods Market",
+    "url": "https://www.wholefoodsmarket.com/days-of-deals",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "wholefoods-days",
+  "score": 8,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-ee5bd8b3c3e5",
+  "scope": "anywhere",
+  "item": "12 for All Live Oysters",
+  "price": "$12",
+  "venue": "Whole Foods Market",
+  "town": "",
+  "state": "",
+  "category": "grocery",
+  "days": [
+   0,
+   5,
+   6
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "12 for $12 All Live Oysters",
+  "businessUrl": "https://www.wholefoodsmarket.com/days-of-deals",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Whole Foods Market",
+    "url": "https://www.wholefoodsmarket.com/days-of-deals",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "wholefoods-days",
+  "score": 5,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-44a558d8fe55",
+  "scope": "anywhere",
+  "item": "Buy 1 Get 1 Whole Foods Market Bakery Half Loaves",
+  "price": "50%",
+  "venue": "Whole Foods Market",
+  "town": "",
+  "state": "",
+  "category": "grocery",
+  "days": [
+   0,
+   5,
+   6
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Buy 1, Get 1 50% Off Whole Foods Market Bakery Half Loaves",
+  "businessUrl": "https://www.wholefoodsmarket.com/days-of-deals",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Whole Foods Market",
+    "url": "https://www.wholefoodsmarket.com/days-of-deals",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "wholefoods-days",
+  "score": 4,
+  "foundAt": "2026-11-05"
+ }
+]
