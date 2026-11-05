@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel><title>Example deals</title>
+<item><title>Nike: Extra 25% off clearance styles</title><link>https://example.com/nike</link>
+<description>&lt;p&gt;Ends 11/30. Free shipping for members.&lt;/p&gt;</description></item>
+<item><title>Town newsletter: road work on Main St</title><link>https://example.com/news</link>
+<description>Read about what is happening around town.</description></item>
+</channel></rss>
