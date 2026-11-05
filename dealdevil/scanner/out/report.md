@@ -1,6 +1,6 @@
-# DealDevil scan, 2026-11-05 05:28 UTC
+# DealDevil scan, 2026-11-05 05:35 UTC
 
-43 deals found, 11 new since last scan.
+43 deals found, 0 new since last scan.
 
 | Source | Result | Deals |
 |---|---|---|
@@ -20,17 +20,3 @@
 | [dnb-specials](https://www.daveandbusters.com/us/en/play/specials) | 5 deals | 5 |
 | [bww-bogo](https://www.buffalowildwings.com/bogo-days/) | 11 deals | 11 |
 | [wholefoods-days](https://www.wholefoodsmarket.com/days-of-deals) | 3 deals | 3 |
-
-## New this scan
-
-- **50%** 42oz Prime Aged Porterhouse regularly at IMC Restaurant & Bar ([source](https://www.imcrestaurant.com/weekly-specials/))
-- **50%** Porterhouse Wine at IMC Restaurant & Bar ([source](https://www.imcrestaurant.com/weekly-specials/))
-- **$22** Weekend Brunch Bottomless Drinks at IMC Restaurant & Bar ([source](https://www.imcrestaurant.com/weekly-specials/))
-- **$79.98** Roast for Two at IMC Restaurant & Bar ([source](https://www.imcrestaurant.com/weekly-specials/))
-- **$110** Surf Turf for Two at IMC Restaurant & Bar ([source](https://www.imcrestaurant.com/weekly-specials/))
-- **$99** Tomahawk Night For Two at IMC Restaurant & Bar ([source](https://www.imcrestaurant.com/weekly-specials/))
-- **$42.95** Prix-Fixe Dinner pp at IMC Restaurant & Bar ([source](https://www.imcrestaurant.com/weekly-specials/))
-- **$15** Add three wine pairings for at IMC Restaurant & Bar ([source](https://www.imcrestaurant.com/weekly-specials/))
-- **$3** Gluten- Whole-Wheat pasta available (+ ) at Lombardi's on the Bay ([source](https://lombardisonthebay.com/weekly-specials-menu/))
-- **$35** Endless Pasta at ITA Kitchen ([source](https://www.itakitchen.com/event/endless-pasta-edition/))
-- **$35** Per person tax and tip at ITA Kitchen ([source](https://www.itakitchen.com/event/endless-pasta-edition/))
