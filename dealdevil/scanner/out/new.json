@@ -1,1 +1,426 @@
-[]
+[
+ {
+  "id": "scan-0bb2da6c3b31",
+  "scope": "local",
+  "item": "42oz Prime Aged Porterhouse regularly",
+  "price": "50%",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "happy",
+  "days": [
+   3,
+   4
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "42oz Prime Aged Porterhouse, half price — regularly $136. Plus 50% off any bottle of wine over $99.",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 9,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-741fc2195920",
+  "scope": "local",
+  "item": "Porterhouse Wine",
+  "price": "50%",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "happy",
+  "days": [
+   3,
+   4
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Porterhouse & Wine 50% Off",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 4,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-8cafdf519492",
+  "scope": "local",
+  "item": "Weekend Brunch Bottomless Drinks",
+  "price": "$22",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "food",
+  "days": [
+   0,
+   6
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Weekend Brunch $22 Bottomless Drinks",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 4,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-a2aa95ea3543",
+  "scope": "local",
+  "item": "Roast for Two",
+  "price": "$79.98",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   1
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Monday Roast $79.98 for Two",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-c14434ca92b9",
+  "scope": "local",
+  "item": "Surf Turf for Two",
+  "price": "$110",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   2
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Surf & Turf for Two $110",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-d6e38e4d06fb",
+  "scope": "local",
+  "item": "Tomahawk Night For Two",
+  "price": "$99",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   5
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Tomahawk Night $99 For Two",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-e40c5794fd39",
+  "scope": "local",
+  "item": "Prix-Fixe Dinner pp",
+  "price": "$42.95",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "food",
+  "days": [
+   0
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Prix-Fixe Dinner $42.95 pp",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-78611c59b0cc",
+  "scope": "local",
+  "item": "Add three wine pairings for",
+  "price": "$15",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "happy",
+  "days": [
+   0
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Add three wine pairings for $15. Entrées include Prime NY Strip, Wagyu Skirt Steak, Salmon, Short Rib, Brick Chicken and more. Imperial Filet Mignon available with a $10 supplement.",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-3047feffa54a",
+  "scope": "local",
+  "item": "Gluten- Whole-Wheat pasta available (+ )",
+  "price": "$3",
+  "venue": "Lombardi's on the Bay",
+  "town": "Patchogue",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   3
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Gluten-Free & Whole-Wheat pasta available (+$3).",
+  "businessUrl": "https://lombardisonthebay.com/weekly-specials-menu/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Lombardi's on the Bay",
+    "url": "https://lombardisonthebay.com/weekly-specials-menu/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "lombardis-on-the-bay",
+  "score": 4,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-aa46de68dd0f",
+  "scope": "local",
+  "item": "Endless Pasta",
+  "price": "$35",
+  "venue": "ITA Kitchen",
+  "town": "Patchogue",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   1
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Endless Pasta. Monday - ThursdayStarts with choice of Caesar Salad or Mozzarella and Tomato.Chef 's choice of 3 pasta's served in a hot pan table side change weekly.$35 per person + tax and tip.*Not available on holidays*Make Your Reservations Now!",
+  "businessUrl": "https://www.itakitchen.com/event/endless-pasta-edition/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "ITA Kitchen",
+    "url": "https://www.itakitchen.com/event/endless-pasta-edition/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "ita-kitchen-patchogue",
+  "score": 5,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-71a792d35b1c",
+  "scope": "local",
+  "item": "Per person tax and tip",
+  "price": "$35",
+  "venue": "ITA Kitchen",
+  "town": "Patchogue",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "$35 per person + tax and tip. *Not available on holidays*",
+  "businessUrl": "https://www.itakitchen.com/event/endless-pasta-edition/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "ITA Kitchen",
+    "url": "https://www.itakitchen.com/event/endless-pasta-edition/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "ita-kitchen-patchogue",
+  "score": 4,
+  "foundAt": "2026-11-05"
+ }
+]

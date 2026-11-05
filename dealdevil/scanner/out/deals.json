@@ -22,7 +22,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -36,7 +36,7 @@
   "addedBy": "scanner",
   "scanSource": "bww-bogo",
   "score": 7,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-f16971caf82b",
@@ -60,7 +60,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -74,7 +74,7 @@
   "addedBy": "scanner",
   "scanSource": "bww-bogo",
   "score": 6,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-d73523f3d410",
@@ -98,7 +98,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -112,7 +112,7 @@
   "addedBy": "scanner",
   "scanSource": "bww-bogo",
   "score": 6,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-489728411beb",
@@ -136,7 +136,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -150,7 +150,7 @@
   "addedBy": "scanner",
   "scanSource": "bww-bogo",
   "score": 5,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-dc1ca77f99e1",
@@ -174,7 +174,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -188,7 +188,7 @@
   "addedBy": "scanner",
   "scanSource": "bww-bogo",
   "score": 5,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-934993a793d8",
@@ -212,7 +212,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -226,7 +226,7 @@
   "addedBy": "scanner",
   "scanSource": "bww-bogo",
   "score": 5,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-6c3439a283a1",
@@ -251,7 +251,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -265,7 +265,7 @@
   "addedBy": "scanner",
   "scanSource": "bww-bogo",
   "score": 4,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-8d468b5c337f",
@@ -290,7 +290,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -304,7 +304,7 @@
   "addedBy": "scanner",
   "scanSource": "bww-bogo",
   "score": 4,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-440693d117c6",
@@ -329,7 +329,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -343,7 +343,7 @@
   "addedBy": "scanner",
   "scanSource": "bww-bogo",
   "score": 4,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-2b24c5ec5330",
@@ -367,7 +367,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -381,7 +381,7 @@
   "addedBy": "scanner",
   "scanSource": "bww-bogo",
   "score": 3,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-af0709d7d295",
@@ -405,7 +405,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -419,7 +419,7 @@
   "addedBy": "scanner",
   "scanSource": "bww-bogo",
   "score": 3,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-bbcfbce7cf41",
@@ -443,7 +443,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -457,7 +457,7 @@
   "addedBy": "scanner",
   "scanSource": "cinemark-tuesdays",
   "score": 6,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-d956fe851b25",
@@ -481,7 +481,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -495,7 +495,7 @@
   "addedBy": "scanner",
   "scanSource": "cinemark-tuesdays",
   "score": 5,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-967415e432c1",
@@ -519,7 +519,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -533,7 +533,7 @@
   "addedBy": "scanner",
   "scanSource": "cinemark-tuesdays",
   "score": 3,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-f58b35e81fe1",
@@ -558,7 +558,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -572,7 +572,7 @@
   "addedBy": "scanner",
   "scanSource": "dnb-specials",
   "score": 6,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-44efd224856a",
@@ -597,7 +597,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -611,7 +611,7 @@
   "addedBy": "scanner",
   "scanSource": "dnb-specials",
   "score": 5,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-72c591981cf3",
@@ -636,7 +636,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -650,7 +650,7 @@
   "addedBy": "scanner",
   "scanSource": "dnb-specials",
   "score": 4,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-7d23da2562c6",
@@ -675,7 +675,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -689,7 +689,7 @@
   "addedBy": "scanner",
   "scanSource": "dnb-specials",
   "score": 3,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-5208b904c977",
@@ -714,7 +714,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -728,7 +728,431 @@
   "addedBy": "scanner",
   "scanSource": "dnb-specials",
   "score": 3,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-0bb2da6c3b31",
+  "scope": "local",
+  "item": "42oz Prime Aged Porterhouse regularly",
+  "price": "50%",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "happy",
+  "days": [
+   3,
+   4
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "42oz Prime Aged Porterhouse, half price — regularly $136. Plus 50% off any bottle of wine over $99.",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 9,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-741fc2195920",
+  "scope": "local",
+  "item": "Porterhouse Wine",
+  "price": "50%",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "happy",
+  "days": [
+   3,
+   4
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Porterhouse & Wine 50% Off",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 4,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-8cafdf519492",
+  "scope": "local",
+  "item": "Weekend Brunch Bottomless Drinks",
+  "price": "$22",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "food",
+  "days": [
+   0,
+   6
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Weekend Brunch $22 Bottomless Drinks",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 4,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-78611c59b0cc",
+  "scope": "local",
+  "item": "Add three wine pairings for",
+  "price": "$15",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "happy",
+  "days": [
+   0
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Add three wine pairings for $15. Entrées include Prime NY Strip, Wagyu Skirt Steak, Salmon, Short Rib, Brick Chicken and more. Imperial Filet Mignon available with a $10 supplement.",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-e40c5794fd39",
+  "scope": "local",
+  "item": "Prix-Fixe Dinner pp",
+  "price": "$42.95",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "food",
+  "days": [
+   0
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Prix-Fixe Dinner $42.95 pp",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-a2aa95ea3543",
+  "scope": "local",
+  "item": "Roast for Two",
+  "price": "$79.98",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   1
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Monday Roast $79.98 for Two",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-c14434ca92b9",
+  "scope": "local",
+  "item": "Surf Turf for Two",
+  "price": "$110",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   2
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Surf & Turf for Two $110",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-d6e38e4d06fb",
+  "scope": "local",
+  "item": "Tomahawk Night For Two",
+  "price": "$99",
+  "venue": "IMC Restaurant & Bar",
+  "town": "Huntington",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   5
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Tomahawk Night $99 For Two",
+  "businessUrl": "https://www.imcrestaurant.com/weekly-specials/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "IMC Restaurant & Bar",
+    "url": "https://www.imcrestaurant.com/weekly-specials/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "imc-huntington",
+  "score": 3,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-aa46de68dd0f",
+  "scope": "local",
+  "item": "Endless Pasta",
+  "price": "$35",
+  "venue": "ITA Kitchen",
+  "town": "Patchogue",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   1
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Endless Pasta. Monday - ThursdayStarts with choice of Caesar Salad or Mozzarella and Tomato.Chef 's choice of 3 pasta's served in a hot pan table side change weekly.$35 per person + tax and tip.*Not available on holidays*Make Your Reservations Now!",
+  "businessUrl": "https://www.itakitchen.com/event/endless-pasta-edition/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "ITA Kitchen",
+    "url": "https://www.itakitchen.com/event/endless-pasta-edition/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "ita-kitchen-patchogue",
+  "score": 5,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-71a792d35b1c",
+  "scope": "local",
+  "item": "Per person tax and tip",
+  "price": "$35",
+  "venue": "ITA Kitchen",
+  "town": "Patchogue",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "$35 per person + tax and tip. *Not available on holidays*",
+  "businessUrl": "https://www.itakitchen.com/event/endless-pasta-edition/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "ITA Kitchen",
+    "url": "https://www.itakitchen.com/event/endless-pasta-edition/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "ita-kitchen-patchogue",
+  "score": 4,
+  "foundAt": "2026-11-05"
+ },
+ {
+  "id": "scan-3047feffa54a",
+  "scope": "local",
+  "item": "Gluten- Whole-Wheat pasta available (+ )",
+  "price": "$3",
+  "venue": "Lombardi's on the Bay",
+  "town": "Patchogue",
+  "state": "NY",
+  "category": "shop",
+  "days": [
+   3
+  ],
+  "start": null,
+  "end": null,
+  "hoursKnown": false,
+  "validUntil": null,
+  "conditions": [],
+  "details": "Gluten-Free & Whole-Wheat pasta available (+$3).",
+  "businessUrl": "https://lombardisonthebay.com/weekly-specials-menu/",
+  "verification": {
+   "status": "pending",
+   "reason": "scanner-official",
+   "checkedAt": "2026-11-05",
+   "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
+  },
+  "evidence": [
+   {
+    "label": "Lombardi's on the Bay",
+    "url": "https://lombardisonthebay.com/weekly-specials-menu/",
+    "kind": "business"
+   }
+  ],
+  "status": "active",
+  "addedBy": "scanner",
+  "scanSource": "lombardis-on-the-bay",
+  "score": 4,
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-ce8d0a224c83",
@@ -758,7 +1182,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -772,7 +1196,7 @@
   "addedBy": "scanner",
   "scanSource": "luckystrike-commack",
   "score": 5,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-285095667f7a",
@@ -784,7 +1208,7 @@
   "state": "NY",
   "category": "fun",
   "days": [
-   3
+   4
   ],
   "start": "19:00",
   "end": null,
@@ -796,7 +1220,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -810,7 +1234,7 @@
   "addedBy": "scanner",
   "scanSource": "luckystrike-commack",
   "score": 5,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-8cc4fae75832",
@@ -834,7 +1258,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -848,7 +1272,7 @@
   "addedBy": "scanner",
   "scanSource": "luckystrike-commack",
   "score": 5,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-b233e5ab2836",
@@ -872,7 +1296,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -886,7 +1310,7 @@
   "addedBy": "scanner",
   "scanSource": "luckystrike-commack",
   "score": 4,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-191d997d3d3f",
@@ -911,7 +1335,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -925,7 +1349,7 @@
   "addedBy": "scanner",
   "scanSource": "luckystrike-commack",
   "score": 4,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-d252358d6b7c",
@@ -949,7 +1373,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -963,7 +1387,7 @@
   "addedBy": "scanner",
   "scanSource": "luckystrike-commack",
   "score": 4,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-6a31f60aee4a",
@@ -987,7 +1411,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -1001,7 +1425,7 @@
   "addedBy": "scanner",
   "scanSource": "roccos-huntington",
   "score": 5,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-dd75d298ab27",
@@ -1025,7 +1449,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -1039,7 +1463,7 @@
   "addedBy": "scanner",
   "scanSource": "roccos-huntington",
   "score": 3,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-f43b1d16219f",
@@ -1064,7 +1488,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -1078,7 +1502,7 @@
   "addedBy": "scanner",
   "scanSource": "uncleg-north-babylon",
   "score": 3,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-a6844bae298d",
@@ -1103,7 +1527,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -1117,7 +1541,7 @@
   "addedBy": "scanner",
   "scanSource": "uncleg-north-babylon",
   "score": 3,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-9ce1d979e5ee",
@@ -1141,7 +1565,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -1155,7 +1579,7 @@
   "addedBy": "scanner",
   "scanSource": "wholefoods-days",
   "score": 8,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-ee5bd8b3c3e5",
@@ -1181,7 +1605,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -1195,7 +1619,7 @@
   "addedBy": "scanner",
   "scanSource": "wholefoods-days",
   "score": 5,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  },
  {
   "id": "scan-44a558d8fe55",
@@ -1221,7 +1645,7 @@
   "verification": {
    "status": "pending",
    "reason": "scanner-official",
-   "checkedAt": "2026-11-04",
+   "checkedAt": "2026-11-05",
    "note": "Found on the business's own site by the scanner. Check the details, then mark it verified."
   },
   "evidence": [
@@ -1235,6 +1659,6 @@
   "addedBy": "scanner",
   "scanSource": "wholefoods-days",
   "score": 4,
-  "foundAt": "2026-11-04"
+  "foundAt": "2026-11-05"
  }
 ]
